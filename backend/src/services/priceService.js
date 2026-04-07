@@ -1,6 +1,9 @@
 import axios from 'axios';
 
 const cache = new Map();
+const CG_HEADERS = process.env.COINGECKO_API_KEY
+  ? { 'x-cg-demo-api-key': process.env.COINGECKO_API_KEY }
+  : {};
 const CACHE_TTL = { price: 5 * 60 * 1000, ohlcv: 5 * 60 * 1000 };
 
 function fromCache(key) {
@@ -40,6 +43,7 @@ export async function getCryptoPrices(ids = Object.keys(CRYPTO_ASSETS)) {
         include_24hr_vol: true,
         include_market_cap: true,
       },
+      headers: CG_HEADERS,
       timeout: 8000,
     }
   );
@@ -115,7 +119,7 @@ export async function getTraditionalPrices() {
   try {
     const { data } = await axios.get(
       `${process.env.COINGECKO_BASE}/simple/price`,
-      { params: { ids: 'pax-gold,silver', vs_currencies: 'usd', include_24hr_change: true }, timeout: 6000 }
+      { params: { ids: 'pax-gold,silver', vs_currencies: 'usd', include_24hr_change: true }, headers: CG_HEADERS, timeout: 6000 }
     );
     if (data['pax-gold']?.usd) goldPrice = data['pax-gold'].usd;
     if (data['silver']?.usd)   silverPrice = data['silver'].usd;
