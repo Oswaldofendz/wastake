@@ -28,13 +28,13 @@ export function Markets({ allAssets }) {
         </div>
 
         {/* Tabs */}
-        <nav className="flex gap-1">
+        <nav className="flex gap-1 overflow-x-auto scrollbar-none -mb-px">
           {TABS.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
               className={[
-                'px-3 py-1.5 text-sm rounded-t-lg font-medium transition-colors border-b-2',
+                'px-4 py-3 text-base font-medium transition-colors border-b-2 whitespace-nowrap flex-shrink-0 min-h-[44px]',
                 tab === t.id
                   ? 'text-white border-brand-400 bg-slate-800/60'
                   : 'text-slate-400 border-transparent hover:text-white hover:bg-slate-800/40',

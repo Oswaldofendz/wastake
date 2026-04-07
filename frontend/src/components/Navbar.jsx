@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NotificationBell } from './NotificationBell.jsx';
 import { WaLogoMark } from './WaLogo.jsx';
@@ -9,11 +10,11 @@ const LANGS = [
 ];
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'panorama',  label: 'Panorama'  },
-  { id: 'markets',   label: 'Mercados'  },
-  { id: 'portfolio', label: 'Cartera'   },
-  { id: 'alerts',    label: 'Alertas'   },
+  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+  { id: 'panorama',  label: 'Panorama',  icon: '🚦' },
+  { id: 'markets',   label: 'Mercados',  icon: '🌍' },
+  { id: 'portfolio', label: 'Cartera',   icon: '💼' },
+  { id: 'alerts',    label: 'Alertas',   icon: '🔔' },
 ];
 
 function SunIcon() {
@@ -44,87 +45,155 @@ export function Navbar({
   onToggleDark,
 }) {
   const { t, i18n } = useTranslation();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  function navigate(id) {
+    onNavigate?.(id);
+    setMenuOpen(false);
+  }
 
   return (
-    <header className="h-14 border-b border-slate-700/50 flex items-center justify-between px-4 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-40 gap-2">
-      {/* Logo + Nav */}
-      <div className="flex items-center gap-4 min-w-0">
-        {/* Logo */}
+    <>
+      <header className="h-14 border-b border-slate-700/50 flex items-center justify-between px-4 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-40 gap-2">
+        {/* Logo + Desktop Nav */}
+        <div className="flex items-center gap-4 min-w-0">
+          {/* Logo */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <WaLogoMark iconSize={28} />
+            <span className="text-xs px-2 py-0.5 rounded-full bg-brand-900/60 text-brand-400 border border-brand-700/40 font-medium hidden sm:block">
+              beta
+            </span>
+          </div>
+
+          {/* Desktop nav — hidden on mobile */}
+          <nav className="hidden md:flex gap-0.5 overflow-x-auto scrollbar-none">
+            {NAV_ITEMS.map(item => (
+              <button
+                key={item.id}
+                onClick={() => navigate(item.id)}
+                className={[
+                  'px-3 py-1.5 text-sm rounded-lg transition-colors font-medium whitespace-nowrap flex-shrink-0',
+                  currentPage === item.id
+                    ? 'bg-slate-700/80 text-white'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800',
+                ].join(' ')}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Right side */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          <WaLogoMark iconSize={30} />
-          <span className="text-xs px-2 py-0.5 rounded-full bg-brand-900/60 text-brand-400 border border-brand-700/40 font-medium hidden sm:block">
-            beta
-          </span>
+          {lastUpdated && (
+            <span className="text-xs text-slate-500 hidden lg:block whitespace-nowrap">
+              {t('last_updated')}: {lastUpdated.toLocaleTimeString()}
+            </span>
+          )}
+
+          <NotificationBell
+            alerts={alerts ?? []}
+            unreadCount={unreadCount ?? 0}
+            onMarkRead={onMarkRead}
+            onMarkAllRead={onMarkAllRead}
+            onNavigateAlerts={() => navigate('alerts')}
+          />
+
+          <button
+            onClick={onToggleDark}
+            className={[
+              'p-2 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center',
+              darkMode
+                ? 'text-slate-400 hover:text-yellow-400 hover:bg-slate-800'
+                : 'text-yellow-500 hover:text-white hover:bg-slate-800',
+            ].join(' ')}
+            title={darkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+          >
+            {darkMode ? <SunIcon /> : <MoonIcon />}
+          </button>
+
+          {/* Language selector — hidden on mobile */}
+          <div className="hidden sm:flex gap-0.5 border border-slate-700 rounded-lg p-0.5">
+            {LANGS.map(l => (
+              <button
+                key={l.code}
+                onClick={() => i18n.changeLanguage(l.code)}
+                className={[
+                  'px-2 py-1 text-xs rounded-md transition-colors font-medium min-h-[36px]',
+                  i18n.language.startsWith(l.code)
+                    ? 'bg-slate-700 text-white'
+                    : 'text-slate-400 hover:text-white',
+                ].join(' ')}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Hamburger — visible on mobile only */}
+          <button
+            onClick={() => setMenuOpen(o => !o)}
+            className="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            aria-label="Menú"
+          >
+            {menuOpen ? (
+              <svg viewBox="0 0 20 20" className="w-5 h-5 fill-current">
+                <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 20 20" className="w-5 h-5 fill-current">
+                <path fillRule="evenodd" d="M2 4.75A.75.75 0 0 1 2.75 4h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75ZM2 10a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 10Zm0 5.25a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
+              </svg>
+            )}
+          </button>
         </div>
+      </header>
 
-        {/* Navigation tabs */}
-        <nav className="flex gap-0.5 overflow-x-auto scrollbar-none">
-          {NAV_ITEMS.map(item => (
-            <button
-              key={item.id}
-              onClick={() => onNavigate?.(item.id)}
-              className={[
-                'px-3 py-1.5 text-sm rounded-lg transition-colors font-medium whitespace-nowrap flex-shrink-0',
-                currentPage === item.id
-                  ? 'bg-slate-700/80 text-white'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800',
-              ].join(' ')}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      {/* Right side */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        {lastUpdated && (
-          <span className="text-xs text-slate-500 hidden lg:block whitespace-nowrap">
-            {t('last_updated')}: {lastUpdated.toLocaleTimeString()}
-          </span>
-        )}
-
-        {/* Notification Bell */}
-        <NotificationBell
-          alerts={alerts ?? []}
-          unreadCount={unreadCount ?? 0}
-          onMarkRead={onMarkRead}
-          onMarkAllRead={onMarkAllRead}
-          onNavigateAlerts={() => onNavigate?.('alerts')}
-        />
-
-        {/* Dark/Light mode toggle */}
-        <button
-          onClick={onToggleDark}
-          className={[
-            'p-1.5 rounded-lg transition-colors',
-            darkMode
-              ? 'text-slate-400 hover:text-yellow-400 hover:bg-slate-800'
-              : 'text-yellow-500 hover:text-white hover:bg-slate-800',
-          ].join(' ')}
-          title={darkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-        >
-          {darkMode ? <SunIcon /> : <MoonIcon />}
-        </button>
-
-        {/* Language selector */}
-        <div className="flex gap-0.5 border border-slate-700 rounded-lg p-0.5">
-          {LANGS.map(l => (
-            <button
-              key={l.code}
-              onClick={() => i18n.changeLanguage(l.code)}
-              className={[
-                'px-2 py-1 text-xs rounded-md transition-colors font-medium',
-                i18n.language.startsWith(l.code)
-                  ? 'bg-slate-700 text-white'
-                  : 'text-slate-400 hover:text-white',
-              ].join(' ')}
-            >
-              {l.label}
-            </button>
-          ))}
+      {/* Mobile menu dropdown */}
+      {menuOpen && (
+        <div className="md:hidden fixed inset-0 z-30 top-14" onClick={() => setMenuOpen(false)}>
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/50" />
+          {/* Menu panel */}
+          <div className="absolute top-0 left-0 right-0 bg-slate-900 border-b border-slate-700/50 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <nav className="px-4 py-3 space-y-1">
+              {NAV_ITEMS.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => navigate(item.id)}
+                  className={[
+                    'w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-medium transition-colors min-h-[52px]',
+                    currentPage === item.id
+                      ? 'bg-slate-700/80 text-white'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white',
+                  ].join(' ')}
+                >
+                  <span className="text-xl">{item.icon}</span>
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+            {/* Language in mobile menu */}
+            <div className="px-4 pb-4 pt-2 border-t border-slate-700/40 flex gap-2">
+              {LANGS.map(l => (
+                <button
+                  key={l.code}
+                  onClick={() => { i18n.changeLanguage(l.code); setMenuOpen(false); }}
+                  className={[
+                    'flex-1 py-2.5 text-sm rounded-xl border font-medium transition-colors min-h-[44px]',
+                    i18n.language.startsWith(l.code)
+                      ? 'bg-slate-700 border-slate-600 text-white'
+                      : 'border-slate-700/50 text-slate-400 hover:text-white',
+                  ].join(' ')}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
-    </header>
+      )}
+    </>
   );
 }

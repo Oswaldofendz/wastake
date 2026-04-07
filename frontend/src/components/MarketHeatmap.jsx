@@ -42,13 +42,13 @@ function HeatCell({ asset }) {
   const change = asset.change24h ?? 0;
   const { bg, text } = heatColor(change);
   return (
-    <div className={`${bg} rounded-lg p-2.5 flex flex-col gap-1 border border-white/5 hover:scale-105 transition-transform cursor-default select-none`}>
+    <div className={`${bg} rounded-xl p-3 flex flex-col gap-1.5 border border-white/5 hover:scale-105 active:scale-95 transition-transform cursor-default select-none min-h-[80px]`}>
       <div className="flex items-center gap-1.5">
         <AssetLogo asset={asset} />
-        <span className="text-xs font-bold text-white/90 truncate">{asset.symbol}</span>
+        <span className="text-sm font-bold text-white/90 truncate">{asset.symbol}</span>
       </div>
       <p className="text-xs font-mono text-white/60 truncate">{fmtPrice(asset.price)}</p>
-      <p className={`text-sm font-bold font-mono ${text}`}>
+      <p className={`text-base font-bold font-mono ${text}`}>
         {change >= 0 ? '+' : ''}{change.toFixed(2)}%
       </p>
     </div>
@@ -81,7 +81,7 @@ export function MarketHeatmap({ assets: assetsProp }) {
     return (
       <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 animate-pulse">
         <div className="h-3 bg-slate-700 rounded w-40 mb-4" />
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
           {[...Array(8)].map((_, i) => <div key={i} className="h-20 bg-slate-700/50 rounded-lg" />)}
         </div>
       </div>
@@ -119,7 +119,7 @@ export function MarketHeatmap({ assets: assetsProp }) {
           </span>
         </div>
       </div>
-      <div className="p-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+      <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
         {sorted.map(asset => (
           <HeatCell key={asset.id} asset={asset} />
         ))}

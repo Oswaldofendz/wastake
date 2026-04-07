@@ -37,51 +37,64 @@ function SummaryCard({ label, value, sub, subColor }) {
 
 function PositionRow({ pos, onRemove }) {
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-slate-700/30 last:border-0">
-      {/* Nombre + badge paper */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-white truncate">{pos.asset_name}</span>
-          {pos.is_simulation && (
-            <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-900/50 text-amber-400 border border-amber-700/40 font-medium flex-shrink-0">
-              Simulación
-            </span>
-          )}
+    <div className="py-3 border-b border-slate-700/30 last:border-0">
+      {/* Mobile: card layout */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-base font-medium text-white">{pos.asset_name}</span>
+            {pos.is_simulation && (
+              <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-900/50 text-amber-400 border border-amber-700/40 font-medium">
+                Simulación
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {pos.quantity} × entrada {fmtUsd(pos.entry_price)}
+          </p>
+          {/* Mobile: show value + 24h inline */}
+          <div className="flex items-center gap-3 mt-1.5 sm:hidden">
+            <span className="text-sm font-mono text-white">{fmtUsd(pos.currentValue)}</span>
+            {pos.change24h != null && (
+              <span className={`text-xs font-medium ${pnlColor(pos.change24h)}`}>
+                24h: {fmtPct(pos.change24h)}
+              </span>
+            )}
+          </div>
         </div>
-        <p className="text-xs text-slate-500 mt-0.5">
-          {pos.quantity} × entrada {fmtUsd(pos.entry_price)}
-        </p>
-      </div>
 
-      {/* Valor actual */}
-      <div className="text-right hidden sm:block">
-        <p className="text-sm font-mono text-white">{fmtUsd(pos.currentValue)}</p>
-        <p className="text-xs text-slate-500">{fmtUsd(pos.currentPrice)} / unidad</p>
-      </div>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {/* P&L */}
+          <div className="text-right">
+            <p className={`text-base font-mono font-semibold ${pnlColor(pos.pnlUsd)}`}>
+              {pos.pnlUsd != null ? (pos.pnlUsd >= 0 ? '+' : '') + fmtUsd(pos.pnlUsd) : '—'}
+            </p>
+            <p className={`text-sm ${pnlColor(pos.pnlPct)}`}>{fmtPct(pos.pnlPct)}</p>
+          </div>
 
-      {/* P&L */}
-      <div className="text-right w-24 flex-shrink-0">
-        <p className={`text-sm font-mono font-medium ${pnlColor(pos.pnlUsd)}`}>
-          {pos.pnlUsd != null ? (pos.pnlUsd >= 0 ? '+' : '') + fmtUsd(pos.pnlUsd) : '—'}
-        </p>
-        <p className={`text-xs ${pnlColor(pos.pnlPct)}`}>{fmtPct(pos.pnlPct)}</p>
-      </div>
+          {/* Valor actual — desktop only */}
+          <div className="text-right hidden sm:block">
+            <p className="text-sm font-mono text-white">{fmtUsd(pos.currentValue)}</p>
+            <p className="text-xs text-slate-500">{fmtUsd(pos.currentPrice)} / ud.</p>
+          </div>
 
-      {/* Cambio 24h */}
-      <div className={`text-right w-16 flex-shrink-0 hidden md:block text-xs font-medium ${pnlColor(pos.change24h)}`}>
-        {pos.change24h != null ? fmtPct(pos.change24h) : '—'}
-      </div>
+          {/* 24h — desktop only */}
+          <div className={`text-right w-16 hidden md:block text-sm font-medium ${pnlColor(pos.change24h)}`}>
+            {pos.change24h != null ? fmtPct(pos.change24h) : '—'}
+          </div>
 
-      {/* Eliminar */}
-      <button
-        onClick={() => onRemove(pos.id)}
-        className="text-slate-600 hover:text-red-400 transition-colors flex-shrink-0 ml-1"
-        title="Eliminar posición"
-      >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-      </button>
+          {/* Delete */}
+          <button
+            onClick={() => onRemove(pos.id)}
+            className="text-slate-600 hover:text-red-400 transition-colors p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            title="Eliminar posición"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -164,7 +177,7 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets }) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowAdd(true)}
-            className="bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5"
+            className="bg-brand-600 hover:bg-brand-500 text-white text-base font-medium px-4 py-2.5 rounded-lg transition-colors flex items-center gap-1.5 min-h-[44px]"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
