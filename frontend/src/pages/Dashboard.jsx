@@ -29,24 +29,18 @@ export function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto md:overflow-hidden">
+    <div className="flex flex-col h-full overflow-y-auto lg:overflow-hidden">
       <Disclaimer />
 
-      {/*
-        Mobile-first layout:
-        - Mobile: single column, list on top then chart+analysis below
-        - Desktop (md+): two columns side by side
-      */}
-      <div className="flex flex-col md:flex-row md:flex-1 md:min-h-0 mt-3">
+      {/* Mobile-first: flex-col on mobile, flex-row on lg+ */}
+      <div className="flex flex-col lg:flex-row lg:flex-1 lg:min-h-0 mt-3">
 
-        {/* ── Asset list ─────────────────────────────────────────── */}
+        {/* ── Asset list ── */}
         <aside className="
-          w-full md:w-72 md:flex-shrink-0
+          w-full lg:w-72 lg:flex-shrink-0
           flex flex-col
-          border-b md:border-b-0 md:border-r border-slate-700/50
+          border-b lg:border-b-0 lg:border-r border-slate-700/50
           px-3 pb-3
-          md:overflow-hidden
-          md:h-full
         ">
           <div className="mb-3">
             <AssetSearch onSelect={handleSearch} />
@@ -62,14 +56,9 @@ export function Dashboard() {
           ) : error ? (
             <p className="text-base text-red-400 px-2">{t('error_fetch')}: {error}</p>
           ) : (
-            /* Mobile: show all cards in a scrollable horizontal strip or vertical list */
-            <ul className="
-              flex flex-row gap-2 overflow-x-auto pb-2
-              md:flex-col md:overflow-x-hidden md:overflow-y-auto md:space-y-2 md:pr-1
-              scrollbar-none
-            ">
+            <ul className="max-h-64 overflow-y-auto space-y-2 pr-1 lg:max-h-none lg:flex-1 lg:overflow-y-auto">
               {displayAssets.map(asset => (
-                <li key={asset.id} className="flex-shrink-0 w-56 md:w-auto">
+                <li key={asset.id}>
                   <PriceCard
                     asset={asset}
                     isSelected={chartAsset?.id === asset.id}
@@ -81,37 +70,27 @@ export function Dashboard() {
           )}
         </aside>
 
-        {/* ── Chart + analysis — always visible below on mobile ── */}
-        <main className="flex-1 min-w-0 flex flex-col p-3 md:p-4 md:overflow-y-auto">
+        {/* ── Chart + analysis ── */}
+        <main className="flex-1 min-w-0 flex flex-col p-3 lg:p-4 lg:overflow-y-auto">
           {chartAsset ? (
             <>
-              {/* Stats row */}
+              {/* Stats */}
               <div className="grid grid-cols-3 gap-2 mb-3">
-                <StatCard
-                  label={t('price')}
-                  value={fmtPrice(chartAsset.price)}
-                  mono
-                />
+                <StatCard label={t('price')} value={fmtPrice(chartAsset.price)} mono />
                 <StatCard
                   label={t('change_24h')}
                   value={`${chartAsset.change24h >= 0 ? '+' : ''}${chartAsset.change24h?.toFixed(2)}%`}
                   positive={chartAsset.change24h >= 0}
                 />
-                <StatCard
-                  label={t('volume')}
-                  value={fmtCompact(chartAsset.volume24h)}
-                />
+                <StatCard label={t('volume')} value={fmtCompact(chartAsset.volume24h)} />
               </div>
 
-              {/* Candlestick chart — 400px on mobile, flex-1 on desktop */}
-              <div className="h-[400px] md:h-auto md:flex-1 md:min-h-[300px] bg-slate-900 rounded-xl border border-slate-700/50 p-3 md:p-4 mb-3">
+              {/* Chart — 350px min on mobile, grows on desktop */}
+              <div className="min-h-[350px] lg:flex-1 lg:min-h-0 bg-slate-900 rounded-xl border border-slate-700/50 p-3 lg:p-4 mb-3">
                 <CandleChart asset={chartAsset} />
               </div>
 
-              {/* Technical analysis — stacked vertically */}
               <AnalysisPanel asset={chartAsset} />
-
-              {/* News */}
               <NewsPanel asset={chartAsset} />
             </>
           ) : (
@@ -125,8 +104,6 @@ export function Dashboard() {
   );
 }
 
-// ── Helpers ───────────────────────────────────────────────────
-
 function StatCard({ label, value, mono = false, positive }) {
   const isColored = positive !== undefined;
   return (
@@ -134,9 +111,7 @@ function StatCard({ label, value, mono = false, positive }) {
       <p className="text-xs text-slate-400 mb-1">{label}</p>
       <p className={[
         'text-base font-semibold',
-        isColored
-          ? positive ? 'text-green-400' : 'text-red-400'
-          : 'text-white',
+        isColored ? (positive ? 'text-green-400' : 'text-red-400') : 'text-white',
         mono ? 'font-mono' : '',
       ].join(' ')}>
         {value}

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NotificationBell } from './NotificationBell.jsx';
-import { WaLogoMark } from './WaLogo.jsx';
 
 const LANGS = [
   { code: 'es', label: 'ES' },
@@ -54,25 +53,25 @@ export function Navbar({
 
   return (
     <>
-      <header className="h-14 border-b border-slate-700/50 flex items-center justify-between px-4 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-40 gap-2">
+      <header className="h-14 border-b border-slate-700/50 flex items-center justify-between px-4 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-40 gap-3">
+
         {/* Logo + Desktop Nav */}
         <div className="flex items-center gap-4 min-w-0">
-          {/* Logo */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <WaLogoMark iconSize={28} />
-            <span className="text-xs px-2 py-0.5 rounded-full bg-brand-900/60 text-brand-400 border border-brand-700/40 font-medium hidden sm:block">
-              beta
-            </span>
-          </div>
+          {/* Logo image — no text next to it, the image already includes the name */}
+          <img
+            src="/logo-completo.png"
+            alt="WaStake"
+            className="h-8 w-auto flex-shrink-0 object-contain"
+          />
 
-          {/* Desktop nav — hidden on mobile */}
-          <nav className="hidden md:flex gap-0.5 overflow-x-auto scrollbar-none">
+          {/* Desktop nav — hidden below lg */}
+          <nav className="hidden lg:flex gap-0.5">
             {NAV_ITEMS.map(item => (
               <button
                 key={item.id}
                 onClick={() => navigate(item.id)}
                 className={[
-                  'px-3 py-1.5 text-sm rounded-lg transition-colors font-medium whitespace-nowrap flex-shrink-0',
+                  'px-3 py-1.5 text-sm rounded-lg transition-colors font-medium whitespace-nowrap',
                   currentPage === item.id
                     ? 'bg-slate-700/80 text-white'
                     : 'text-slate-400 hover:text-white hover:bg-slate-800',
@@ -87,7 +86,7 @@ export function Navbar({
         {/* Right side */}
         <div className="flex items-center gap-2 flex-shrink-0">
           {lastUpdated && (
-            <span className="text-xs text-slate-500 hidden lg:block whitespace-nowrap">
+            <span className="text-xs text-slate-500 hidden xl:block whitespace-nowrap">
               {t('last_updated')}: {lastUpdated.toLocaleTimeString()}
             </span>
           )}
@@ -108,12 +107,12 @@ export function Navbar({
                 ? 'text-slate-400 hover:text-yellow-400 hover:bg-slate-800'
                 : 'text-yellow-500 hover:text-white hover:bg-slate-800',
             ].join(' ')}
-            title={darkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            title={darkMode ? 'Modo claro' : 'Modo oscuro'}
           >
             {darkMode ? <SunIcon /> : <MoonIcon />}
           </button>
 
-          {/* Language selector — hidden on mobile */}
+          {/* Language selector — desktop only */}
           <div className="hidden sm:flex gap-0.5 border border-slate-700 rounded-lg p-0.5">
             {LANGS.map(l => (
               <button
@@ -131,10 +130,10 @@ export function Navbar({
             ))}
           </div>
 
-          {/* Hamburger — visible on mobile only */}
+          {/* Hamburger — visible below lg */}
           <button
             onClick={() => setMenuOpen(o => !o)}
-            className="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="lg:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-label="Menú"
           >
             {menuOpen ? (
@@ -150,12 +149,10 @@ export function Navbar({
         </div>
       </header>
 
-      {/* Mobile menu dropdown */}
+      {/* Mobile dropdown menu */}
       {menuOpen && (
-        <div className="md:hidden fixed inset-0 z-30 top-14" onClick={() => setMenuOpen(false)}>
-          {/* Backdrop */}
+        <div className="lg:hidden fixed inset-0 z-30 top-14" onClick={() => setMenuOpen(false)}>
           <div className="absolute inset-0 bg-black/50" />
-          {/* Menu panel */}
           <div className="absolute top-0 left-0 right-0 bg-slate-900 border-b border-slate-700/50 shadow-2xl" onClick={e => e.stopPropagation()}>
             <nav className="px-4 py-3 space-y-1">
               {NAV_ITEMS.map(item => (
@@ -174,7 +171,6 @@ export function Navbar({
                 </button>
               ))}
             </nav>
-            {/* Language in mobile menu */}
             <div className="px-4 pb-4 pt-2 border-t border-slate-700/40 flex gap-2">
               {LANGS.map(l => (
                 <button
