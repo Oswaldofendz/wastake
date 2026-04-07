@@ -4,13 +4,18 @@ const cache = new Map();
 const CG_HEADERS = process.env.COINGECKO_API_KEY
   ? { 'x-cg-demo-api-key': process.env.COINGECKO_API_KEY }
   : {};
-const CACHE_TTL = { price: 2 * 60 * 1000, ohlcv: 5 * 60 * 1000 };
+const CACHE_TTL = { price: 2 * 60 * 1000, ohlcv: 60 * 60 * 1000 };
 
+// Returns fresh data if within TTL, null otherwise
 function fromCache(key) {
   const entry = cache.get(key);
   if (!entry) return null;
   if (Date.now() - entry.ts > entry.ttl) { cache.delete(key); return null; }
   return entry.data;
+}
+// Returns stale data regardless of TTL (used as 429 fallback)
+function fromCacheStale(key) {
+  return cache.get(key)?.data ?? null;
 }
 function toCache(key, data, ttl) { cache.set(key, { data, ts: Date.now(), ttl }); }
 
@@ -72,16 +77,25 @@ export async function getCryptoOHLCV(id, days = 7) {
   const cached = fromCache(key);
   if (cached) return cached;
 
-  const { data } = await axios.get(
-    `${process.env.COINGECKO_BASE}/coins/${id}/ohlc`,
-    { params: { vs_currency: 'usd', days }, timeout: 10000 }
-  );
+  try {
+    const { data } = await axios.get(
+      `${process.env.COINGECKO_BASE}/coins/${id}/ohlc`,
+      { params: { vs_currency: 'usd', days }, headers: CG_HEADERS, timeout: 10000 }
+    );
 
-  const candles = data.map(([time, open, high, low, close]) => ({
-    time: Math.floor(time / 1000), open, high, low, close,
-  }));
-  toCache(key, candles, CACHE_TTL.ohlcv);
-  return candles;
+    const candles = data.map(([time, open, high, low, close]) => ({
+      time: Math.floor(time / 1000), open, high, low, close,
+    }));
+    toCache(key, candles, CACHE_TTL.ohlcv);
+    return candles;
+  } catch (err) {
+    const status = err.response?.status;
+    if (status === 429) {
+      const stale = fromCacheStale(key);
+      if (stale) return stale;
+    }
+    throw err;
+  }
 }
 
 async function fetchStooqPrices(symbols) {

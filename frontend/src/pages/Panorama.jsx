@@ -458,12 +458,12 @@ export function Panorama() {
     // analysisType: 'crypto' | 'stock' — determina qué fuente OHLCV usa el backend
     const aType = a.analysisType ?? (a.type === 'crypto' ? 'crypto' : 'stock');
 
-    // Single analysis call — result is used for all three time horizons
+    // Single analysis call — 90 days is enough for RSI, MACD, EMA
     const [main, fg, news, ohlcv] = await Promise.allSettled([
-      fetchAnalysis(a.id, aType, 365),
+      fetchAnalysis(a.id, aType, 90),
       fetchFearGreed(),
       fetchNews(a.id, aType),
-      fetchOHLCV(a.id, aType, aType === 'crypto' ? { days: 365 } : {}),
+      fetchOHLCV(a.id, aType, aType === 'crypto' ? { days: 90 } : {}),
     ]);
 
     if (main.status === 'fulfilled') {
