@@ -209,7 +209,7 @@ marketRouter.get('/translate', async (req, res) => {
     const { data } = await axios.get(
       'https://api.mymemory.translated.net/get',
       {
-        params: { q, langpair: `en|${to}`, de: 'wafinancepulse@noreply.com' },
+        params: { q, langpair: `en|${to}`, de: 'wastake@noreply.com' },
         timeout: 6000,
       }
     );

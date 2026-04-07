@@ -37,6 +37,6 @@ app.use('/api/news',     apiLimiter, newsRouter);
 app.use('/api/market',   apiLimiter, marketRouter);
 
 app.listen(PORT, () => {
-  console.log(`WaFinance Pulse backend running on port ${PORT}`);
+  console.log(`WaStake backend running on port ${PORT}`);
   startAlertEngine();
 });

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: wafinance-pulse-backend
+    name: wastake-backend
     runtime: node
     rootDir: backend
     buildCommand: npm install
@@ -12,7 +12,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: FRONTEND_URL
-        fromValue: https://wafinance-pulse.vercel.app   # cambia por tu URL de Vercel
+        fromValue: https://wastake.vercel.app   # cambia por tu URL de Vercel
       - key: SUPABASE_URL
         sync: false   # ingresa manualmente en el dashboard de Render
       - key: SUPABASE_SERVICE_KEY

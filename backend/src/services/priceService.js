@@ -147,7 +147,7 @@ export async function getTraditionalOHLCV(symbol) {
       `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`,
       {
         params: { interval: '1d', range: '1y' },
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WaFinancePulse/1.0)' },
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WaStake/1.0)' },
         timeout: 12000,
       }
     );

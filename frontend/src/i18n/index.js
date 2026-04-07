@@ -5,7 +5,7 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 const resources = {
   en: {
     translation: {
-      app_name: 'WaFinance Pulse',
+      app_name: 'WaStake',
       dashboard: 'Dashboard',
       portfolio: 'Portfolio',
       alerts: 'Alerts',
@@ -51,7 +51,7 @@ const resources = {
   },
   es: {
     translation: {
-      app_name: 'WaFinance Pulse',
+      app_name: 'WaStake',
       dashboard: 'Panel',
       portfolio: 'Cartera',
       alerts: 'Alertas',
@@ -97,7 +97,7 @@ const resources = {
   },
   pt: {
     translation: {
-      app_name: 'WaFinance Pulse',
+      app_name: 'WaStake',
       dashboard: 'Painel',
       portfolio: 'Carteira',
       alerts: 'Alertas',

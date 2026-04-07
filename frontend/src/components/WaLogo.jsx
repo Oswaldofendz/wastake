@@ -1,4 +1,4 @@
-// Logo WaFinance — "Wa" con barra verde estilo flecha alcista
+// Logo WaStake — "Wa" con barra verde estilo flecha alcista
 export function WaLogo({ size = 32, className = '' }) {
   return (
     <svg

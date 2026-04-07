@@ -1,4 +1,4 @@
-# WaFinance Pulse
+# WaStake
 
 Plataforma de inteligencia de mercados financieros en tiempo real.
 
@@ -27,8 +27,8 @@ Plataforma de inteligencia de mercados financieros en tiempo real.
 ### 1. Clonar e instalar
 
 ```bash
-git clone https://github.com/TU_USUARIO/wafinance-pulse.git
-cd wafinance-pulse
+git clone https://github.com/TU_USUARIO/wastake.git
+cd wastake
 
 cd backend && npm install
 cd ../frontend && npm install
