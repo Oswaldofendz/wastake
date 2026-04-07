@@ -35,9 +35,9 @@ export function Dashboard() {
     <div className="flex flex-col h-full">
       <Disclaimer />
 
-      <div className="flex flex-1 min-h-0 gap-0 mt-3">
-        {/* ── Sidebar izquierdo: lista de activos ── */}
-        <aside className="w-72 flex-shrink-0 flex flex-col border-r border-slate-700/50 px-3 pb-4 overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 min-h-0 gap-0 mt-3">
+        {/* ── Lista de activos: ancho completo en móvil, sidebar en desktop ── */}
+        <aside className="w-full md:w-72 flex-shrink-0 flex flex-col border-b md:border-b-0 md:border-r border-slate-700/50 px-3 pb-4 overflow-hidden max-h-72 md:max-h-none">
           <div className="mb-3">
             <AssetSearch onSelect={handleSearch} />
           </div>
