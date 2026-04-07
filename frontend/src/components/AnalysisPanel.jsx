@@ -234,14 +234,7 @@ function InfoModal({ info, onClose }) {
           {/* Levels */}
           <div className="space-y-2">
             {info.levels.map((lvl, i) => (
-              <div key={i} className="flex gap-2.5 items-start">
-                <span className={`text-xs font-semibold font-mono flex-shrink-0 mt-0.5 ${lvl.color}`}>
-                  {lvl.label}
-                </span>
-              </div>
-            ))}
-            {info.levels.map((lvl, i) => (
-              <div key={`desc-${i}`} className="bg-slate-900/60 rounded-lg p-2.5">
+              <div key={i} className="bg-slate-900/60 rounded-lg p-2.5">
                 <p className={`text-xs font-semibold ${lvl.color} mb-0.5`}>{lvl.label}</p>
                 <p className="text-xs text-slate-400">{lvl.desc}</p>
               </div>

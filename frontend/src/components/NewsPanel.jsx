@@ -222,9 +222,10 @@ export function NewsPanel({ asset }) {
     </div>
   );
 
-  // Enrich each article with keyword-based impact
-  const enriched = data.map(a => ({
+  // Enrich each article with keyword-based impact and original index for translation lookup
+  const enriched = data.map((a, i) => ({
     ...a,
+    _origIdx: i,
     computedImpact: detectImpact(a.title, a.impact),
   }));
 
@@ -284,7 +285,7 @@ export function NewsPanel({ asset }) {
             <NewsCard
               key={article.link || i}
               article={article}
-              translatedTitle={translatedTitles[data.indexOf(article)]}
+              translatedTitle={translatedTitles[article._origIdx]}
               impact={article.computedImpact}
             />
           ))
