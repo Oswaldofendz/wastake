@@ -4,7 +4,7 @@ const cache = new Map();
 const CG_HEADERS = process.env.COINGECKO_API_KEY
   ? { 'x-cg-demo-api-key': process.env.COINGECKO_API_KEY }
   : {};
-const CACHE_TTL = { price: 5 * 60 * 1000, ohlcv: 5 * 60 * 1000 };
+const CACHE_TTL = { price: 2 * 60 * 1000, ohlcv: 5 * 60 * 1000 };
 
 function fromCache(key) {
   const entry = cache.get(key);
