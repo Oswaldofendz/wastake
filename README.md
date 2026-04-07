@@ -1,78 +1,107 @@
-# MarketPulse Bot — Sprint 1
+# WaFinance Pulse
 
-## Estructura del proyecto
+Plataforma de inteligencia de mercados financieros en tiempo real.
 
-```
-marketpulse/
-├── frontend/          # React + Vite + Tailwind
-└── backend/           # Node.js + Express
-```
+## Stack
 
-## Setup rápido
+- **Frontend**: React 18, Tailwind CSS, Vite, i18next (ES/PT/EN)
+- **Backend**: Express.js, Node.js
+- **Base de datos**: Supabase (PostgreSQL + Auth)
+- **Análisis técnico**: RSI, MACD, EMA, Bollinger Bands, ATR
 
-### 1. Variables de entorno
+## Funcionalidades
 
-**backend/.env**
-```
-PORT=3001
-SUPABASE_URL=https://xxxx.supabase.co
-SUPABASE_SERVICE_KEY=your_service_key
-COINGECKO_BASE=https://api.coingecko.com/api/v3
-```
+- Dashboard con precios en tiempo real (crypto + ETFs + commodities + forex)
+- Análisis técnico con señales de compra/venta
+- Panorama: señal de trading con semáforo y gauges de confluencia
+- Sistema de alertas personalizadas (precio, RSI, MACD)
+- Mercados: heatmap, Fear & Greed, dominancia BTC, correlaciones
+- Portfolio con seguimiento de posiciones
+- Noticias con análisis de sentimiento (Gemini AI)
+- Calendario económico macro
 
-**frontend/.env**
-```
-VITE_API_URL=http://localhost:3001
-VITE_SUPABASE_URL=https://xxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=your_anon_key
-```
+---
 
-### 2. Instalar y correr
+## Desarrollo local
+
+### 1. Clonar e instalar
 
 ```bash
-# Backend
-cd backend && npm install && npm run dev
+git clone https://github.com/TU_USUARIO/wafinance-pulse.git
+cd wafinance-pulse
 
-# Frontend (otra terminal)
-cd frontend && npm install && npm run dev
+cd backend && npm install
+cd ../frontend && npm install
 ```
 
-### 3. Supabase — tabla requerida para Sprint 1
+### 2. Variables de entorno
 
-```sql
--- Ejecutar en Supabase SQL editor
-create table user_watchlist (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users(id) on delete cascade,
-  asset_id text not null,        -- ej: 'bitcoin', 'ethereum'
-  asset_type text not null,      -- 'crypto' | 'stock' | 'commodity'
-  display_name text not null,
-  created_at timestamptz default now()
-);
+```bash
+cp backend/.env.example backend/.env
+# Edita backend/.env con tus claves
 
-alter table user_watchlist enable row level security;
-
-create policy "Users see own watchlist"
-  on user_watchlist for all
-  using (auth.uid() = user_id);
+cp frontend/.env.example frontend/.env
+# Edita frontend/.env con tus claves
 ```
 
-## Activos soportados en Sprint 1
+### 3. Iniciar
 
-| Activo       | ID            | Fuente        |
-|--------------|---------------|---------------|
-| Bitcoin      | bitcoin       | CoinGecko     |
-| Ethereum     | ethereum      | CoinGecko     |
-| Solana       | solana        | CoinGecko     |
-| S&P 500      | SPY           | Yahoo Finance |
-| MSCI World   | URTH          | Yahoo Finance |
-| Mercados Em. | EEM           | Yahoo Finance |
-| Oro          | GC=F          | Yahoo Finance |
-| Plata        | SI=F          | Yahoo Finance |
+```bash
+# Terminal 1
+cd backend && npm start
 
-## Próximos sprints
+# Terminal 2
+cd frontend && npm run dev
+```
 
-- Sprint 2: Motor de análisis técnico (RSI, MACD, EMA, score)
-- Sprint 3: Noticias, sentimiento, alertas, cartera
-- Sprint 4: Ejecución, paper trading, 2FA
-- Sprint 5: Beta pública, app móvil
+Abre http://localhost:5173
+
+---
+
+## Deploy en producción
+
+### Backend → Render (gratis)
+
+1. [render.com](https://render.com) → New → Web Service
+2. Conecta tu repo de GitHub
+3. Configuración:
+   - **Root Directory**: `backend`
+   - **Build Command**: `npm install`
+   - **Start Command**: `node src/index.js`
+   - **Plan**: Free
+4. En **Environment Variables** agrega:
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_KEY`
+   - `GEMINI_API_KEY`
+   - `FRONTEND_URL` → tu URL de Vercel
+
+### Frontend → Vercel (gratis)
+
+1. [vercel.com](https://vercel.com) → New Project → importa el repo
+2. Configuración:
+   - **Root Directory**: `frontend`
+   - **Framework**: Vite (auto-detectado)
+3. En **Environment Variables** agrega:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+   - `VITE_API_URL` → tu URL de Render
+
+---
+
+## Variables de entorno
+
+### `backend/.env`
+| Variable | Descripción |
+|---|---|
+| `PORT` | Puerto (default: 3001) |
+| `FRONTEND_URL` | URL del frontend para CORS |
+| `SUPABASE_URL` | URL de tu proyecto Supabase |
+| `SUPABASE_SERVICE_KEY` | Service role key de Supabase |
+| `GEMINI_API_KEY` | API key de Google Gemini |
+
+### `frontend/.env`
+| Variable | Descripción |
+|---|---|
+| `VITE_SUPABASE_URL` | URL de tu proyecto Supabase |
+| `VITE_SUPABASE_ANON_KEY` | Anon key pública de Supabase |
+| `VITE_API_URL` | URL del backend |
