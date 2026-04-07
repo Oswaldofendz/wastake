@@ -454,37 +454,34 @@ export function Panorama() {
   const load = useCallback(async (a) => {
     setLoading(true);
     setError(null);
-    setMainData(null); setShortData(null); setMediumData(null);
-    setCandles(null);  setNewsData(null);
 
     // analysisType: 'crypto' | 'stock' — determina qué fuente OHLCV usa el backend
     const aType = a.analysisType ?? (a.type === 'crypto' ? 'crypto' : 'stock');
-    const days  = aType === 'crypto' ? 365 : 365; // siempre 365 → garantiza ≥60 velas
 
-    const [main, short, med, fg, news, ohlcv] = await Promise.allSettled([
-      fetchAnalysis(a.id, aType, days),
-      fetchAnalysis(a.id, aType, days),
-      fetchAnalysis(a.id, aType, days),
+    // Single analysis call — result is used for all three time horizons
+    const [main, fg, news, ohlcv] = await Promise.allSettled([
+      fetchAnalysis(a.id, aType, 365),
       fetchFearGreed(),
       fetchNews(a.id, aType),
       fetchOHLCV(a.id, aType, aType === 'crypto' ? { days: 365 } : {}),
     ]);
 
     if (main.status === 'fulfilled') {
+      const analysisData = main.value?.analysis ?? null;
       setMainData(main.value);
+      setShortData(analysisData);
+      setMediumData(analysisData);
       const s = toPanoramaScore(main.value?.analysis?.summary);
       setHistory(saveHistory(a.id, s));
     } else {
       setError(main.reason?.message ?? 'Error al cargar el análisis');
     }
-    if (short.status  === 'fulfilled') setShortData(short.value?.analysis  ?? null);
-    if (med.status    === 'fulfilled') setMediumData(med.value?.analysis    ?? null);
-    if (fg.status     === 'fulfilled') setFgData(fg.value);
-    if (news.status   === 'fulfilled') {
+    if (fg.status   === 'fulfilled') setFgData(fg.value);
+    if (news.status === 'fulfilled') {
       const raw = news.value;
       setNewsData(Array.isArray(raw) ? raw : raw?.news ?? null);
     }
-    if (ohlcv.status  === 'fulfilled') {
+    if (ohlcv.status === 'fulfilled') {
       const raw = ohlcv.value;
       setCandles(Array.isArray(raw) ? raw : raw?.candles ?? null);
     }
@@ -492,13 +489,15 @@ export function Panorama() {
     setLoading(false);
   }, []);
 
-  // Reload on asset change with fade animation
+  // On asset change: reset data but do NOT auto-load
   useEffect(() => {
     setFadeIn(false);
     setHistory(loadHistory(asset.id));
-    const t = setTimeout(() => { setFadeIn(true); load(asset); }, 180);
+    setMainData(null); setShortData(null); setMediumData(null);
+    setCandles(null);  setNewsData(null);  setError(null);
+    const t = setTimeout(() => setFadeIn(true), 180);
     return () => clearTimeout(t);
-  }, [asset, load]);
+  }, [asset]);
 
   // ── Derived values ──────────────────────────────────────────────────────────
   const analysis     = mainData?.analysis;
@@ -532,16 +531,28 @@ export function Panorama() {
             <h1 className="text-lg font-bold text-white">Panorama</h1>
             <p className="text-xs text-slate-500">Señal de trading en tiempo real</p>
           </div>
-          <button
-            onClick={() => setExpertMode(e => !e)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-              expertMode
-                ? 'bg-brand-700/40 border-brand-500/40 text-brand-300'
-                : 'bg-slate-800 border-slate-700/50 text-slate-400 hover:text-white'
-            }`}
-          >
-            {expertMode ? '⚡ Experto' : '👁 Simple'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => load(asset)}
+              disabled={loading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors bg-brand-700/30 border-brand-500/40 text-brand-300 hover:bg-brand-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <span className="w-3 h-3 border border-brand-400 border-t-transparent rounded-full animate-spin" />
+              ) : '↻'}
+              {loading ? 'Cargando…' : mainData ? 'Actualizar' : 'Analizar'}
+            </button>
+            <button
+              onClick={() => setExpertMode(e => !e)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                expertMode
+                  ? 'bg-brand-700/40 border-brand-500/40 text-brand-300'
+                  : 'bg-slate-800 border-slate-700/50 text-slate-400 hover:text-white'
+              }`}
+            >
+              {expertMode ? '⚡ Experto' : '👁 Simple'}
+            </button>
+          </div>
         </div>
 
         {/* ── Asset selector ──────────────────────────────────────── */}
@@ -603,10 +614,34 @@ export function Panorama() {
         </div>
 
         {/* ── Main signal ─────────────────────────────────────────── */}
-        {loading ? (
+        {!loading && !mainData && !error ? (
+          <div className="py-16 flex flex-col items-center gap-4 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700/50 flex items-center justify-center text-3xl">
+              📊
+            </div>
+            <div>
+              <p className="text-slate-300 font-medium">Selecciona un activo y pulsa Analizar</p>
+              <p className="text-xs text-slate-500 mt-1">El análisis técnico se carga bajo demanda para no saturar el servidor</p>
+            </div>
+            <button
+              onClick={() => load(asset)}
+              className="px-6 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-semibold transition-colors"
+            >
+              Analizar {asset.name}
+            </button>
+          </div>
+        ) : loading ? (
           <LoadingSkeleton />
         ) : error ? (
-          <div className="py-10 text-center text-red-400 text-sm">{error}</div>
+          <div className="py-10 text-center space-y-3">
+            <p className="text-red-400 text-sm">{error}</p>
+            <button
+              onClick={() => load(asset)}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700/50 rounded-lg text-xs text-slate-300 transition-colors"
+            >
+              Reintentar
+            </button>
+          </div>
         ) : (
           <>
             <div className="flex flex-col items-center gap-5">
