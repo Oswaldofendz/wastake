@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchAnalysis, fetchFearGreed, fetchNews, fetchOHLCV } from '../services/api.js';
 import { ANALYZABLE_CATEGORIES } from '../data/assetCatalog.js';
+import { usePrices } from '../hooks/usePrices.js';
 
 // Primer activo del catálogo (Bitcoin)
 const DEFAULT_ASSET = ANALYZABLE_CATEGORIES[0].assets[0];
@@ -433,6 +434,7 @@ function LoadingSkeleton() {
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
 export function Panorama() {
+  const { allAssets } = usePrices(60_000);
   const [asset, setAsset]           = useState(DEFAULT_ASSET);
   const [expertMode, setExpertMode] = useState(false);
   const [expanded, setExpanded]     = useState(false);
@@ -500,8 +502,10 @@ export function Panorama() {
   }, [asset]);
 
   // ── Derived values ──────────────────────────────────────────────────────────
-  const analysis     = mainData?.analysis;
-  const currentPrice = analysis?.meta?.lastPrice ?? null;
+  const analysis = mainData?.analysis;
+  // Live price from usePrices (refreshes every 60s), falls back to analysis cache
+  const liveAsset    = allAssets.find(a => a.id === asset.id);
+  const currentPrice = liveAsset?.price ?? analysis?.meta?.lastPrice ?? null;
   const score        = analysis ? toPanoramaScore(analysis.summary) : 50;
   const signal       = scoreToSignal(score);
   const cfg          = SIGNAL[signal];
