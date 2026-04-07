@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const cache = new Map();
-const CACHE_TTL = { price: 60 * 1000, ohlcv: 5 * 60 * 1000 };
+const CACHE_TTL = { price: 5 * 60 * 1000, ohlcv: 5 * 60 * 1000 };
 
 function fromCache(key) {
   const entry = cache.get(key);
