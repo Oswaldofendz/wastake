@@ -12,7 +12,15 @@ import { startAlertEngine } from './services/alertService.js';
 const app  = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173' }));
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://wastake.vercel.app',
+    'https://wastake-git-main-oswaldofendz.vercel.app',
+    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+  ],
+  credentials: true,
+}));
 app.use(express.json());
 
 // Rate limit global — 500 req / 15 min
