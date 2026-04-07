@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+
+  /* Scrollbar estilizado */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+  /* ── Light mode override ──────────────────────────────────── */
+  /* Al remover la clase 'dark', el html queda sin ella         */
+  /* Usamos html.light (clase que ponemos nosotros en App.jsx)  */
+  /* para aplicar los overrides de modo claro.                  */
+  html.light {
+    color-scheme: light;
+  }
+
+  html.light body {
+    background-color: #f1f5f9; /* slate-100 */
+    color: #0f172a;            /* slate-900 */
+  }
+
+  /* Backgrounds principales */
+  html.light .bg-slate-950 { background-color: #f1f5f9 !important; }
+  html.light .bg-slate-900 { background-color: #e2e8f0 !important; }
+  html.light .bg-slate-800 { background-color: #ffffff !important; }
+  html.light .bg-slate-800\/50 { background-color: rgba(255,255,255,0.8) !important; }
+  html.light .bg-slate-800\/40 { background-color: rgba(255,255,255,0.7) !important; }
+  html.light .bg-slate-800\/60 { background-color: rgba(255,255,255,0.9) !important; }
+  html.light .bg-slate-900\/80 { background-color: rgba(226,232,240,0.95) !important; }
+  html.light .bg-slate-900\/60 { background-color: rgba(226,232,240,0.85) !important; }
+  html.light .bg-slate-900\/50 { background-color: rgba(226,232,240,0.8) !important; }
+  html.light .bg-slate-900\/40 { background-color: rgba(226,232,240,0.7) !important; }
+  html.light .bg-slate-700    { background-color: #cbd5e1 !important; }
+  html.light .bg-slate-700\/80 { background-color: rgba(148,163,184,0.5) !important; }
+  html.light .bg-slate-700\/40 { background-color: rgba(148,163,184,0.3) !important; }
+  html.light .bg-slate-700\/30 { background-color: rgba(148,163,184,0.2) !important; }
+  html.light .bg-slate-700\/20 { background-color: rgba(148,163,184,0.15) !important; }
+
+  /* Borders */
+  html.light .border-slate-700    { border-color: #cbd5e1 !important; }
+  html.light .border-slate-700\/50 { border-color: rgba(148,163,184,0.5) !important; }
+  html.light .border-slate-700\/40 { border-color: rgba(148,163,184,0.4) !important; }
+  html.light .border-slate-700\/30 { border-color: rgba(148,163,184,0.3) !important; }
+  html.light .border-slate-700\/20 { border-color: rgba(148,163,184,0.2) !important; }
+  html.light .border-slate-600    { border-color: #94a3b8 !important; }
+  html.light .border-slate-600\/40 { border-color: rgba(100,116,139,0.4) !important; }
+  html.light .border-slate-600\/50 { border-color: rgba(100,116,139,0.5) !important; }
+
+  /* Text */
+  html.light .text-white  { color: #0f172a !important; }
+  html.light .text-slate-100 { color: #1e293b !important; }
+  html.light .text-slate-200 { color: #334155 !important; }
+  html.light .text-slate-300 { color: #475569 !important; }
+  html.light .text-slate-400 { color: #64748b !important; }
+  html.light .text-slate-500 { color: #94a3b8 !important; }
+  html.light .text-slate-600 { color: #94a3b8 !important; }
+
+  /* Hover states */
+  html.light .hover\:bg-slate-700\/40:hover { background-color: rgba(148,163,184,0.3) !important; }
+  html.light .hover\:bg-slate-700\/30:hover { background-color: rgba(148,163,184,0.2) !important; }
+  html.light .hover\:bg-slate-800:hover     { background-color: #e2e8f0 !important; }
+  html.light .hover\:bg-slate-700\/50:hover { background-color: rgba(148,163,184,0.35) !important; }
+
+  /* TradingView widget in light mode */
+  html.light .tradingview-widget-container iframe {
+    filter: none;
+  }
+}

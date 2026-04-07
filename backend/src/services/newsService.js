@@ -1,0 +1,138 @@
+import axios from 'axios';
+import Parser from 'rss-parser';
+
+const rssParser = new Parser({ timeout: 10000 });
+
+// ─── Feeds ────────────────────────────────────────────────────────────────────
+
+const RSS_FEEDS = [
+  { name: 'CoinDesk',      url: 'https://www.coindesk.com/arc/outboundfeeds/rss/' },
+  { name: 'CoinTelegraph', url: 'https://cointelegraph.com/rss' },
+  { name: 'Yahoo Finance', url: 'https://finance.yahoo.com/rss/topstories' },
+];
+
+// ─── Palabras clave por activo ────────────────────────────────────────────────
+
+const ASSET_KEYWORDS = {
+  bitcoin:  ['bitcoin', 'btc'],
+  ethereum: ['ethereum', 'eth', 'ether'],
+  solana:   ['solana', 'sol'],
+  'gc=f':   ['gold', 'oro', 'xau'],
+  'si=f':   ['silver', 'plata', 'xag'],
+  spy:      ['s&p 500', 'sp500', 'spy', 's&p500', 'stock market'],
+  urth:     ['world market', 'global equity', 'urth', 'msci world'],
+  eem:      ['emerging market', 'eem', 'mercados emergentes'],
+};
+
+// ─── Cache  (30 min) ──────────────────────────────────────────────────────────
+
+const cache = new Map();
+const CACHE_TTL = 30 * 60 * 1000;
+
+// ─── RSS fetch ────────────────────────────────────────────────────────────────
+
+async function fetchFeed(feed) {
+  try {
+    const parsed = await rssParser.parseURL(feed.url);
+    return parsed.items.map(item => ({
+      title:    (item.title ?? '').trim(),
+      link:     item.link ?? '',
+      source:   feed.name,
+      pubDate:  item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
+      snippet:  (item.contentSnippet ?? item.content ?? '').slice(0, 300),
+    }));
+  } catch (err) {
+    console.warn(`[news] feed "${feed.name}" failed: ${err.message}`);
+    return [];
+  }
+}
+
+// ─── Filtro por activo ────────────────────────────────────────────────────────
+
+function filterByAsset(articles, assetId) {
+  const keywords = ASSET_KEYWORDS[assetId.toLowerCase()] ?? [assetId.toLowerCase()];
+  return articles.filter(a => {
+    const text = `${a.title} ${a.snippet}`.toLowerCase();
+    return keywords.some(kw => text.includes(kw));
+  });
+}
+
+// ─── Sentimiento con Gemini (una noticia a la vez, 2s entre llamadas) ─────────
+
+const GEMINI_DELAY_MS = 2000;
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function analyzeOne(article, apiKey) {
+  const prompt = `You are a financial news analyst. Analyze this news article and respond ONLY with a valid JSON object (no markdown, no extra text) with these fields:
+- "sentiment": "positive", "negative", or "neutral"
+- "impact": "high", "medium", or "low" (market relevance)
+- "aiSummary": one-line summary in Spanish, max 100 characters
+
+Title: ${article.title}
+Description: ${article.snippet}`;
+
+  const res = await axios.post(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
+    { contents: [{ parts: [{ text: prompt }] }] },
+    { timeout: 15000 }
+  );
+
+  const raw   = res.data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}';
+  const clean = raw.replace(/```(?:json)?\n?/g, '').replace(/```/g, '').trim();
+  return JSON.parse(clean);
+}
+
+async function analyzeSentiment(articles) {
+  if (articles.length === 0) return [];
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.warn('[news] GEMINI_API_KEY not set — skipping sentiment analysis');
+    return articles.map(a => ({ ...a, sentiment: 'neutral', impact: 'low', aiSummary: '' }));
+  }
+
+  const results = [];
+  for (let i = 0; i < articles.length; i++) {
+    if (i > 0) await sleep(GEMINI_DELAY_MS);
+    try {
+      const parsed = await analyzeOne(articles[i], apiKey);
+      results.push({
+        ...articles[i],
+        sentiment: parsed.sentiment ?? 'neutral',
+        impact:    parsed.impact    ?? 'low',
+        aiSummary: parsed.aiSummary ?? '',
+      });
+      console.log(`[news] Gemini [${i + 1}/${articles.length}] "${articles[i].title.slice(0, 50)}..." → ${parsed.sentiment} / ${parsed.impact}`);
+    } catch (err) {
+      const body = err.response?.data ? JSON.stringify(err.response.data) : '';
+      console.warn(`[news] Gemini [${i + 1}/${articles.length}] failed: ${err.message}${body ? ` — ${body}` : ''}`);
+      results.push({ ...articles[i], sentiment: 'neutral', impact: 'low', aiSummary: '' });
+    }
+  }
+  return results;
+}
+
+// ─── Exportación principal ────────────────────────────────────────────────────
+
+export async function getNewsForAsset(assetId, type = 'crypto') {
+  const cacheKey = `${assetId}:${type}`;
+  const cached = cache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.data;
+
+  // Fetch todos los feeds en paralelo
+  const allArticles = (await Promise.all(RSS_FEEDS.map(fetchFeed))).flat();
+
+  // Filtrar por activo y tomar las 10 más recientes
+  const filtered = filterByAsset(allArticles, assetId)
+    .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
+    .slice(0, 10);
+
+  // Enriquecer con sentimiento
+  const enriched = await analyzeSentiment(filtered);
+
+  cache.set(cacheKey, { data: enriched, expiresAt: Date.now() + CACHE_TTL });
+  return enriched;
+}
