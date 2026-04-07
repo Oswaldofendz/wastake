@@ -51,10 +51,7 @@ export function Navbar({
       <div className="flex items-center gap-4 min-w-0">
         {/* Logo */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          <WaLogoMark />
-          <span className="font-bold text-white text-sm tracking-tight whitespace-nowrap hidden sm:block">
-            {t('app_name')}
-          </span>
+          <WaLogoMark iconSize={30} />
           <span className="text-xs px-2 py-0.5 rounded-full bg-brand-900/60 text-brand-400 border border-brand-700/40 font-medium hidden sm:block">
             beta
           </span>
