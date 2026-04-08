@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // ── Mapping asset IDs → TradingView symbols ───────────────────
 const TV_MAP = {
@@ -52,8 +52,15 @@ function loadTVScript() {
 let idCounter = 0;
 
 export function CandleChart({ asset }) {
-  const wrapperRef    = useRef(null);
+  const wrapperRef     = useRef(null);
   const containerIdRef = useRef(`tv_widget_${++idCounter}`);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
+
+  useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth < 1024);
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, []);
 
   useEffect(() => {
     if (!wrapperRef.current) return;
@@ -101,8 +108,8 @@ export function CandleChart({ asset }) {
   return (
     <div
       ref={wrapperRef}
-      className="w-full h-full rounded-lg overflow-hidden"
-      style={{ minHeight: 460 }}
+      className="w-full rounded-lg overflow-hidden"
+      style={{ height: isMobile ? '300px' : '100%', minHeight: isMobile ? '300px' : '260px' }}
     />
   );
 }

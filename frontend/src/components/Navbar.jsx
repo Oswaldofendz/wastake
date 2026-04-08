@@ -59,7 +59,7 @@ export function Navbar({
         <div className="flex items-center gap-4 min-w-0">
           {/* Logo image — no text next to it, the image already includes the name */}
           <img
-            src="/logo-completo.png"
+            src="/WaStakeCompleto.png"
             alt="WaStake"
             className="h-8 w-auto flex-shrink-0 object-contain"
           />
@@ -136,15 +136,10 @@ export function Navbar({
             className="lg:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-label="Menú"
           >
-            {menuOpen ? (
-              <svg viewBox="0 0 20 20" className="w-5 h-5 fill-current">
-                <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 20 20" className="w-5 h-5 fill-current">
-                <path fillRule="evenodd" d="M2 4.75A.75.75 0 0 1 2.75 4h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75ZM2 10a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 10Zm0 5.25a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
-              </svg>
-            )}
+            {menuOpen
+              ? <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="16" y2="16"/><line x1="16" y1="4" x2="4" y2="16"/></svg>
+              : <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg>
+            }
           </button>
         </div>
       </header>

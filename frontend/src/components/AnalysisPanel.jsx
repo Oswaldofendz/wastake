@@ -157,6 +157,24 @@ function TrafficLight({ signal }) {
   );
 }
 
+// ── Mini traffic light (inline, small) ───────────────────────
+function MiniTrafficLight({ signal }) {
+  const cfg = TRAFFIC[signal] ?? TRAFFIC.hold;
+  const dot = (active, activeClass, darkClass, glowColor) => (
+    <div
+      className={`w-4 h-4 rounded-full border transition-all duration-500 ${active ? activeClass : darkClass}`}
+      style={active ? { boxShadow: `0 0 8px 2px ${glowColor}` } : {}}
+    />
+  );
+  return (
+    <div className="flex flex-col gap-1.5 p-2 bg-slate-900 rounded-xl border border-slate-700/50">
+      {dot(cfg.red,   'bg-red-500 border-red-400',     'bg-red-950/40 border-red-900/20',     cfg.glow)}
+      {dot(cfg.amber, 'bg-amber-400 border-amber-300', 'bg-amber-950/30 border-amber-900/10', cfg.glow)}
+      {dot(cfg.green, 'bg-green-500 border-green-400', 'bg-green-950/30 border-green-900/10', cfg.glow)}
+    </div>
+  );
+}
+
 // ── Gauge SVG (arc) ───────────────────────────────────────────
 // score: -100 → +100, displayed as arc 0–180°
 function Gauge({ score }) {
@@ -436,9 +454,10 @@ export function AnalysisPanel({ asset }) {
           <div className="flex flex-col items-center justify-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-5 py-4 min-w-[160px]">
             <p className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-semibold">Confluencia</p>
 
-            <Gauge score={summary?.score ?? 0} />
-
-            {/* Count pills */}
+            <div className="flex items-center gap-4">
+              <Gauge score={summary?.score ?? 0} />
+              <MiniTrafficLight signal={scoreToSignal(summary?.score ?? 0)} />
+            </div>
             <div className="flex gap-2 mt-4">
               <span className="flex items-center gap-1 text-xs bg-green-900/40 text-green-400 border border-green-700/40 rounded-full px-2.5 py-0.5 font-semibold">
                 {summary.counts.buy ?? 0}

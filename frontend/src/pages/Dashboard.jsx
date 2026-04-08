@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePrices } from '../hooks/usePrices.js';
 import { PriceCard } from '../components/PriceCard.jsx';
@@ -14,6 +14,14 @@ export function Dashboard() {
   const { allAssets, loading, error } = usePrices(60_000);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [extraAssets, setExtraAssets]     = useState([]);
+
+  // JS-based breakpoint — bypasses any Tailwind purge issues
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
+  useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth < 1024);
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, []);
 
   const chartAsset = selectedAsset ?? allAssets[0] ?? null;
 
@@ -33,17 +41,36 @@ export function Dashboard() {
     <div className="flex flex-col h-full">
       <Disclaimer />
 
-      {/* Mobile-first: flex-col on mobile, flex-row on lg+ */}
-      <div className="flex flex-col lg:flex-row flex-1 mt-3">
-
+      {/* Layout: column on mobile, row on desktop */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          flex: 1,
+          minHeight: 0,
+          marginTop: '12px',
+        }}
+      >
         {/* ── Asset list ── */}
-        <aside className="w-full lg:w-72 lg:flex-shrink-0 flex flex-col lg:border-r border-slate-700/50 px-3 pb-3 max-h-64 lg:max-h-none overflow-y-auto lg:overflow-visible">
-          <div className="mb-3">
+        <aside
+          style={{
+            width: isMobile ? '100%' : '288px',
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            borderRight: isMobile ? 'none' : '1px solid rgba(100,116,139,0.3)',
+            borderBottom: isMobile ? '1px solid rgba(100,116,139,0.3)' : 'none',
+            padding: '0 12px 12px',
+            maxHeight: isMobile ? '250px' : 'none',
+            overflowY: 'auto',
+          }}
+        >
+          <div style={{ marginBottom: '12px' }}>
             <AssetSearch onSelect={handleSearch} />
           </div>
 
           {loading && !displayAssets.length ? (
-            <div className="flex items-center justify-center py-8">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px' }}>
               <div className="text-center">
                 <div className="w-6 h-6 border-2 border-slate-600 border-t-brand-400 rounded-full animate-spin mx-auto mb-2" />
                 <p className="text-sm text-slate-500">{t('loading')}</p>
@@ -52,7 +79,7 @@ export function Dashboard() {
           ) : error ? (
             <p className="text-base text-red-400 px-2">{t('error_fetch')}: {error}</p>
           ) : (
-            <ul className="max-h-64 overflow-y-auto space-y-2 pr-1 lg:max-h-none lg:flex-1 lg:overflow-y-auto">
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {displayAssets.map(asset => (
                 <li key={asset.id}>
                   <PriceCard
@@ -67,7 +94,16 @@ export function Dashboard() {
         </aside>
 
         {/* ── Chart + analysis ── */}
-        <main className="flex-1 min-w-0 flex flex-col p-2 lg:p-4 overflow-y-auto">
+        <main
+          style={{
+            flex: 1,
+            minWidth: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            padding: isMobile ? '8px' : '16px',
+            overflowY: 'auto',
+          }}
+        >
           {chartAsset ? (
             <>
               {/* Stats */}
@@ -81,17 +117,29 @@ export function Dashboard() {
                 <StatCard label={t('volume')} value={fmtCompact(chartAsset.volume24h)} />
               </div>
 
-              {/* Chart — 350px min on mobile, grows on desktop */}
-              <div className="min-h-[350px] lg:flex-1 lg:min-h-0 bg-slate-900 rounded-xl border border-slate-700/50 p-3 lg:p-4 mb-3">
+              {/* Chart container */}
+              <div
+                className="bg-slate-900 rounded-xl border border-slate-700/50 mb-3 overflow-hidden"
+                style={{
+                  width: '100%',
+                  height: isMobile ? '300px' : undefined,
+                  flex: isMobile ? 'none' : '1',
+                  minHeight: isMobile ? '300px' : '260px',
+                  padding: isMobile ? '8px' : '16px',
+                }}
+              >
                 <CandleChart asset={chartAsset} />
               </div>
 
-              <FearGreedWidget />
+              <div style={{ marginBottom: '12px' }}>
+                <FearGreedWidget />
+              </div>
               <AnalysisPanel asset={chartAsset} />
               <NewsPanel asset={chartAsset} />
             </>
           ) : (
-            <div className="flex items-center justify-center py-16 text-slate-500 text-base">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '64px' }}
+              className="text-slate-500 text-base">
               {t('loading')}
             </div>
           )}
