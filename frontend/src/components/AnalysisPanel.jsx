@@ -119,7 +119,42 @@ function fmtValue(v) {
 function scoreColor(score) {
   if (score > 25)  return { text: 'text-green-400', ring: 'stroke-green-500' };
   if (score < -25) return { text: 'text-red-400',   ring: 'stroke-red-500'   };
-  return            { text: 'text-slate-400',        ring: 'stroke-slate-500' };
+  return            { text: 'text-amber-400',        ring: 'stroke-amber-500' };
+}
+
+function scoreToSignal(score) {
+  if (score > 25)  return 'buy';
+  if (score < -25) return 'sell';
+  return 'hold';
+}
+
+// ── Traffic light ─────────────────────────────────────────────
+const TRAFFIC = {
+  buy:  { label: 'COMPRAR',  textColor: 'text-green-400', glow: 'rgba(34,197,94,0.7)',   red: false, amber: false, green: true  },
+  hold: { label: 'MANTENER', textColor: 'text-amber-400', glow: 'rgba(251,191,36,0.7)',  red: false, amber: true,  green: false },
+  sell: { label: 'VENDER',   textColor: 'text-red-400',   glow: 'rgba(239,68,68,0.7)',   red: true,  amber: false, green: false },
+};
+
+function TrafficLight({ signal }) {
+  const cfg = TRAFFIC[signal] ?? TRAFFIC.hold;
+  const dot = (active, activeClass, darkClass, glowColor) => (
+    <div
+      className={`w-10 h-10 rounded-full border-2 transition-all duration-500 ${active ? activeClass : darkClass}`}
+      style={active ? { boxShadow: `0 0 16px 4px ${glowColor}` } : {}}
+    />
+  );
+  return (
+    <div className="flex flex-col items-center gap-2 mb-4">
+      <div className="flex flex-col gap-2 p-4 bg-slate-900 rounded-2xl border border-slate-700/50">
+        {dot(cfg.red,   'bg-red-500 border-red-400',     'bg-red-950/40 border-red-900/20',     cfg.glow)}
+        {dot(cfg.amber, 'bg-amber-400 border-amber-300', 'bg-amber-950/30 border-amber-900/10', cfg.glow)}
+        {dot(cfg.green, 'bg-green-500 border-green-400', 'bg-green-950/30 border-green-900/10', cfg.glow)}
+      </div>
+      <p className={`text-3xl font-extrabold tracking-tight leading-none ${cfg.textColor}`}>
+        {cfg.label}
+      </p>
+    </div>
+  );
 }
 
 // ── Gauge SVG (arc) ───────────────────────────────────────────
@@ -145,8 +180,8 @@ function Gauge({ score }) {
 
   const colors = scoreColor(score);
   const overallLabel =
-    score > 25  ? 'Señal de compra' :
-    score < -25 ? 'Señal de venta'  : 'Neutral';
+    score > 25  ? 'Compra' :
+    score < -25 ? 'Venta'  : 'Neutral';
 
   return (
     <div className="flex flex-col items-center">
@@ -365,6 +400,10 @@ export function AnalysisPanel({ asset }) {
         <div className="p-4 grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6">
           {/* Indicators */}
           <div>
+            {/* Traffic light signal — centered above indicators */}
+            <div className="flex justify-center mb-2">
+              <TrafficLight signal={scoreToSignal(summary?.score ?? 0)} />
+            </div>
             <p className="text-xs text-slate-500 mb-2 px-2">Haz clic en un indicador para ver su explicación</p>
             {rows.map(row => (
               <IndicatorRow
@@ -397,7 +436,7 @@ export function AnalysisPanel({ asset }) {
           <div className="flex flex-col items-center justify-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-5 py-4 min-w-[160px]">
             <p className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-semibold">Confluencia</p>
 
-            <Gauge score={summary.score} />
+            <Gauge score={summary?.score ?? 0} />
 
             {/* Count pills */}
             <div className="flex gap-2 mt-4">

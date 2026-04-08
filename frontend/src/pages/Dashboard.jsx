@@ -7,6 +7,7 @@ import { AssetSearch } from '../components/AssetSearch.jsx';
 import { Disclaimer } from '../components/Disclaimer.jsx';
 import { AnalysisPanel } from '../components/AnalysisPanel.jsx';
 import { NewsPanel } from '../components/NewsPanel.jsx';
+import { FearGreedWidget } from '../components/FearGreedWidget.jsx';
 
 export function Dashboard() {
   const { t } = useTranslation();
@@ -85,6 +86,7 @@ export function Dashboard() {
                 <CandleChart asset={chartAsset} />
               </div>
 
+              <FearGreedWidget />
               <AnalysisPanel asset={chartAsset} />
               <NewsPanel asset={chartAsset} />
             </>
