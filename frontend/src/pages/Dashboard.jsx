@@ -29,19 +29,14 @@ export function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto lg:overflow-hidden">
+    <div className="flex flex-col h-full">
       <Disclaimer />
 
       {/* Mobile-first: flex-col on mobile, flex-row on lg+ */}
-      <div className="flex flex-col lg:flex-row lg:flex-1 lg:min-h-0 mt-3">
+      <div className="flex flex-col lg:flex-row flex-1 mt-3">
 
         {/* ── Asset list ── */}
-        <aside className="
-          w-full lg:w-72 lg:flex-shrink-0
-          flex flex-col
-          border-b lg:border-b-0 lg:border-r border-slate-700/50
-          px-3 pb-3
-        ">
+        <aside className="w-full lg:w-72 lg:flex-shrink-0 flex flex-col lg:border-r border-slate-700/50 px-3 pb-3 max-h-64 lg:max-h-none overflow-y-auto lg:overflow-visible">
           <div className="mb-3">
             <AssetSearch onSelect={handleSearch} />
           </div>
@@ -71,7 +66,7 @@ export function Dashboard() {
         </aside>
 
         {/* ── Chart + analysis ── */}
-        <main className="flex-1 min-w-0 flex flex-col p-3 lg:p-4 lg:overflow-y-auto">
+        <main className="flex-1 min-w-0 flex flex-col p-2 lg:p-4 overflow-y-auto">
           {chartAsset ? (
             <>
               {/* Stats */}
