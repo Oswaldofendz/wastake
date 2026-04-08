@@ -129,6 +129,34 @@ function scoreToSignal(score) {
   return 'hold';
 }
 
+// ── Fear & Greed inline ───────────────────────────────────────
+function FearGreedInline() {
+  const [value, setValue] = useState(null);
+  useEffect(() => {
+    import('../services/api.js').then(({ fetchFearGreed }) => {
+      fetchFearGreed()
+        .then(res => {
+          const v = parseInt(res?.current?.value ?? res?.data?.[0]?.value ?? 0);
+          if (!isNaN(v)) setValue(v);
+        })
+        .catch(() => {});
+    });
+  }, []);
+  if (value === null) return <div className="h-16 flex items-center text-xs text-slate-500">Cargando...</div>;
+  const colors =
+    value <= 25 ? { text: 'text-red-400',    label: 'Miedo Extremo'   } :
+    value <= 45 ? { text: 'text-orange-400', label: 'Miedo'           } :
+    value <= 55 ? { text: 'text-yellow-400', label: 'Neutral'         } :
+    value <= 75 ? { text: 'text-lime-400',   label: 'Codicia'         } :
+                  { text: 'text-green-400',  label: 'Codicia Extrema' };
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <p className={`text-4xl font-bold font-mono leading-none ${colors.text}`}>{value}</p>
+      <p className={`text-xs font-semibold ${colors.text}`}>{colors.label}</p>
+    </div>
+  );
+}
+
 // ── Traffic light ─────────────────────────────────────────────
 const TRAFFIC = {
   buy:  { label: 'COMPRAR',  textColor: 'text-green-400', glow: 'rgba(34,197,94,0.7)',   red: false, amber: false, green: true  },
@@ -141,19 +169,14 @@ function TrafficLight({ signal }) {
   const dot = (active, activeClass, darkClass, glowColor) => (
     <div
       className={`w-10 h-10 rounded-full border-2 transition-all duration-500 ${active ? activeClass : darkClass}`}
-      style={active ? { boxShadow: `0 0 16px 4px ${glowColor}` } : {}}
+      style={active ? { boxShadow: `0 0 20px 6px ${glowColor}` } : {}}
     />
   );
   return (
-    <div className="flex flex-col items-center gap-2 mb-4">
-      <div className="flex flex-col gap-2 p-4 bg-slate-900 rounded-2xl border border-slate-700/50">
-        {dot(cfg.red,   'bg-red-500 border-red-400',     'bg-red-950/40 border-red-900/20',     cfg.glow)}
-        {dot(cfg.amber, 'bg-amber-400 border-amber-300', 'bg-amber-950/30 border-amber-900/10', cfg.glow)}
-        {dot(cfg.green, 'bg-green-500 border-green-400', 'bg-green-950/30 border-green-900/10', cfg.glow)}
-      </div>
-      <p className={`text-3xl font-extrabold tracking-tight leading-none ${cfg.textColor}`}>
-        {cfg.label}
-      </p>
+    <div className="flex flex-col gap-2.5 p-4 bg-slate-900 rounded-2xl border border-slate-700/50">
+      {dot(cfg.red,   'bg-red-500 border-red-400',     'bg-red-950/40 border-red-900/20',     cfg.glow)}
+      {dot(cfg.amber, 'bg-amber-400 border-amber-300', 'bg-amber-950/30 border-amber-900/10', cfg.glow)}
+      {dot(cfg.green, 'bg-green-500 border-green-400', 'bg-green-950/30 border-green-900/10', cfg.glow)}
     </div>
   );
 }
@@ -417,37 +440,38 @@ export function AnalysisPanel({ asset }) {
         </div>
 
         <div className="p-4">
-          <div className="flex flex-col lg:flex-row items-center justify-center gap-6 mb-4">
+          <div className="grid grid-cols-3 gap-3 mb-4">
 
-            {/* Fear & Greed */}
-            <FearGreedWidget />
+            {/* Card 1: Fear & Greed */}
+            <div className="flex flex-col items-center justify-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-3 py-4 gap-2">
+              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Fear & Greed</p>
+              <FearGreedInline />
+            </div>
 
-            {/* Traffic light + signal */}
-            <div className="flex flex-col items-center gap-2">
+            {/* Card 2: Traffic Light + signal */}
+            <div className="flex flex-col items-center justify-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-3 py-4 gap-2">
+              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Señal</p>
               <TrafficLight signal={scoreToSignal(summary?.score ?? 0)} />
-              <p className={`text-2xl font-extrabold tracking-tight ${TRAFFIC[scoreToSignal(summary?.score ?? 0)]?.textColor}`}>
+              <p className={`text-lg font-extrabold tracking-tight leading-none ${TRAFFIC[scoreToSignal(summary?.score ?? 0)]?.textColor}`}>
                 {TRAFFIC[scoreToSignal(summary?.score ?? 0)]?.label}
               </p>
             </div>
 
-            {/* Confluence gauge + mini traffic light */}
-            <div className="flex flex-col items-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-5 py-4">
-              <p className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-semibold">Confluencia</p>
-              <div className="flex items-center gap-4">
-                <Gauge score={summary?.score ?? 0} />
-                <MiniTrafficLight signal={scoreToSignal(summary?.score ?? 0)} />
-              </div>
-              <div className="flex gap-2 mt-4">
-                <span className="flex items-center gap-1 text-xs bg-green-900/40 text-green-400 border border-green-700/40 rounded-full px-2.5 py-0.5 font-semibold">
+            {/* Card 3: Confluence gauge */}
+            <div className="flex flex-col items-center justify-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-3 py-4 gap-2">
+              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Confluencia</p>
+              <Gauge score={summary?.score ?? 0} />
+              <div className="flex gap-1.5">
+                <span className="flex items-center gap-1 text-xs bg-green-900/40 text-green-400 border border-green-700/40 rounded-full px-2 py-0.5 font-semibold">
                   {summary.counts.buy ?? 0}
-                  <svg viewBox="0 0 10 10" className="w-2.5 h-2.5 fill-current"><path d="M5 2 L8 7 L2 7 Z"/></svg>
+                  <svg viewBox="0 0 10 10" className="w-2 h-2 fill-current"><path d="M5 2 L8 7 L2 7 Z"/></svg>
                 </span>
-                <span className="flex items-center gap-1 text-xs bg-slate-700/40 text-slate-400 border border-slate-600/40 rounded-full px-2.5 py-0.5 font-semibold">
+                <span className="flex items-center gap-1 text-xs bg-slate-700/40 text-slate-400 border border-slate-600/40 rounded-full px-2 py-0.5 font-semibold">
                   {summary.counts.neutral ?? 0} —
                 </span>
-                <span className="flex items-center gap-1 text-xs bg-red-900/40 text-red-400 border border-red-700/40 rounded-full px-2.5 py-0.5 font-semibold">
+                <span className="flex items-center gap-1 text-xs bg-red-900/40 text-red-400 border border-red-700/40 rounded-full px-2 py-0.5 font-semibold">
                   {summary.counts.sell ?? 0}
-                  <svg viewBox="0 0 10 10" className="w-2.5 h-2.5 fill-current"><path d="M5 8 L8 3 L2 3 Z"/></svg>
+                  <svg viewBox="0 0 10 10" className="w-2 h-2 fill-current"><path d="M5 8 L8 3 L2 3 Z"/></svg>
                 </span>
               </div>
             </div>
