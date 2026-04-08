@@ -59,7 +59,7 @@ export function Navbar({
         <div className="flex items-center gap-4 min-w-0">
           {/* Logo image — no text next to it, the image already includes the name */}
           <img
-            src="/WaStakeCompleto.png"
+            src="/logo-completo.png"
             alt="WaStake"
             className="h-8 w-auto flex-shrink-0 object-contain"
           />

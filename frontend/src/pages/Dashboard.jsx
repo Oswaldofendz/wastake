@@ -7,7 +7,6 @@ import { AssetSearch } from '../components/AssetSearch.jsx';
 import { Disclaimer } from '../components/Disclaimer.jsx';
 import { AnalysisPanel } from '../components/AnalysisPanel.jsx';
 import { NewsPanel } from '../components/NewsPanel.jsx';
-import { FearGreedWidget } from '../components/FearGreedWidget.jsx';
 
 export function Dashboard() {
   const { t } = useTranslation();
@@ -131,10 +130,7 @@ export function Dashboard() {
                 <CandleChart asset={chartAsset} />
               </div>
 
-              <div style={{ marginBottom: '12px' }}>
-                <FearGreedWidget />
-              </div>
-              <AnalysisPanel asset={chartAsset} />
+              <AnalysisPanel asset={chartAsset} fearGreedValue={null} />
               <NewsPanel asset={chartAsset} />
             </>
           ) : (

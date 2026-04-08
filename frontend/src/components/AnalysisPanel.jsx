@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { fetchAnalysis } from '../services/api.js';
 import { getAnalysisType } from '../data/assetCatalog.js';
+import { FearGreedWidget } from './FearGreedWidget.jsx';
 
 // ── Indicator education content ───────────────────────────────
 const INDICATOR_INFO = {
@@ -415,7 +416,7 @@ export function AnalysisPanel({ asset }) {
           </span>
         </div>
 
-        <div className="p-4 grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6">
+        <div className="p-4 grid grid-cols-1 lg:grid-cols-[1fr_auto_auto] gap-6">
           {/* Indicators */}
           <div>
             {/* Traffic light signal — centered above indicators */}
@@ -471,6 +472,11 @@ export function AnalysisPanel({ asset }) {
                 <svg viewBox="0 0 10 10" className="w-2.5 h-2.5 fill-current"><path d="M5 8 L8 3 L2 3 Z"/></svg>
               </span>
             </div>
+          </div>
+
+          {/* Fear & Greed */}
+          <div className="flex flex-col items-center justify-center min-w-[160px]">
+            <FearGreedWidget />
           </div>
         </div>
       </div>
