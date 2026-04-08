@@ -416,68 +416,61 @@ export function AnalysisPanel({ asset }) {
           </span>
         </div>
 
-        <div className="p-4 grid grid-cols-1 lg:grid-cols-[1fr_auto_auto] gap-6">
-          {/* Indicators */}
-          <div>
-            {/* Traffic light signal — centered above indicators */}
-            <div className="flex justify-center mb-2">
-              <TrafficLight signal={scoreToSignal(summary?.score ?? 0)} />
-            </div>
-            <p className="text-xs text-slate-500 mb-2 px-2">Haz clic en un indicador para ver su explicación</p>
-            {rows.map(row => (
-              <IndicatorRow
-                key={row.name}
-                {...row}
-                onClick={() => openInfo(row.name)}
-              />
-            ))}
+        <div className="p-4">
+          <div className="flex flex-col lg:flex-row items-center justify-center gap-6 mb-4">
 
-            {/* ATR row */}
-            <button
-              onClick={() => openInfo('ATR (14)')}
-              className="w-full flex items-center gap-3 pt-2.5 px-2 rounded-lg hover:bg-slate-700/30 transition-colors group text-left"
-            >
-              <span className="w-28 text-xs font-medium text-slate-300 flex-shrink-0 group-hover:text-white transition-colors">ATR (14)</span>
-              <span className="w-20 text-xs font-mono text-white flex-shrink-0">
-                {fmtValue(indicators.atr.current)}
-              </span>
-              <span className={`text-xs font-semibold ${VOLATILITY_STYLES[volatility.volatility]}`}>
-                {VOLATILITY_LABELS[volatility.volatility] ?? '—'}
-              </span>
-              <span className="text-xs text-slate-500 truncate hidden sm:block flex-1">{volatility.label}</span>
-              <svg viewBox="0 0 20 20" className="w-3.5 h-3.5 fill-slate-600 group-hover:fill-brand-400 flex-shrink-0 ml-auto transition-colors">
-                <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clipRule="evenodd" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Confluence score */}
-          <div className="flex flex-col items-center justify-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-5 py-4 min-w-[160px]">
-            <p className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-semibold">Confluencia</p>
-
-            <div className="flex items-center gap-4">
-              <Gauge score={summary?.score ?? 0} />
-              <MiniTrafficLight signal={scoreToSignal(summary?.score ?? 0)} />
-            </div>
-            <div className="flex gap-2 mt-4">
-              <span className="flex items-center gap-1 text-xs bg-green-900/40 text-green-400 border border-green-700/40 rounded-full px-2.5 py-0.5 font-semibold">
-                {summary.counts.buy ?? 0}
-                <svg viewBox="0 0 10 10" className="w-2.5 h-2.5 fill-current"><path d="M5 2 L8 7 L2 7 Z"/></svg>
-              </span>
-              <span className="flex items-center gap-1 text-xs bg-slate-700/40 text-slate-400 border border-slate-600/40 rounded-full px-2.5 py-0.5 font-semibold">
-                {summary.counts.neutral ?? 0} —
-              </span>
-              <span className="flex items-center gap-1 text-xs bg-red-900/40 text-red-400 border border-red-700/40 rounded-full px-2.5 py-0.5 font-semibold">
-                {summary.counts.sell ?? 0}
-                <svg viewBox="0 0 10 10" className="w-2.5 h-2.5 fill-current"><path d="M5 8 L8 3 L2 3 Z"/></svg>
-              </span>
-            </div>
-          </div>
-
-          {/* Fear & Greed */}
-          <div className="flex flex-col items-center justify-center min-w-[160px]">
+            {/* Fear & Greed */}
             <FearGreedWidget />
+
+            {/* Traffic light + signal */}
+            <div className="flex flex-col items-center gap-2">
+              <TrafficLight signal={scoreToSignal(summary?.score ?? 0)} />
+              <p className={`text-2xl font-extrabold tracking-tight ${TRAFFIC[scoreToSignal(summary?.score ?? 0)]?.textColor}`}>
+                {TRAFFIC[scoreToSignal(summary?.score ?? 0)]?.label}
+              </p>
+            </div>
+
+            {/* Confluence gauge + mini traffic light */}
+            <div className="flex flex-col items-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-5 py-4">
+              <p className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-semibold">Confluencia</p>
+              <div className="flex items-center gap-4">
+                <Gauge score={summary?.score ?? 0} />
+                <MiniTrafficLight signal={scoreToSignal(summary?.score ?? 0)} />
+              </div>
+              <div className="flex gap-2 mt-4">
+                <span className="flex items-center gap-1 text-xs bg-green-900/40 text-green-400 border border-green-700/40 rounded-full px-2.5 py-0.5 font-semibold">
+                  {summary.counts.buy ?? 0}
+                  <svg viewBox="0 0 10 10" className="w-2.5 h-2.5 fill-current"><path d="M5 2 L8 7 L2 7 Z"/></svg>
+                </span>
+                <span className="flex items-center gap-1 text-xs bg-slate-700/40 text-slate-400 border border-slate-600/40 rounded-full px-2.5 py-0.5 font-semibold">
+                  {summary.counts.neutral ?? 0} —
+                </span>
+                <span className="flex items-center gap-1 text-xs bg-red-900/40 text-red-400 border border-red-700/40 rounded-full px-2.5 py-0.5 font-semibold">
+                  {summary.counts.sell ?? 0}
+                  <svg viewBox="0 0 10 10" className="w-2.5 h-2.5 fill-current"><path d="M5 8 L8 3 L2 3 Z"/></svg>
+                </span>
+              </div>
+            </div>
+
           </div>
+
+          {/* Indicators list below */}
+          <p className="text-xs text-slate-500 mb-2 px-2">Haz clic en un indicador para ver su explicación</p>
+          {rows.map(row => (
+            <IndicatorRow key={row.name} {...row} onClick={() => openInfo(row.name)} />
+          ))}
+          <button
+            onClick={() => openInfo('ATR (14)')}
+            className="w-full flex items-center gap-3 pt-2.5 px-2 rounded-lg hover:bg-slate-700/30 transition-colors group text-left"
+          >
+            <span className="w-28 text-xs font-medium text-slate-300 flex-shrink-0 group-hover:text-white transition-colors">ATR (14)</span>
+            <span className="w-20 text-xs font-mono text-white flex-shrink-0">{fmtValue(indicators.atr.current)}</span>
+            <span className={`text-xs font-semibold ${VOLATILITY_STYLES[volatility.volatility]}`}>{VOLATILITY_LABELS[volatility.volatility] ?? '—'}</span>
+            <span className="text-xs text-slate-500 truncate hidden sm:block flex-1">{volatility.label}</span>
+            <svg viewBox="0 0 20 20" className="w-3.5 h-3.5 fill-slate-600 group-hover:fill-brand-400 flex-shrink-0 ml-auto transition-colors">
+              <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clipRule="evenodd" />
+            </svg>
+          </button>
         </div>
       </div>
 
