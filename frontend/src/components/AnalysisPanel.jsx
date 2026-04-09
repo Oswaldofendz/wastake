@@ -205,7 +205,7 @@ function Gauge({ score }) {
   const pct = (score + 100) / 200;
   const startAngle = Math.PI;
   const endAngle = Math.PI + pct * Math.PI;
-  const R = 38, cx = 50, cy = 46;
+  const R = 30, cx = 50, cy = 38;
 
   const toXY = (angle) => ({
     x: cx + R * Math.cos(angle),
@@ -222,7 +222,7 @@ function Gauge({ score }) {
 
   return (
     <div className="flex flex-col items-center">
-      <svg viewBox="0 0 100 52" className="w-32 h-auto overflow-visible">
+      <svg viewBox="0 0 100 44" className="w-24 h-auto">
         {/* Track */}
         <path
           d={`M ${trackStart.x} ${trackStart.y} A ${R} ${R} 0 1 1 ${trackEnd.x} ${trackEnd.y}`}
