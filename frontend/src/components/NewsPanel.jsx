@@ -237,59 +237,67 @@ export function NewsPanel({ asset }) {
   const mediumCount = enriched.filter(a => a.computedImpact === 'medium').length;
 
   return (
-    <div className="mt-3 bg-slate-800/50 border border-slate-700/30 rounded-xl overflow-hidden">
+    <div className="mt-3">
       {/* Header */}
-      <div className="px-4 pt-3 pb-2 border-b border-slate-700/40">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-            Noticias
-          </h3>
-          <span className="text-xs text-slate-500">
-            {data.length} artículos · {asset.name}
-            {i18n.language !== 'en' && (
-              <span className="ml-1 text-brand-400">· traducidas</span>
-            )}
-          </span>
-        </div>
-
-        {/* Impact filters */}
-        <div className="flex gap-1">
-          {[
-            { id: 'all',    label: 'Todas' },
-            { id: 'high',   label: `🔴 Alto (${highCount})`   },
-            { id: 'medium', label: `🟡 Medio (${mediumCount})` },
-            { id: 'low',    label: '🟢 Bajo'                  },
-          ].map(f => (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id)}
-              className={[
-                'px-2 py-0.5 text-xs rounded-full border transition-colors font-medium',
-                filter === f.id
-                  ? 'bg-brand-600 border-brand-500 text-white'
-                  : 'bg-slate-700/40 border-slate-600/40 text-slate-400 hover:text-white',
-              ].join(' ')}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+      <div className="flex items-center justify-between mb-3 px-1">
+        <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Noticias</h3>
+        <span className="text-xs text-slate-500">
+          {data.length} artículos · {asset.name}
+          {i18n.language !== 'en' && <span className="ml-1 text-brand-400">· traducidas</span>}
+        </span>
       </div>
 
-      {/* News list */}
-      <div className="p-3 space-y-2">
-        {filtered.length === 0 ? (
-          <p className="text-xs text-slate-500 text-center py-4">Sin noticias con este filtro</p>
-        ) : (
-          filtered.map((article, i) => (
-            <NewsCard
-              key={article.link || i}
-              article={article}
-              translatedTitle={translatedTitles[article._origIdx]}
-              impact={article.computedImpact}
-            />
-          ))
-        )}
+      {/* 3 columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+
+        {/* HIGH */}
+        <div className="bg-red-950/20 border border-red-700/40 rounded-xl overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-red-700/30">
+            <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
+            <span className="text-xs font-semibold text-red-400 uppercase tracking-wider">Alto impacto</span>
+            <span className="ml-auto text-xs text-red-500/70 font-mono">{enriched.filter(a => a.computedImpact === 'high').length}</span>
+          </div>
+          <div className="p-2 space-y-2 max-h-96 overflow-y-auto">
+            {enriched.filter(a => a.computedImpact === 'high').length === 0 ? (
+              <p className="text-xs text-slate-500 text-center py-6">Sin noticias de alto impacto</p>
+            ) : enriched.filter(a => a.computedImpact === 'high').map((article, i) => (
+              <NewsCard key={article.link || i} article={article} translatedTitle={translatedTitles[article._origIdx]} impact="high" />
+            ))}
+          </div>
+        </div>
+
+        {/* MEDIUM */}
+        <div className="bg-amber-950/10 border border-amber-700/40 rounded-xl overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-amber-700/30">
+            <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
+            <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Impacto medio</span>
+            <span className="ml-auto text-xs text-amber-500/70 font-mono">{enriched.filter(a => a.computedImpact === 'medium').length}</span>
+          </div>
+          <div className="p-2 space-y-2 max-h-96 overflow-y-auto">
+            {enriched.filter(a => a.computedImpact === 'medium').length === 0 ? (
+              <p className="text-xs text-slate-500 text-center py-6">Sin noticias de impacto medio</p>
+            ) : enriched.filter(a => a.computedImpact === 'medium').map((article, i) => (
+              <NewsCard key={article.link || i} article={article} translatedTitle={translatedTitles[article._origIdx]} impact="medium" />
+            ))}
+          </div>
+        </div>
+
+        {/* LOW */}
+        <div className="bg-slate-800/40 border border-slate-700/40 rounded-xl overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-700/30">
+            <span className="w-2 h-2 rounded-full bg-slate-500 flex-shrink-0" />
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Bajo impacto</span>
+            <span className="ml-auto text-xs text-slate-500/70 font-mono">{enriched.filter(a => a.computedImpact === 'low').length}</span>
+          </div>
+          <div className="p-2 space-y-2 max-h-96 overflow-y-auto">
+            {enriched.filter(a => a.computedImpact === 'low').length === 0 ? (
+              <p className="text-xs text-slate-500 text-center py-6">Sin noticias de bajo impacto</p>
+            ) : enriched.filter(a => a.computedImpact === 'low').map((article, i) => (
+              <NewsCard key={article.link || i} article={article} translatedTitle={translatedTitles[article._origIdx]} impact="low" />
+            ))}
+          </div>
+        </div>
+
       </div>
     </div>
   );
