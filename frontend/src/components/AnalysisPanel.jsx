@@ -202,37 +202,43 @@ function MiniTrafficLight({ signal }) {
 // ── Gauge SVG (arc) ───────────────────────────────────────────
 // score: -100 → +100, displayed as arc 0–180°
 function Gauge({ score }) {
-  const angle = ((score + 100) / 200) * 180;
-  const R = 40, cx = 50, cy = 48;
+  const pct = (score + 100) / 200;
+  const startAngle = Math.PI;
+  const endAngle = Math.PI + pct * Math.PI;
+  const R = 38, cx = 50, cy = 46;
 
-  function polarToXY(angleDeg) {
-    const rad = ((angleDeg - 180) * Math.PI) / 180;
-    return { x: cx + R * Math.cos(rad), y: cy + R * Math.sin(rad) };
-  }
+  const toXY = (angle) => ({
+    x: cx + R * Math.cos(angle),
+    y: cy + R * Math.sin(angle),
+  });
 
-  const start = polarToXY(0);
-  const end = polarToXY(angle);
-  const largeArc = angle > 90 ? 1 : 0;
+  const trackStart = toXY(startAngle);
+  const trackEnd = toXY(0);
+  const arcEnd = toXY(endAngle);
+  const largeArc = pct > 0.5 ? 1 : 0;
+
   const colors = scoreColor(score);
   const label = score > 15 ? 'Compra' : score < -15 ? 'Venta' : 'Neutral';
 
   return (
     <div className="flex flex-col items-center">
-      <svg viewBox="0 0 100 54" className="w-32 h-auto">
+      <svg viewBox="0 0 100 52" className="w-32 h-auto overflow-visible">
+        {/* Track */}
         <path
-          d={`M ${polarToXY(0).x} ${polarToXY(0).y} A ${R} ${R} 0 1 1 ${polarToXY(180).x} ${polarToXY(180).y}`}
+          d={`M ${trackStart.x} ${trackStart.y} A ${R} ${R} 0 1 1 ${trackEnd.x} ${trackEnd.y}`}
           fill="none" stroke="#334155" strokeWidth="7" strokeLinecap="round"
         />
-        {angle > 2 && (
+        {/* Value arc */}
+        {pct > 0.01 && (
           <path
-            d={`M ${start.x} ${start.y} A ${R} ${R} 0 ${largeArc} 1 ${end.x} ${end.y}`}
+            d={`M ${trackStart.x} ${trackStart.y} A ${R} ${R} 0 ${largeArc} 1 ${arcEnd.x} ${arcEnd.y}`}
             fill="none" className={colors.ring} strokeWidth="7" strokeLinecap="round"
           />
         )}
-        <text x="6" y="52" className="fill-red-500" style={{ fontSize: 6, fontFamily: 'monospace' }}>VENTA</text>
-        <text x="66" y="52" className="fill-green-500" style={{ fontSize: 6, fontFamily: 'monospace' }}>COMPRA</text>
+        <text x="8" y="50" className="fill-red-500" style={{ fontSize: 6, fontFamily: 'monospace' }}>VENTA</text>
+        <text x="65" y="50" className="fill-green-500" style={{ fontSize: 6, fontFamily: 'monospace' }}>COMPRA</text>
       </svg>
-      <p className={`text-3xl font-bold font-mono leading-none ${colors.text}`}>
+      <p className={`text-2xl font-bold font-mono leading-none -mt-1 ${colors.text}`}>
         {score > 0 ? '+' : ''}{score}
       </p>
       <p className={`text-xs font-semibold mt-1 ${colors.text}`}>{label}</p>
