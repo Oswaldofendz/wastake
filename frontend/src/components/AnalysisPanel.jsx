@@ -203,32 +203,28 @@ function MiniTrafficLight({ signal }) {
 // score: -100 → +100, displayed as arc 0–180°
 function Gauge({ score }) {
   const pct = Math.max(0, Math.min(1, (score + 100) / 200));
-  const R = 34, cx = 50, cy = 44;
-
-  // Track: semicircle from left (180°) to right (0°), drawn counterclockwise
-  // So sweep-flag = 0, large-arc = 1 (because 180° > 180° threshold means we want the top half)
-  const trackD = `M ${cx - R} ${cy} A ${R} ${R} 0 1 1 ${cx + R} ${cy}`;
-
-  // Value arc: same direction, same flags, but endpoint is at pct of the semicircle
-  const angle = Math.PI - pct * Math.PI;  // goes from left(PI) to right(0)
-  const arcX = +(cx + R * Math.cos(angle)).toFixed(2);
-  const arcY = +(cy - R * Math.sin(angle)).toFixed(2);
-  // largeArc is 1 only when pct > 0.5 (past the top)
-  const largeArc = pct > 0.5 ? 1 : 0;
-  const valueD = `M ${cx - R} ${cy} A ${R} ${R} 0 ${largeArc} 1 ${arcX} ${arcY}`;
-
+  const rotation = -90 + pct * 180;
   const colors = scoreColor(score);
   const label = score > 15 ? 'Compra' : score < -15 ? 'Venta' : 'Neutral';
 
   return (
     <div className="flex flex-col items-center">
-      <svg viewBox="0 0 100 54" style={{ width: '112px', height: 'auto' }}>
-        <path d={trackD} fill="none" stroke="#334155" strokeWidth="6" strokeLinecap="round" />
-        {pct > 0.01 && (
-          <path d={valueD} fill="none" className={colors.ring} strokeWidth="6" strokeLinecap="round" />
-        )}
-        <text x="4"  y="52" className="fill-red-500"   style={{ fontSize: 5.5, fontFamily: 'monospace' }}>VENTA</text>
-        <text x="63" y="52" className="fill-green-500" style={{ fontSize: 5.5, fontFamily: 'monospace' }}>COMPRA</text>
+      <svg viewBox="0 0 100 56" style={{ width: '110px', height: 'auto' }}>
+        {/* Background arc track */}
+        <path d="M 12 48 A 38 38 0 0 1 88 48" fill="none" stroke="#1e293b" strokeWidth="7" strokeLinecap="round"/>
+        {/* Red zone left third */}
+        <path d="M 12 48 A 38 38 0 0 1 37 15" fill="none" stroke="#7f1d1d" strokeWidth="7" strokeLinecap="round"/>
+        {/* Yellow zone middle third */}
+        <path d="M 37 15 A 38 38 0 0 1 63 15" fill="none" stroke="#78350f" strokeWidth="7" strokeLinecap="round"/>
+        {/* Green zone right third */}
+        <path d="M 63 15 A 38 38 0 0 1 88 48" fill="none" stroke="#14532d" strokeWidth="7" strokeLinecap="round"/>
+        {/* Needle */}
+        <g transform={`rotate(${rotation}, 50, 48)`}>
+          <line x1="50" y1="48" x2="50" y2="16" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+          <circle cx="50" cy="48" r="3" fill="white"/>
+        </g>
+        <text x="8"  y="54" fill="#ef4444" style={{ fontSize: 5, fontFamily: 'monospace' }}>VENTA</text>
+        <text x="64" y="54" fill="#22c55e" style={{ fontSize: 5, fontFamily: 'monospace' }}>COMPRA</text>
       </svg>
       <p className={`text-xl font-bold font-mono leading-none ${colors.text}`}>
         {score > 0 ? '+' : ''}{score}
