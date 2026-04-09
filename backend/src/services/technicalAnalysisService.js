@@ -120,7 +120,7 @@ function interpretATR(atrValue, price) {
   return { volatility: 'low', label: `Baja volatilidad (ATR ${pct}% del precio)` };
 }
 
-function computeOverallSignal(signals) {
+function computeOverallSignal(signals, indicators, lastPrice) {
   const weights = { macd: 2, ema: 2, rsi: 1.5, bb: 1 };
   const counts = { buy: 0, sell: 0, neutral: 0 };
   let weightedScore = 0;
@@ -132,6 +132,20 @@ function computeOverallSignal(signals) {
     if (s.signal === 'buy')  weightedScore += w;
     if (s.signal === 'sell') weightedScore -= w;
     totalWeight += w;
+  }
+
+  // Bonus: price vs EMA50 (trend confirmation)
+  if (lastPrice && indicators?.ema50?.current) {
+    const bonus = lastPrice > indicators.ema50.current ? 1 : -1;
+    weightedScore += bonus;
+    totalWeight += 1;
+  }
+
+  // Bonus: price vs Bollinger middle (momentum)
+  if (lastPrice && indicators?.bollingerBands?.current?.middle) {
+    const bonus = lastPrice > indicators.bollingerBands.current.middle ? 0.5 : -0.5;
+    weightedScore += bonus;
+    totalWeight += 0.5;
   }
 
   const score = round((weightedScore / totalWeight) * 100, 1);
@@ -181,7 +195,7 @@ export function computeIndicators(candles) {
   };
 
   const volatility = interpretATR(atr.current, lastPrice);
-  const summary = computeOverallSignal(signals);
+  const summary = computeOverallSignal(signals, { ema50, bollingerBands: bb }, lastPrice);
 
   return {
     meta: {
