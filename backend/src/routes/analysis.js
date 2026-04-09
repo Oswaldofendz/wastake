@@ -6,7 +6,7 @@ export const analysisRouter = Router();
 
 // 15-minute cache for computed analysis results
 const analysisCache = new Map();
-const ANALYSIS_TTL  = 15 * 60 * 1000;
+const ANALYSIS_TTL  = 1 * 60 * 1000;
 
 function getCache(key) {
   const entry = analysisCache.get(key);
