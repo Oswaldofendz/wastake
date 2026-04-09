@@ -202,62 +202,40 @@ function MiniTrafficLight({ signal }) {
 // ── Gauge SVG (arc) ───────────────────────────────────────────
 // score: -100 → +100, displayed as arc 0–180°
 function Gauge({ score }) {
-  // Map score (-100..+100) to angle (0..180)
   const angle = ((score + 100) / 200) * 180;
-  // Arc path on a 100×60 viewBox, center at 50,60, radius 44
-  const R = 44;
-  const cx = 50; const cy = 60;
+  const R = 36, cx = 50, cy = 50;
 
   function polarToXY(angleDeg) {
     const rad = ((angleDeg - 180) * Math.PI) / 180;
-    return {
-      x: cx + R * Math.cos(rad),
-      y: cy + R * Math.sin(rad),
-    };
+    return { x: cx + R * Math.cos(rad), y: cy + R * Math.sin(rad) };
   }
 
   const start = polarToXY(0);
-  const end   = polarToXY(angle);
+  const end = polarToXY(angle);
   const largeArc = angle > 90 ? 1 : 0;
-
   const colors = scoreColor(score);
-  const overallLabel =
-    score > 25  ? 'Compra' :
-    score < -25 ? 'Venta'  : 'Neutral';
+  const label = score > 15 ? 'Compra' : score < -15 ? 'Venta' : 'Neutral';
 
   return (
     <div className="flex flex-col items-center">
-      <svg viewBox="0 0 100 65" className="w-24 h-16 overflow-visible">
-        {/* Track arc */}
+      <svg viewBox="0 0 100 55" className="w-28 h-16">
         <path
           d={`M ${polarToXY(0).x} ${polarToXY(0).y} A ${R} ${R} 0 1 1 ${polarToXY(180).x} ${polarToXY(180).y}`}
-          fill="none"
-          stroke="#334155"
-          strokeWidth="7"
-          strokeLinecap="round"
+          fill="none" stroke="#334155" strokeWidth="6" strokeLinecap="round"
         />
-        {/* Value arc */}
         {angle > 2 && (
           <path
             d={`M ${start.x} ${start.y} A ${R} ${R} 0 ${largeArc} 1 ${end.x} ${end.y}`}
-            fill="none"
-            className={colors.ring}
-            strokeWidth="7"
-            strokeLinecap="round"
+            fill="none" className={colors.ring} strokeWidth="6" strokeLinecap="round"
           />
         )}
-        {/* Zone labels */}
-        <text x="7"  y="62" className="fill-red-500"   style={{ fontSize: 7, fontFamily: 'monospace' }}>VENTA</text>
-        <text x="72" y="62" className="fill-green-500" style={{ fontSize: 7, fontFamily: 'monospace' }}>COMPRA</text>
+        <text x="8" y="52" className="fill-red-500" style={{ fontSize: 6, fontFamily: 'monospace' }}>VENTA</text>
+        <text x="68" y="52" className="fill-green-500" style={{ fontSize: 6, fontFamily: 'monospace' }}>COMPRA</text>
       </svg>
-
-      {/* Score number */}
-      <p className={`text-4xl font-bold font-mono leading-none -mt-2 ${colors.text}`}>
+      <p className={`text-2xl font-bold font-mono leading-none -mt-1 ${colors.text}`}>
         {score > 0 ? '+' : ''}{score}
       </p>
-      <p className={`text-xs font-semibold mt-1.5 ${colors.text}`}>{overallLabel}</p>
-
-      {/* Buy/Neutral/Sell counts */}
+      <p className={`text-xs font-semibold mt-1 ${colors.text}`}>{label}</p>
     </div>
   );
 }
@@ -458,10 +436,10 @@ export function AnalysisPanel({ asset }) {
             </div>
 
             {/* Card 3: Confluence gauge */}
-            <div className="flex flex-col items-center justify-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-3 py-4 gap-2" style={{ minWidth: '160px', maxWidth: '200px' }}>
-              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Confluencia</p>
+            <div className="flex flex-col items-center justify-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-4 py-4 min-w-[180px] max-w-[220px]">
+              <p className="text-xs text-slate-400 uppercase tracking-wider mb-2 font-semibold">Confluencia</p>
               <Gauge score={summary?.score ?? 0} />
-              <div className="flex gap-1.5">
+              <div className="flex gap-1.5 mt-3">
                 <span className="flex items-center gap-1 text-xs bg-green-900/40 text-green-400 border border-green-700/40 rounded-full px-2 py-0.5 font-semibold">
                   {summary.counts.buy ?? 0}
                   <svg viewBox="0 0 10 10" className="w-2 h-2 fill-current"><path d="M5 2 L8 7 L2 7 Z"/></svg>
