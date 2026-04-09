@@ -227,7 +227,7 @@ function Gauge({ score }) {
 
   return (
     <div className="flex flex-col items-center">
-      <svg viewBox="0 0 100 65" className="w-32 h-20 overflow-visible">
+      <svg viewBox="0 0 100 65" className="w-24 h-16 overflow-visible">
         {/* Track arc */}
         <path
           d={`M ${polarToXY(0).x} ${polarToXY(0).y} A ${R} ${R} 0 1 1 ${polarToXY(180).x} ${polarToXY(180).y}`}
@@ -458,7 +458,7 @@ export function AnalysisPanel({ asset }) {
             </div>
 
             {/* Card 3: Confluence gauge */}
-            <div className="flex flex-col items-center justify-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-3 py-4 gap-2">
+            <div className="flex flex-col items-center justify-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-3 py-4 gap-2" style={{ minWidth: '160px', maxWidth: '200px' }}>
               <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Confluencia</p>
               <Gauge score={summary?.score ?? 0} />
               <div className="flex gap-1.5">
