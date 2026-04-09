@@ -5,10 +5,18 @@ const rssParser = new Parser({ timeout: 10000 });
 
 // ─── Feeds ────────────────────────────────────────────────────────────────────
 
-const RSS_FEEDS = [
+const CRYPTO_FEEDS = [
   { name: 'CoinDesk',      url: 'https://www.coindesk.com/arc/outboundfeeds/rss/' },
   { name: 'CoinTelegraph', url: 'https://cointelegraph.com/rss' },
   { name: 'Yahoo Finance', url: 'https://finance.yahoo.com/rss/topstories' },
+];
+
+const TRADITIONAL_FEEDS = [
+  { name: 'Yahoo Finance',  url: 'https://finance.yahoo.com/rss/topstories' },
+  { name: 'Reuters Markets',url: 'https://feeds.reuters.com/reuters/businessNews' },
+  { name: 'CNBC',           url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html' },
+  { name: 'MarketWatch',    url: 'https://feeds.marketwatch.com/marketwatch/topstories/' },
+  { name: 'Investing.com',  url: 'https://www.investing.com/rss/news.rss' },
 ];
 
 // ─── Palabras clave por activo ────────────────────────────────────────────────
@@ -122,8 +130,11 @@ export async function getNewsForAsset(assetId, type = 'crypto') {
   const cached = cache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.data;
 
+  // Use crypto feeds for crypto, financial feeds for traditional assets
+  const feeds = type === 'crypto' ? CRYPTO_FEEDS : TRADITIONAL_FEEDS;
+
   // Fetch todos los feeds en paralelo
-  const allArticles = (await Promise.all(RSS_FEEDS.map(fetchFeed))).flat();
+  const allArticles = (await Promise.all(feeds.map(fetchFeed))).flat();
 
   // Filtrar por activo y tomar las 10 más recientes
   const filtered = filterByAsset(allArticles, assetId)

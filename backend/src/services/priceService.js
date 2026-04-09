@@ -72,29 +72,65 @@ export async function getCryptoPrices(ids = Object.keys(CRYPTO_ASSETS)) {
   return result;
 }
 
-export async function getCryptoOHLCV(id, days = 7) {
+export async function getCryptoOHLCV(id, days = 90) {
   const key = `ohlcv_${id}_${days}`;
   const cached = fromCache(key);
   if (cached) return cached;
 
   try {
+    // Try /market_chart first - more reliable on free tier, returns daily OHLCV
     const { data } = await axios.get(
-      `${process.env.COINGECKO_BASE}/coins/${id}/ohlc`,
-      { params: { vs_currency: 'usd', days }, headers: CG_HEADERS, timeout: 10000 }
+      `${process.env.COINGECKO_BASE}/coins/${id}/market_chart`,
+      {
+        params: { vs_currency: 'usd', days, interval: 'daily' },
+        headers: CG_HEADERS,
+        timeout: 10000,
+      }
     );
 
-    const candles = data.map(([time, open, high, low, close]) => ({
-      time: Math.floor(time / 1000), open, high, low, close,
-    }));
+    const prices  = data.prices  ?? [];
+    const volumes = data.total_volumes ?? [];
+
+    if (prices.length < 2) throw new Error('Insufficient data from market_chart');
+
+    // Build synthetic OHLCV candles from daily close prices
+    const candles = prices.map(([time, close], i) => {
+      const prev  = i > 0 ? prices[i - 1][1] : close;
+      const high  = Math.max(close, prev);
+      const low   = Math.min(close, prev);
+      return {
+        time:   Math.floor(time / 1000),
+        open:   prev,
+        high,
+        low,
+        close,
+        volume: volumes[i]?.[1] ?? 0,
+      };
+    });
+
     toCache(key, candles, CACHE_TTL.ohlcv);
     return candles;
   } catch (err) {
-    const status = err.response?.status;
-    if (status === 429) {
-      const stale = fromCacheStale(key);
-      if (stale) return stale;
+    // Fallback to /ohlc endpoint
+    try {
+      const safeDays = Math.min(days, 30);
+      const { data } = await axios.get(
+        `${process.env.COINGECKO_BASE}/coins/${id}/ohlc`,
+        { params: { vs_currency: 'usd', days: safeDays }, headers: CG_HEADERS, timeout: 10000 }
+      );
+      const candles = data.map(([time, open, high, low, close]) => ({
+        time: Math.floor(time / 1000), open, high, low, close,
+      }));
+      toCache(key, candles, CACHE_TTL.ohlcv);
+      return candles;
+    } catch (fallbackErr) {
+      const status = fallbackErr.response?.status;
+      if (status === 429) {
+        const stale = fromCacheStale(key);
+        if (stale) return stale;
+      }
+      throw fallbackErr;
     }
-    throw err;
   }
 }
 

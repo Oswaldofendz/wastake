@@ -61,7 +61,8 @@ export function Navbar({
           <img
             src="/logo-completo.png"
             alt="WaStake"
-            className="h-8 w-auto flex-shrink-0 object-contain"
+            className="h-16 w-auto flex-shrink-0 object-contain"
+            style={{ mixBlendMode: 'lighten', filter: 'brightness(1.15) contrast(1.1)' }}
           />
 
           {/* Desktop nav — hidden below lg */}
