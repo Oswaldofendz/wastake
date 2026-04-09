@@ -203,7 +203,7 @@ function MiniTrafficLight({ signal }) {
 // score: -100 → +100, displayed as arc 0–180°
 function Gauge({ score }) {
   const angle = ((score + 100) / 200) * 180;
-  const R = 36, cx = 50, cy = 50;
+  const R = 40, cx = 50, cy = 48;
 
   function polarToXY(angleDeg) {
     const rad = ((angleDeg - 180) * Math.PI) / 180;
@@ -218,21 +218,21 @@ function Gauge({ score }) {
 
   return (
     <div className="flex flex-col items-center">
-      <svg viewBox="0 0 100 55" className="w-28 h-16">
+      <svg viewBox="0 0 100 54" className="w-32 h-auto">
         <path
           d={`M ${polarToXY(0).x} ${polarToXY(0).y} A ${R} ${R} 0 1 1 ${polarToXY(180).x} ${polarToXY(180).y}`}
-          fill="none" stroke="#334155" strokeWidth="6" strokeLinecap="round"
+          fill="none" stroke="#334155" strokeWidth="7" strokeLinecap="round"
         />
         {angle > 2 && (
           <path
             d={`M ${start.x} ${start.y} A ${R} ${R} 0 ${largeArc} 1 ${end.x} ${end.y}`}
-            fill="none" className={colors.ring} strokeWidth="6" strokeLinecap="round"
+            fill="none" className={colors.ring} strokeWidth="7" strokeLinecap="round"
           />
         )}
-        <text x="8" y="52" className="fill-red-500" style={{ fontSize: 6, fontFamily: 'monospace' }}>VENTA</text>
-        <text x="68" y="52" className="fill-green-500" style={{ fontSize: 6, fontFamily: 'monospace' }}>COMPRA</text>
+        <text x="6" y="52" className="fill-red-500" style={{ fontSize: 6, fontFamily: 'monospace' }}>VENTA</text>
+        <text x="66" y="52" className="fill-green-500" style={{ fontSize: 6, fontFamily: 'monospace' }}>COMPRA</text>
       </svg>
-      <p className={`text-2xl font-bold font-mono leading-none -mt-1 ${colors.text}`}>
+      <p className={`text-3xl font-bold font-mono leading-none ${colors.text}`}>
         {score > 0 ? '+' : ''}{score}
       </p>
       <p className={`text-xs font-semibold mt-1 ${colors.text}`}>{label}</p>
@@ -418,7 +418,7 @@ export function AnalysisPanel({ asset }) {
         </div>
 
         <div className="p-4">
-          <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="grid grid-cols-3 gap-3 mb-4 items-stretch">
 
             {/* Card 1: Fear & Greed */}
             <div className="flex flex-col items-center justify-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-3 py-4 gap-2">
@@ -436,7 +436,7 @@ export function AnalysisPanel({ asset }) {
             </div>
 
             {/* Card 3: Confluence gauge */}
-            <div className="flex flex-col items-center justify-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-4 py-4 min-w-[180px] max-w-[220px]">
+            <div className="flex flex-col items-center justify-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-4 py-4 flex-1">
               <p className="text-xs text-slate-400 uppercase tracking-wider mb-2 font-semibold">Confluencia</p>
               <Gauge score={summary?.score ?? 0} />
               <div className="flex gap-1.5 mt-3">
