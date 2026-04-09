@@ -121,16 +121,24 @@ function interpretATR(atrValue, price) {
 }
 
 function computeOverallSignal(signals) {
+  const weights = { macd: 2, ema: 2, rsi: 1.5, bb: 1 };
   const counts = { buy: 0, sell: 0, neutral: 0 };
-  for (const s of Object.values(signals)) {
-    if (s.signal) counts[s.signal] = (counts[s.signal] || 0) + 1;
+  let weightedScore = 0;
+  let totalWeight = 0;
+
+  for (const [key, s] of Object.entries(signals)) {
+    const w = weights[key] ?? 1;
+    counts[s.signal] = (counts[s.signal] || 0) + 1;
+    if (s.signal === 'buy')  weightedScore += w;
+    if (s.signal === 'sell') weightedScore -= w;
+    totalWeight += w;
   }
-  const total = counts.buy + counts.sell + counts.neutral;
-  const score = round(((counts.buy - counts.sell) / total) * 100, 1);
+
+  const score = round((weightedScore / totalWeight) * 100, 1);
 
   let overall;
-  if (score > 25)       overall = 'buy';
-  else if (score < -25) overall = 'sell';
+  if (score > 15)       overall = 'buy';
+  else if (score < -15) overall = 'sell';
   else                  overall = 'neutral';
 
   return { overall, score, counts };
