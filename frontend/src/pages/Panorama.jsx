@@ -239,97 +239,6 @@ function BollingerBar({ bb, price }) {
   );
 }
 
-// ─── Signal sparkline ─────────────────────────────────────────────────────────
-function SignalSparkline({ history }) {
-  if (!history || history.length < 2) return null;
-  const scores = history.map(h => h.score);
-  const minS = Math.min(...scores), maxS = Math.max(...scores);
-  const range = (maxS - minS) || 10;
-  const W = 200, H = 40, PAD = 3;
-
-  const pts = scores.map((s, i) => {
-    const x = PAD + (i / (scores.length - 1)) * (W - PAD * 2);
-    const y = H - PAD - ((s - minS) / range) * (H - PAD * 2);
-    return [x, y];
-  });
-  const polyline = pts.map(([x, y]) => `${x},${y}`).join(' ');
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-10">
-      <polyline points={polyline} fill="none" stroke="#6366f1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      {pts.map(([x, y], i) => {
-        const sig = scoreToSignal(scores[i]);
-        const fill = sig === 'buy' ? '#22c55e' : sig === 'sell' ? '#ef4444' : '#f59e0b';
-        return <circle key={i} cx={x} cy={y} r="2.5" fill={fill} />;
-      })}
-    </svg>
-  );
-}
-
-// ─── Time horizon row ─────────────────────────────────────────────────────────
-function HorizonRow({ label, period, analysis }) {
-  if (!analysis) {
-    return (
-      <div className="flex items-center justify-between py-3 border-b border-slate-700/30 last:border-0">
-        <div className="space-y-1.5">
-          <div className="h-3 w-24 bg-slate-700 rounded animate-pulse" />
-          <div className="h-2.5 w-16 bg-slate-700/60 rounded animate-pulse" />
-        </div>
-        <div className="h-6 w-20 bg-slate-700 rounded-full animate-pulse" />
-      </div>
-    );
-  }
-  const score  = toPanoramaScore(analysis?.summary);
-  const signal = scoreToSignal(score);
-  const cfg    = SIGNAL[signal];
-  return (
-    <div className="flex items-center justify-between py-3 border-b border-slate-700/30 last:border-0 gap-3">
-      <div>
-        <p className="text-sm font-medium text-white">{label}</p>
-        <p className="text-xs text-slate-500">{period}</p>
-      </div>
-      <div className="flex items-center gap-3">
-        <TrafficLight signal={signal} size="sm" />
-        <div className="text-right">
-          <p className={`text-sm font-bold ${cfg.color}`}>{cfg.label}</p>
-          <p className="text-xs text-slate-500">score {score}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── 52-week range bar ────────────────────────────────────────────────────────
-function PriceRangeBar({ candles, currentPrice }) {
-  if (!candles?.length || currentPrice == null) return null;
-  const closes  = candles.map(c => c.close);
-  const yearHi  = Math.max(...closes);
-  const yearLo  = Math.min(...closes);
-  const range   = yearHi - yearLo || 1;
-  const pct     = ((currentPrice - yearLo) / range) * 100;
-  const fromATH = ((currentPrice - yearHi) / yearHi) * 100;
-
-  return (
-    <div>
-      <div className="flex justify-between text-xs text-slate-500 mb-1.5">
-        <span>Mín. 52s: <span className="text-slate-300">{fmtPrice(yearLo)}</span></span>
-        <span>Máx. 52s: <span className="text-slate-300">{fmtPrice(yearHi)}</span></span>
-      </div>
-      <div className="relative h-3 rounded-full overflow-hidden bg-slate-800">
-        <div className="absolute inset-0 bg-gradient-to-r from-red-900/60 via-amber-700/30 to-green-900/60" />
-        <div
-          className="absolute top-0 w-3.5 h-3.5 -mt-0.5 rounded-full border-2 border-white bg-brand-500 -translate-x-1/2 transition-all duration-700 shadow-md"
-          style={{ left: `${Math.max(2, Math.min(98, pct))}%` }}
-        />
-      </div>
-      <p className="text-xs text-slate-500 mt-1.5">
-        {fromATH < -0.5
-          ? <><span className="text-red-400 font-semibold">{Math.abs(fromATH).toFixed(1)}%</span> por debajo del máximo de 52 semanas</>
-          : <span className="text-green-400 font-semibold">En zona de máximos anuales</span>}
-      </p>
-    </div>
-  );
-}
 
 // ─── Volatility widget ────────────────────────────────────────────────────────
 function VolatilityWidget({ atr, currentPrice, expertMode }) {
@@ -444,12 +353,9 @@ export function Panorama() {
 
   // Data states
   const [mainData,   setMainData]   = useState(null);
-  const [shortData,  setShortData]  = useState(null);
-  const [mediumData, setMediumData] = useState(null);
   const [fgData,     setFgData]     = useState(null);
   const [newsData,   setNewsData]   = useState(null);
   const [candles,    setCandles]    = useState(null);
-  const [history,    setHistory]    = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState(null);
 
@@ -469,12 +375,9 @@ export function Panorama() {
     ]);
 
     if (main.status === 'fulfilled') {
-      const analysisData = main.value?.analysis ?? null;
       setMainData(main.value);
-      setShortData(analysisData);
-      setMediumData(analysisData);
       const s = toPanoramaScore(main.value?.analysis?.summary);
-      setHistory(saveHistory(a.id, s));
+      saveHistory(a.id, s);
     } else {
       setError(main.reason?.message ?? 'Error al cargar el análisis');
     }
@@ -494,9 +397,8 @@ export function Panorama() {
   // On asset change: reset data and auto-load
   useEffect(() => {
     setFadeIn(false);
-    setHistory(loadHistory(asset.id));
-    setMainData(null); setShortData(null); setMediumData(null);
-    setCandles(null);  setNewsData(null);  setError(null);
+    loadHistory(asset.id);
+    setMainData(null); setCandles(null); setNewsData(null); setError(null);
     const t = setTimeout(() => {
       setFadeIn(true);
       load(asset);
@@ -530,7 +432,7 @@ export function Panorama() {
       className="flex flex-col h-full overflow-y-auto"
       onClick={() => dropOpen && setDropOpen(false)}
     >
-      <div className={`transition-opacity duration-300 max-w-2xl mx-auto w-full px-4 pb-10 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`transition-opacity duration-300 w-full px-4 pb-6 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
 
         {/* ── Header ─────────────────────────────────────────────── */}
         <div className="flex items-center justify-between pt-4 pb-3">
@@ -622,20 +524,9 @@ export function Panorama() {
 
         {/* ── Main signal ─────────────────────────────────────────── */}
         {!loading && !mainData && !error ? (
-          <div className="py-16 flex flex-col items-center gap-4 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700/50 flex items-center justify-center text-3xl">
-              📊
-            </div>
-            <div>
-              <p className="text-slate-300 font-medium">Selecciona un activo y pulsa Analizar</p>
-              <p className="text-xs text-slate-500 mt-1">El análisis técnico se carga bajo demanda para no saturar el servidor</p>
-            </div>
-            <button
-              onClick={() => load(asset)}
-              className="px-6 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-semibold transition-colors"
-            >
-              Analizar {asset.name}
-            </button>
+          <div className="flex flex-col items-center gap-4 py-12 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700/50 flex items-center justify-center text-3xl">📊</div>
+            <p className="text-slate-300 font-medium">Cargando análisis...</p>
           </div>
         ) : loading ? (
           <LoadingSkeleton />
@@ -650,243 +541,97 @@ export function Panorama() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3" style={{ gridTemplateRows: 'auto auto' }}>
 
-            {/* ── Card 1: Señal ──────────────────────────────────── */}
-            <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-5 flex flex-col items-center justify-center gap-4">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider self-start">Señal</p>
-
-              {strongSignal && (
-                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold animate-pulse ${
-                  signal === 'buy'  ? 'bg-green-900/40 border-green-500/40 text-green-400' :
-                  signal === 'sell' ? 'bg-red-900/40 border-red-500/40 text-red-400' :
-                                     'bg-amber-900/40 border-amber-500/40 text-amber-400'
-                }`}>
-                  ⚡ Señal fuerte detectada
-                </div>
-              )}
-
-              <div className="flex flex-col sm:flex-row items-center gap-5">
+            {/* Card 1: Señal */}
+            <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 flex flex-col items-center justify-center gap-2 min-h-[280px]">
+              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold self-start">Señal</p>
+              <div className="flex items-center gap-4 w-full justify-center">
                 <TrafficLight signal={signal} size="lg" />
-                <div className="text-center sm:text-left">
-                  <p className="text-slate-400 text-sm mb-1">
-                    {expertMode ? `Score: ${score}` : 'Es momento de'}
-                  </p>
-                  <p
-                    className={`text-5xl font-extrabold tracking-tight ${cfg.color}`}
-                    style={{ textShadow: `0 0 40px ${cfg.glowColor}` }}
-                  >
+                <div className="flex flex-col gap-1">
+                  <p className={`text-3xl font-extrabold tracking-tight ${cfg.color}`} style={{ textShadow: `0 0 30px ${cfg.glowColor}` }}>
                     {cfg.label}
                   </p>
-                  {narrative && (
-                    <p className="text-slate-400 text-sm mt-2 max-w-xs leading-relaxed">{narrative}</p>
+                  {strongSignal && (
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border w-fit ${
+                      signal === 'buy' ? 'bg-green-900/40 border-green-500/40 text-green-400' :
+                      signal === 'sell' ? 'bg-red-900/40 border-red-500/40 text-red-400' :
+                      'bg-amber-900/40 border-amber-500/40 text-amber-400'
+                    }`}>⚡ Señal fuerte</span>
                   )}
+                  {narrative && <p className="text-xs text-slate-400 leading-relaxed max-w-[180px]">{narrative}</p>}
                 </div>
-              </div>
-
-              {/* Time horizons */}
-              <div className="w-full border-t border-slate-700/30 pt-3 space-y-1">
-                <HorizonRow label="Corto plazo"  period="RSI · MACD"       analysis={shortData}  />
-                <HorizonRow label="Medio plazo"  period="EMA 20/50 · BB"   analysis={mediumData} />
-                <HorizonRow label="Largo plazo"  period="Tendencia general" analysis={analysis}   />
               </div>
             </div>
 
-            {/* ── Card 2: Confluencia ────────────────────────────── */}
-            <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-5 flex flex-col items-center justify-center gap-4">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider self-start">Confluencia</p>
+            {/* Card 2: Confluencia */}
+            <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 flex flex-col items-center justify-center gap-2 min-h-[280px]">
+              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold self-start">Confluencia</p>
               <ConfluenceGauge score={score} />
-
-              {/* Signal history */}
-              {history.length >= 2 ? (
-                <div className="w-full border-t border-slate-700/30 pt-3">
-                  <p className="text-xs text-slate-500 mb-2">Evolución del score (últimos {history.length} días)</p>
-                  <SignalSparkline history={history} />
-                  {(() => {
-                    const prev = history[history.length - 2];
-                    const prevSig = scoreToSignal(prev.score);
-                    return (
-                      <p className="text-xs text-slate-500 mt-1">
-                        Ayer: <span className={`font-semibold ${SIGNAL[prevSig].color}`}>{SIGNAL[prevSig].label}</span>
-                        {expertMode && <span> (score {prev.score})</span>}
-                      </p>
-                    );
-                  })()}
-                </div>
-              ) : (
-                <p className="text-xs text-slate-600 text-center">
-                  El historial de señales se construye con el uso diario
-                </p>
-              )}
-            </div>
-
-            {/* ── Card 3: Indicadores ────────────────────────────── */}
-            <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-5">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Indicadores técnicos</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-
-                {/* RSI */}
-                {(() => {
-                  const { badge, cls } = signalBadge(sigs?.rsi?.signal);
-                  return (
-                    <IndicatorCard title="RSI (14)" badge={badge} badgeColor={cls}>
-                      <RSIGauge value={ind?.rsi?.current} />
-                      {expertMode && <p className="text-xs text-slate-500 mt-1">{sigs?.rsi?.label}</p>}
-                    </IndicatorCard>
-                  );
-                })()}
-
-                {/* MACD */}
-                {(() => {
-                  const hist = ind?.macd?.current?.histogram ?? 0;
-                  const { badge, cls } = signalBadge(sigs?.macd?.signal);
-                  return (
-                    <IndicatorCard title="MACD (12/26/9)" badge={badge} badgeColor={cls}>
-                      <div className="mt-2">
-                        <div className="flex items-center gap-2">
-                          <div className={`flex-1 h-2.5 rounded-full ${hist > 0 ? 'bg-green-950' : 'bg-red-950'}`}>
-                            <div
-                              className={`h-full rounded-full transition-all duration-700 ${hist > 0 ? 'bg-green-500' : 'bg-red-500'}`}
-                              style={{ width: `${Math.min(100, Math.abs(hist / (Math.abs(ind?.macd?.current?.macd ?? 1) || 1)) * 150)}%` }}
-                            />
-                          </div>
-                          <span className={`text-lg font-bold ${hist > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {hist > 0 ? '▲' : '▼'}
-                          </span>
-                        </div>
-                        {expertMode && ind?.macd?.current && (
-                          <div className="mt-2 space-y-1">
-                            {['macd', 'signal', 'histogram'].map(k => (
-                              <div key={k} className="flex justify-between text-xs">
-                                <span className="text-slate-500 uppercase">{k}</span>
-                                <span className={k === 'histogram' ? (ind.macd.current[k] > 0 ? 'text-green-400' : 'text-red-400') : 'text-slate-300'}>
-                                  {ind.macd.current[k]?.toFixed(4)}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </IndicatorCard>
-                  );
-                })()}
-
-                {/* EMA */}
-                {(() => {
-                  const e20 = ind?.ema20?.current, e50 = ind?.ema50?.current;
-                  const cross = sigs?.ema?.signal === 'buy' ? '✦ Golden Cross' : sigs?.ema?.signal === 'sell' ? '✦ Death Cross' : '◆ Neutral';
-                  const { cls } = signalBadge(sigs?.ema?.signal);
-                  return (
-                    <IndicatorCard title="EMA 20 / 50" badge={cross} badgeColor={cls}>
-                      {e20 && e50 && currentPrice && (
-                        <div className="mt-2 space-y-2">
-                          {[{ lbl: 'EMA 20', val: e20 }, { lbl: 'EMA 50', val: e50 }].map(({ lbl, val }) => {
-                            const above = currentPrice > val;
-                            return (
-                              <div key={lbl} className="flex items-center gap-2">
-                                <span className="text-xs text-slate-500 w-12">{lbl}</span>
-                                <div className={`flex-1 h-1.5 rounded-full ${above ? 'bg-green-900/60' : 'bg-red-900/60'}`}>
-                                  <div className={`h-full w-full rounded-full ${above ? 'bg-green-600' : 'bg-red-600'}`} />
-                                </div>
-                                {expertMode && <span className="text-xs text-slate-400 font-mono w-20 text-right">{fmtPrice(val)}</span>}
-                                <span className={`text-xs font-bold ${above ? 'text-green-400' : 'text-red-400'}`}>{above ? '▲' : '▼'}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </IndicatorCard>
-                  );
-                })()}
-
-                {/* Bollinger */}
-                {(() => {
-                  const { badge, cls } = signalBadge(sigs?.bb?.signal);
-                  return (
-                    <IndicatorCard title="Bollinger Bands (20)" badge={badge} badgeColor={cls}>
-                      <div className="mt-2">
-                        <BollingerBar bb={ind?.bollingerBands?.current} price={currentPrice} />
-                        {expertMode && ind?.bollingerBands?.current && (
-                          <div className="mt-2 space-y-1">
-                            {[['upper', 'Superior'], ['middle', 'Media'], ['lower', 'Inferior']].map(([k, lbl]) => (
-                              <div key={k} className="flex justify-between text-xs">
-                                <span className="text-slate-500">{lbl}</span>
-                                <span className="text-slate-300">{fmtPrice(ind.bollingerBands.current[k])}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </IndicatorCard>
-                  );
-                })()}
+              <div className="flex gap-2 mt-1">
+                <span className="flex items-center gap-1 text-xs bg-green-900/40 text-green-400 border border-green-700/40 rounded-full px-2 py-0.5 font-semibold">
+                  {analysis?.summary?.counts?.buy ?? 0}
+                  <svg viewBox="0 0 10 10" className="w-2 h-2 fill-current"><path d="M5 2 L8 7 L2 7 Z"/></svg>
+                </span>
+                <span className="flex items-center gap-1 text-xs bg-slate-700/40 text-slate-400 border border-slate-600/40 rounded-full px-2 py-0.5 font-semibold">
+                  {analysis?.summary?.counts?.neutral ?? 0} —
+                </span>
+                <span className="flex items-center gap-1 text-xs bg-red-900/40 text-red-400 border border-red-700/40 rounded-full px-2 py-0.5 font-semibold">
+                  {analysis?.summary?.counts?.sell ?? 0}
+                  <svg viewBox="0 0 10 10" className="w-2 h-2 fill-current"><path d="M5 8 L8 3 L2 3 Z"/></svg>
+                </span>
               </div>
             </div>
 
-            {/* ── Card 4: Contexto ───────────────────────────────── */}
-            <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-5 space-y-4">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Contexto de mercado</p>
+            {/* Card 3: Indicadores */}
+            <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 min-h-[280px]">
+              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-3">Indicadores técnicos</p>
+              <div className="grid grid-cols-2 gap-2">
+                {(() => { const { badge, cls } = signalBadge(sigs?.rsi?.signal); return (
+                  <IndicatorCard title="RSI (14)" badge={badge} badgeColor={cls}>
+                    <RSIGauge value={ind?.rsi?.current} />
+                  </IndicatorCard>
+                ); })()}
+                {(() => { const { badge, cls } = signalBadge(sigs?.macd?.signal); return (
+                  <IndicatorCard title="MACD" badge={badge} badgeColor={cls}>
+                    <p className="text-xs font-mono text-slate-300 mt-1">{ind?.macd?.current?.histogram?.toFixed(2) ?? '—'}</p>
+                  </IndicatorCard>
+                ); })()}
+                {(() => { const { badge, cls } = signalBadge(sigs?.ema?.signal); return (
+                  <IndicatorCard title="EMA 20/50" badge={badge} badgeColor={cls}>
+                    <p className="text-xs font-mono text-slate-300 mt-1">{ind?.ema20?.current?.toFixed(0) ?? '—'} / {ind?.ema50?.current?.toFixed(0) ?? '—'}</p>
+                  </IndicatorCard>
+                ); })()}
+                {(() => { const { badge, cls } = signalBadge(sigs?.bb?.signal); return (
+                  <IndicatorCard title="Bollinger" badge={badge} badgeColor={cls}>
+                    <BollingerBar bb={ind?.bollingerBands?.current} price={currentPrice} />
+                  </IndicatorCard>
+                ); })()}
+              </div>
+            </div>
 
-              {/* Fear & Greed */}
+            {/* Card 4: Contexto */}
+            <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 min-h-[280px] flex flex-col gap-3">
+              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Contexto de mercado</p>
               {fgCtx && (
-                <div className="flex items-start gap-3 pb-4 border-b border-slate-700/30">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${fgVal < 25 ? 'bg-red-900/40' : fgVal > 75 ? 'bg-green-900/40' : 'bg-slate-700/40'}`}>
-                    {fgVal < 25 ? '😱' : fgVal > 75 ? '🤑' : '😐'}
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 mb-0.5">Fear &amp; Greed Index</p>
-                    <p className="text-sm text-slate-300 leading-relaxed">{fgCtx}</p>
-                  </div>
+                <div className="bg-slate-900/60 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 font-semibold mb-1">Fear &amp; Greed</p>
+                  <p className="text-xs text-slate-300 leading-relaxed">{fgCtx}</p>
                 </div>
               )}
-
-              {/* 52-week range */}
-              {candles && currentPrice && (
-                <div className="pb-4 border-b border-slate-700/30">
-                  <p className="text-xs text-slate-500 mb-2">Rango de 52 semanas</p>
-                  <PriceRangeBar candles={candles} currentPrice={currentPrice} />
+              {bestDay && (
+                <div className="bg-slate-900/60 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 font-semibold mb-1">Mejor día histórico</p>
+                  <p className="text-xs text-slate-300">{bestDay.day} — {bestDay.rate}% alcista</p>
                 </div>
               )}
-
-              {/* Volatility */}
-              {ind?.atr?.current && currentPrice && (
-                <div className="pb-4 border-b border-slate-700/30">
-                  <VolatilityWidget atr={ind.atr.current} currentPrice={currentPrice} expertMode={expertMode} />
-                </div>
-              )}
-
-              {/* News sentiment */}
-              {newsData && (
-                <div className="pb-4 border-b border-slate-700/30">
-                  <p className="text-xs text-slate-500 mb-1.5">Sentimiento de noticias</p>
+              <VolatilityWidget atr={ind?.atr?.current} currentPrice={currentPrice} expertMode={expertMode} />
+              {newsData?.length > 0 && (
+                <div>
+                  <p className="text-xs text-slate-400 font-semibold mb-2">Últimas noticias</p>
                   <NewsSummary news={newsData} />
                 </div>
               )}
-
-              {/* Best day of week */}
-              {bestDay && (
-                <div className="pb-4 border-b border-slate-700/30">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">📅</span>
-                    <div>
-                      <p className="text-sm text-slate-300">
-                        <span className="font-semibold text-white">{asset.symbol}</span> sube más los{' '}
-                        <span className="text-brand-400 font-semibold">{bestDay.day}</span> históricamente
-                      </p>
-                      {expertMode && (
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          Días positivos: {bestDay.rate}% (últimas 52 semanas)
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Disclaimer */}
-              <p className="text-xs text-slate-600 text-center leading-relaxed">
-                ⚠️ Esto no es asesoramiento financiero. El trading conlleva riesgo de pérdida de capital.
-              </p>
             </div>
 
           </div>
