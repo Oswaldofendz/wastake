@@ -114,99 +114,71 @@ function AssetLogo({ asset, size = 10 }) {
 // ─── Traffic Light ────────────────────────────────────────────────────────────
 function TrafficLight({ signal, size = 'lg' }) {
   const big = size === 'lg';
-  const dot = big ? 'w-16 h-16 sm:w-20 sm:h-20' : 'w-5 h-5';
-  const pad = big ? 'p-5 gap-3' : 'p-2 gap-1.5';
+  const dot = big ? 'w-12 h-12' : 'w-5 h-5';
+  const pad = big ? 'p-4 gap-3' : 'p-2 gap-1.5';
   const cfg = SIGNAL[signal];
 
   const glowStyle = (active) => active
-    ? { boxShadow: `0 0 28px 8px ${cfg.glowColor}` }
+    ? { boxShadow: `0 0 20px 6px ${cfg.glowColor}` }
     : {};
 
   return (
-    <div className={`flex flex-col items-center ${pad} bg-slate-900 rounded-2xl border border-slate-700/50 flex-shrink-0`}>
-      {/* Red = sell */}
-      <div
-        className={`${dot} rounded-full border-2 transition-all duration-700 ${signal === 'sell' ? `${SIGNAL.sell.activeDot} animate-pulse` : SIGNAL.sell.darkDot}`}
-        style={signal === 'sell' ? glowStyle(true) : {}}
-      />
-      {/* Amber = hold */}
-      <div
-        className={`${dot} rounded-full border-2 transition-all duration-700 ${signal === 'hold' ? `${SIGNAL.hold.activeDot} animate-pulse` : SIGNAL.hold.darkDot}`}
-        style={signal === 'hold' ? glowStyle(true) : {}}
-      />
-      {/* Green = buy */}
-      <div
-        className={`${dot} rounded-full border-2 transition-all duration-700 ${signal === 'buy' ? `${SIGNAL.buy.activeDot} animate-pulse` : SIGNAL.buy.darkDot}`}
-        style={signal === 'buy' ? glowStyle(true) : {}}
-      />
+    <div className={`flex flex-col items-center ${pad} bg-slate-900 rounded-2xl border border-slate-700/50 flex-shrink-0`} style={{ width: big ? '64px' : 'auto' }}>
+      <div className={`${dot} rounded-full border-2 transition-all duration-700 ${signal === 'sell' ? `${SIGNAL.sell.activeDot} animate-pulse` : SIGNAL.sell.darkDot}`} style={signal === 'sell' ? glowStyle(true) : {}} />
+      <div className={`${dot} rounded-full border-2 transition-all duration-700 ${signal === 'hold' ? `${SIGNAL.hold.activeDot} animate-pulse` : SIGNAL.hold.darkDot}`} style={signal === 'hold' ? glowStyle(true) : {}} />
+      <div className={`${dot} rounded-full border-2 transition-all duration-700 ${signal === 'buy' ? `${SIGNAL.buy.activeDot} animate-pulse` : SIGNAL.buy.darkDot}`} style={signal === 'buy' ? glowStyle(true) : {}} />
     </div>
   );
 }
 
 // ─── Confluence Gauge (semicircle) ────────────────────────────────────────────
 function ConfluenceGauge({ score }) {
+  const pct = Math.max(0, Math.min(1, (score + 100) / 200));
+  const rotation = -90 + pct * 180;
   const signal = scoreToSignal(score);
-  const color  = SIGNAL[signal].hex;
-  const r = 68, cx = 100, cy = 92;
-
-  function pt(pct) {
-    const rad = Math.PI * (1 - pct);
-    return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
-  }
-  const start = pt(0), end = pt(1), curr = pt(score / 100);
-  const large = score > 50 ? 1 : 0;
+  const color = SIGNAL[signal].hex;
+  const label = signal === 'buy' ? 'Compra' : signal === 'sell' ? 'Venta' : 'Neutral';
 
   return (
     <div className="flex flex-col items-center">
-      <svg viewBox="0 0 200 100" className="w-52">
-        {/* Background arc */}
-        <path
-          d={`M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${end.x} ${end.y}`}
-          fill="none" stroke="#1e293b" strokeWidth="14" strokeLinecap="round"
-        />
-        {/* Colored arc */}
-        {score > 0 && (
-          <path
-            d={`M ${start.x} ${start.y} A ${r} ${r} 0 ${large} 1 ${curr.x} ${curr.y}`}
-            fill="none" stroke={color} strokeWidth="14" strokeLinecap="round"
-          />
-        )}
-        {/* Zone labels */}
-        <text x="18"  y="97" fill="#ef4444" fontSize="7" fontWeight="600">VENDER</text>
-        <text x="84"  y="24" fill="#64748b" fontSize="7">HOLD</text>
-        <text x="157" y="97" fill="#22c55e" fontSize="7" fontWeight="600">COMPRAR</text>
-        {/* Score */}
-        <text x="100" y="86" textAnchor="middle" fill={color} fontSize="32" fontWeight="800">{score}</text>
-        <text x="100" y="98" textAnchor="middle" fill="#475569" fontSize="7">score de confluencia</text>
+      <svg viewBox="0 0 100 56" style={{ width: '130px', height: 'auto' }}>
+        <path d="M 12 48 A 38 38 0 0 1 37 15" fill="none" stroke="#7f1d1d" strokeWidth="7" strokeLinecap="round"/>
+        <path d="M 37 15 A 38 38 0 0 1 63 15" fill="none" stroke="#78350f" strokeWidth="7" strokeLinecap="round"/>
+        <path d="M 63 15 A 38 38 0 0 1 88 48" fill="none" stroke="#14532d" strokeWidth="7" strokeLinecap="round"/>
+        <g transform={`rotate(${rotation}, 50, 48)`}>
+          <line x1="50" y1="48" x2="50" y2="16" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+          <circle cx="50" cy="48" r="4" fill="white"/>
+        </g>
+        <text x="6" y="54" fill="#ef4444" style={{ fontSize: 5, fontFamily: 'monospace' }}>VENTA</text>
+        <text x="62" y="54" fill="#22c55e" style={{ fontSize: 5, fontFamily: 'monospace' }}>COMPRA</text>
       </svg>
+      <p className="text-3xl font-bold font-mono leading-none mt-1" style={{ color }}>{score}</p>
+      <p className="text-xs font-semibold mt-1" style={{ color }}>{label}</p>
     </div>
   );
 }
 
 // ─── RSI Gauge ────────────────────────────────────────────────────────────────
 function RSIGauge({ value }) {
-  if (value == null) return <p className="text-xs text-slate-500 py-4 text-center">Sin datos</p>;
-  const r = 34, cx = 50, cy = 44;
-
-  function pt(pct) {
-    const rad = Math.PI * (1 - pct);
-    return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
-  }
-  const start = pt(0), end = pt(1), curr = pt(value / 100);
-  const large = value > 50 ? 1 : 0;
-  const color = value < 30 ? '#22c55e' : value > 70 ? '#ef4444' : '#94a3b8';
-  const label = value < 30 ? 'Sobrevendido' : value > 70 ? 'Sobrecomprado' : 'Neutral';
+  if (value == null) return <p className="text-xs text-slate-500">Sin datos</p>;
+  const pct = Math.max(0, Math.min(1, value / 100));
+  const rotation = -90 + pct * 180;
+  const color = value < 30 ? '#22c55e' : value > 70 ? '#ef4444' : '#f59e0b';
 
   return (
     <div className="flex flex-col items-center">
-      <svg viewBox="0 0 100 52" className="w-28">
-        <path d={`M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${end.x} ${end.y}`} fill="none" stroke="#1e293b" strokeWidth="8" strokeLinecap="round" />
-        <path d={`M ${start.x} ${start.y} A ${r} ${r} 0 ${large} 1 ${curr.x} ${curr.y}`} fill="none" stroke={color} strokeWidth="8" strokeLinecap="round" />
-        <text x="50" y="48" textAnchor="middle" fill={color} fontSize="11" fontWeight="700">{value.toFixed(1)}</text>
-        <text x="14" y="50" fill="#ef4444" fontSize="6">0</text>
-        <text x="82" y="50" fill="#22c55e" fontSize="6">100</text>
+      <svg viewBox="0 0 100 56" style={{ width: '90px', height: 'auto' }}>
+        <path d="M 12 48 A 38 38 0 0 1 37 15" fill="none" stroke="#7f1d1d" strokeWidth="7" strokeLinecap="round"/>
+        <path d="M 37 15 A 38 38 0 0 1 63 15" fill="none" stroke="#78350f" strokeWidth="7" strokeLinecap="round"/>
+        <path d="M 63 15 A 38 38 0 0 1 88 48" fill="none" stroke="#14532d" strokeWidth="7" strokeLinecap="round"/>
+        <g transform={`rotate(${rotation}, 50, 48)`}>
+          <line x1="50" y1="48" x2="50" y2="18" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+          <circle cx="50" cy="48" r="3" fill="white"/>
+        </g>
+        <text x="8" y="54" fill="#ef4444" style={{ fontSize: 5, fontFamily: 'monospace' }}>30</text>
+        <text x="72" y="54" fill="#22c55e" style={{ fontSize: 5, fontFamily: 'monospace' }}>70</text>
       </svg>
-      <p className="text-xs mt-0.5 font-medium" style={{ color }}>{label}</p>
+      <p className="text-sm font-bold font-mono -mt-1" style={{ color }}>{value?.toFixed(1)}</p>
     </div>
   );
 }
