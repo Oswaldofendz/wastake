@@ -491,13 +491,16 @@ export function Panorama() {
     setLoading(false);
   }, []);
 
-  // On asset change: reset data but do NOT auto-load
+  // On asset change: reset data and auto-load
   useEffect(() => {
     setFadeIn(false);
     setHistory(loadHistory(asset.id));
     setMainData(null); setShortData(null); setMediumData(null);
     setCandles(null);  setNewsData(null);  setError(null);
-    const t = setTimeout(() => setFadeIn(true), 180);
+    const t = setTimeout(() => {
+      setFadeIn(true);
+      load(asset);
+    }, 180);
     return () => clearTimeout(t);
   }, [asset]);
 
