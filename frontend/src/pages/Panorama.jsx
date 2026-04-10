@@ -650,266 +650,246 @@ export function Panorama() {
             </button>
           </div>
         ) : (
-          <>
-            <div className="flex flex-col items-center gap-5">
-              {/* Traffic light + signal text */}
-              <div className="flex flex-col sm:flex-row items-center gap-6 w-full justify-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+            {/* ── Card 1: Señal ──────────────────────────────────── */}
+            <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-5 flex flex-col items-center justify-center gap-4">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider self-start">Señal</p>
+
+              {strongSignal && (
+                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold animate-pulse ${
+                  signal === 'buy'  ? 'bg-green-900/40 border-green-500/40 text-green-400' :
+                  signal === 'sell' ? 'bg-red-900/40 border-red-500/40 text-red-400' :
+                                     'bg-amber-900/40 border-amber-500/40 text-amber-400'
+                }`}>
+                  ⚡ Señal fuerte detectada
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row items-center gap-5">
                 <TrafficLight signal={signal} size="lg" />
-
                 <div className="text-center sm:text-left">
-                  {/* Strong signal badge */}
-                  {strongSignal && (
-                    <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold mb-3 animate-pulse ${
-                      signal === 'buy'  ? 'bg-green-900/40 border-green-500/40 text-green-400' :
-                      signal === 'sell' ? 'bg-red-900/40 border-red-500/40 text-red-400' :
-                                         'bg-amber-900/40 border-amber-500/40 text-amber-400'
-                    }`}>
-                      ⚡ Señal fuerte detectada
-                    </div>
-                  )}
-
                   <p className="text-slate-400 text-sm mb-1">
-                    {expertMode ? `Confluencia: ${score}/100` : 'Es momento de'}
+                    {expertMode ? `Score: ${score}` : 'Es momento de'}
                   </p>
                   <p
-                    className={`text-5xl sm:text-6xl font-extrabold tracking-tight ${cfg.color}`}
+                    className={`text-5xl font-extrabold tracking-tight ${cfg.color}`}
                     style={{ textShadow: `0 0 40px ${cfg.glowColor}` }}
                   >
                     {cfg.label}
                   </p>
-
-                  {/* Narrative (simple mode) */}
-                  {!expertMode && narrative && (
+                  {narrative && (
                     <p className="text-slate-400 text-sm mt-2 max-w-xs leading-relaxed">{narrative}</p>
                   )}
                 </div>
               </div>
 
-              {/* Confluence gauge */}
-              <ConfluenceGauge score={score} />
-
-              {/* Expand button */}
-              <button
-                onClick={() => setExpanded(e => !e)}
-                className="flex items-center gap-2 px-6 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700/50 rounded-xl text-sm font-medium text-white transition-all"
-              >
-                {expanded ? '▲ Menos detalles' : '▼ ¿Por qué?'}
-              </button>
+              {/* Time horizons */}
+              <div className="w-full border-t border-slate-700/30 pt-3 space-y-1">
+                <HorizonRow label="Corto plazo"  period="RSI · MACD"       analysis={shortData}  />
+                <HorizonRow label="Medio plazo"  period="EMA 20/50 · BB"   analysis={mediumData} />
+                <HorizonRow label="Largo plazo"  period="Tendencia general" analysis={analysis}   />
+              </div>
             </div>
 
-            {/* ── Expanded detail panel ──────────────────────────── */}
-            {expanded && (
-              <div className="mt-6 space-y-4">
+            {/* ── Card 2: Confluencia ────────────────────────────── */}
+            <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-5 flex flex-col items-center justify-center gap-4">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider self-start">Confluencia</p>
+              <ConfluenceGauge score={score} />
 
-                {/* Narrative (expert mode) */}
-                {expertMode && narrative && (
-                  <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4">
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Resumen técnico</p>
-                    <p className="text-sm text-slate-300 leading-relaxed">{narrative}</p>
-                  </div>
-                )}
-
-                {/* ── Indicators ─────────────────────────────────── */}
-                <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4">
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Indicadores técnicos</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-
-                    {/* RSI */}
-                    {(() => {
-                      const { badge, cls } = signalBadge(sigs?.rsi?.signal);
-                      return (
-                        <IndicatorCard title="RSI (14)" badge={badge} badgeColor={cls}>
-                          <RSIGauge value={ind?.rsi?.current} />
-                          {expertMode && <p className="text-xs text-slate-500 mt-1">{sigs?.rsi?.label}</p>}
-                        </IndicatorCard>
-                      );
-                    })()}
-
-                    {/* MACD */}
-                    {(() => {
-                      const hist = ind?.macd?.current?.histogram ?? 0;
-                      const { badge, cls } = signalBadge(sigs?.macd?.signal);
-                      return (
-                        <IndicatorCard title="MACD (12/26/9)" badge={badge} badgeColor={cls}>
-                          <div className="mt-2">
-                            <div className="flex items-center gap-2">
-                              <div className={`flex-1 h-2.5 rounded-full ${hist > 0 ? 'bg-green-950' : 'bg-red-950'}`}>
-                                <div
-                                  className={`h-full rounded-full transition-all duration-700 ${hist > 0 ? 'bg-green-500' : 'bg-red-500'}`}
-                                  style={{ width: `${Math.min(100, Math.abs(hist / (Math.abs(ind?.macd?.current?.macd ?? 1) || 1)) * 150)}%` }}
-                                />
-                              </div>
-                              <span className={`text-lg font-bold ${hist > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                {hist > 0 ? '▲' : '▼'}
-                              </span>
-                            </div>
-                            {expertMode && ind?.macd?.current && (
-                              <div className="mt-2 space-y-1">
-                                {['macd', 'signal', 'histogram'].map(k => (
-                                  <div key={k} className="flex justify-between text-xs">
-                                    <span className="text-slate-500 uppercase">{k}</span>
-                                    <span className={k === 'histogram' ? (ind.macd.current[k] > 0 ? 'text-green-400' : 'text-red-400') : 'text-slate-300'}>
-                                      {ind.macd.current[k]?.toFixed(4)}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </IndicatorCard>
-                      );
-                    })()}
-
-                    {/* EMA */}
-                    {(() => {
-                      const e20 = ind?.ema20?.current, e50 = ind?.ema50?.current;
-                      const cross = sigs?.ema?.signal === 'buy' ? '✦ Golden Cross' : sigs?.ema?.signal === 'sell' ? '✦ Death Cross' : '◆ Neutral';
-                      const { cls } = signalBadge(sigs?.ema?.signal);
-                      return (
-                        <IndicatorCard title="EMA 20 / 50" badge={cross} badgeColor={cls}>
-                          {e20 && e50 && currentPrice && (
-                            <div className="mt-2 space-y-2">
-                              {[{ lbl: 'EMA 20', val: e20 }, { lbl: 'EMA 50', val: e50 }].map(({ lbl, val }) => {
-                                const above = currentPrice > val;
-                                return (
-                                  <div key={lbl} className="flex items-center gap-2">
-                                    <span className="text-xs text-slate-500 w-12">{lbl}</span>
-                                    <div className={`flex-1 h-1.5 rounded-full ${above ? 'bg-green-900/60' : 'bg-red-900/60'}`}>
-                                      <div className={`h-full w-full rounded-full ${above ? 'bg-green-600' : 'bg-red-600'}`} />
-                                    </div>
-                                    {expertMode && <span className="text-xs text-slate-400 font-mono w-20 text-right">{fmtPrice(val)}</span>}
-                                    <span className={`text-xs font-bold ${above ? 'text-green-400' : 'text-red-400'}`}>{above ? '▲' : '▼'}</span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </IndicatorCard>
-                      );
-                    })()}
-
-                    {/* Bollinger */}
-                    {(() => {
-                      const { badge, cls } = signalBadge(sigs?.bb?.signal);
-                      return (
-                        <IndicatorCard title="Bollinger Bands (20)" badge={badge} badgeColor={cls}>
-                          <div className="mt-2">
-                            <BollingerBar bb={ind?.bollingerBands?.current} price={currentPrice} />
-                            {expertMode && ind?.bollingerBands?.current && (
-                              <div className="mt-2 space-y-1">
-                                {[['upper', 'Superior'], ['middle', 'Media'], ['lower', 'Inferior']].map(([k, lbl]) => (
-                                  <div key={k} className="flex justify-between text-xs">
-                                    <span className="text-slate-500">{lbl}</span>
-                                    <span className="text-slate-300">{fmtPrice(ind.bollingerBands.current[k])}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </IndicatorCard>
-                      );
-                    })()}
-                  </div>
+              {/* Signal history */}
+              {history.length >= 2 ? (
+                <div className="w-full border-t border-slate-700/30 pt-3">
+                  <p className="text-xs text-slate-500 mb-2">Evolución del score (últimos {history.length} días)</p>
+                  <SignalSparkline history={history} />
+                  {(() => {
+                    const prev = history[history.length - 2];
+                    const prevSig = scoreToSignal(prev.score);
+                    return (
+                      <p className="text-xs text-slate-500 mt-1">
+                        Ayer: <span className={`font-semibold ${SIGNAL[prevSig].color}`}>{SIGNAL[prevSig].label}</span>
+                        {expertMode && <span> (score {prev.score})</span>}
+                      </p>
+                    );
+                  })()}
                 </div>
-
-                {/* ── Time horizons ───────────────────────────────── */}
-                <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4">
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Horizontes temporales</p>
-                  <HorizonRow label="Corto plazo"  period="RSI · MACD"       analysis={shortData}  />
-                  <HorizonRow label="Medio plazo"  period="EMA 20/50 · BB"   analysis={mediumData} />
-                  <HorizonRow label="Largo plazo"  period="Tendencia general" analysis={analysis}   />
-                </div>
-
-                {/* ── Market context ──────────────────────────────── */}
-                <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 space-y-4">
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Contexto de mercado</p>
-
-                  {/* Fear & Greed */}
-                  {fgCtx && (
-                    <div className="flex items-start gap-3 pb-4 border-b border-slate-700/30">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${fgVal < 25 ? 'bg-red-900/40' : fgVal > 75 ? 'bg-green-900/40' : 'bg-slate-700/40'}`}>
-                        {fgVal < 25 ? '😱' : fgVal > 75 ? '🤑' : '😐'}
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-500 mb-0.5">Fear &amp; Greed Index</p>
-                        <p className="text-sm text-slate-300 leading-relaxed">{fgCtx}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 52-week range */}
-                  {candles && currentPrice && (
-                    <div className="pb-4 border-b border-slate-700/30">
-                      <p className="text-xs text-slate-500 mb-2">Rango de 52 semanas</p>
-                      <PriceRangeBar candles={candles} currentPrice={currentPrice} />
-                    </div>
-                  )}
-
-                  {/* Volatility */}
-                  {ind?.atr?.current && currentPrice && (
-                    <div className="pb-4 border-b border-slate-700/30">
-                      <VolatilityWidget atr={ind.atr.current} currentPrice={currentPrice} expertMode={expertMode} />
-                    </div>
-                  )}
-
-                  {/* News sentiment */}
-                  {newsData && (
-                    <div className="pb-4 border-b border-slate-700/30">
-                      <p className="text-xs text-slate-500 mb-1.5">Sentimiento de noticias</p>
-                      <NewsSummary news={newsData} />
-                    </div>
-                  )}
-
-                  {/* Best day of week */}
-                  {bestDay && (
-                    <div className="pb-4 border-b border-slate-700/30">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">📅</span>
-                        <div>
-                          <p className="text-sm text-slate-300">
-                            <span className="font-semibold text-white">{asset.symbol}</span> sube más los{' '}
-                            <span className="text-brand-400 font-semibold">{bestDay.day}</span> históricamente
-                          </p>
-                          {expertMode && (
-                            <p className="text-xs text-slate-500 mt-0.5">
-                              Días positivos: {bestDay.rate}% (últimas 52 semanas)
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Signal history */}
-                  {history.length >= 2 ? (
-                    <div>
-                      <p className="text-xs text-slate-500 mb-2">Evolución del score (últimos {history.length} días)</p>
-                      <SignalSparkline history={history} />
-                      {(() => {
-                        const prev = history[history.length - 2];
-                        const prevSig = scoreToSignal(prev.score);
-                        return (
-                          <p className="text-xs text-slate-500 mt-1">
-                            Ayer: <span className={`font-semibold ${SIGNAL[prevSig].color}`}>{SIGNAL[prevSig].label}</span>
-                            {expertMode && <span> (score {prev.score})</span>}
-                          </p>
-                        );
-                      })()}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-slate-600 text-center">
-                      El historial de señales se construye con el uso diario
-                    </p>
-                  )}
-                </div>
-
-                {/* Disclaimer */}
-                <p className="text-xs text-slate-600 text-center px-4 leading-relaxed">
-                  ⚠️ Esto no es asesoramiento financiero. El trading conlleva riesgo de pérdida de capital. Haz tu propia investigación antes de invertir.
+              ) : (
+                <p className="text-xs text-slate-600 text-center">
+                  El historial de señales se construye con el uso diario
                 </p>
+              )}
+            </div>
+
+            {/* ── Card 3: Indicadores ────────────────────────────── */}
+            <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-5">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Indicadores técnicos</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                {/* RSI */}
+                {(() => {
+                  const { badge, cls } = signalBadge(sigs?.rsi?.signal);
+                  return (
+                    <IndicatorCard title="RSI (14)" badge={badge} badgeColor={cls}>
+                      <RSIGauge value={ind?.rsi?.current} />
+                      {expertMode && <p className="text-xs text-slate-500 mt-1">{sigs?.rsi?.label}</p>}
+                    </IndicatorCard>
+                  );
+                })()}
+
+                {/* MACD */}
+                {(() => {
+                  const hist = ind?.macd?.current?.histogram ?? 0;
+                  const { badge, cls } = signalBadge(sigs?.macd?.signal);
+                  return (
+                    <IndicatorCard title="MACD (12/26/9)" badge={badge} badgeColor={cls}>
+                      <div className="mt-2">
+                        <div className="flex items-center gap-2">
+                          <div className={`flex-1 h-2.5 rounded-full ${hist > 0 ? 'bg-green-950' : 'bg-red-950'}`}>
+                            <div
+                              className={`h-full rounded-full transition-all duration-700 ${hist > 0 ? 'bg-green-500' : 'bg-red-500'}`}
+                              style={{ width: `${Math.min(100, Math.abs(hist / (Math.abs(ind?.macd?.current?.macd ?? 1) || 1)) * 150)}%` }}
+                            />
+                          </div>
+                          <span className={`text-lg font-bold ${hist > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {hist > 0 ? '▲' : '▼'}
+                          </span>
+                        </div>
+                        {expertMode && ind?.macd?.current && (
+                          <div className="mt-2 space-y-1">
+                            {['macd', 'signal', 'histogram'].map(k => (
+                              <div key={k} className="flex justify-between text-xs">
+                                <span className="text-slate-500 uppercase">{k}</span>
+                                <span className={k === 'histogram' ? (ind.macd.current[k] > 0 ? 'text-green-400' : 'text-red-400') : 'text-slate-300'}>
+                                  {ind.macd.current[k]?.toFixed(4)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </IndicatorCard>
+                  );
+                })()}
+
+                {/* EMA */}
+                {(() => {
+                  const e20 = ind?.ema20?.current, e50 = ind?.ema50?.current;
+                  const cross = sigs?.ema?.signal === 'buy' ? '✦ Golden Cross' : sigs?.ema?.signal === 'sell' ? '✦ Death Cross' : '◆ Neutral';
+                  const { cls } = signalBadge(sigs?.ema?.signal);
+                  return (
+                    <IndicatorCard title="EMA 20 / 50" badge={cross} badgeColor={cls}>
+                      {e20 && e50 && currentPrice && (
+                        <div className="mt-2 space-y-2">
+                          {[{ lbl: 'EMA 20', val: e20 }, { lbl: 'EMA 50', val: e50 }].map(({ lbl, val }) => {
+                            const above = currentPrice > val;
+                            return (
+                              <div key={lbl} className="flex items-center gap-2">
+                                <span className="text-xs text-slate-500 w-12">{lbl}</span>
+                                <div className={`flex-1 h-1.5 rounded-full ${above ? 'bg-green-900/60' : 'bg-red-900/60'}`}>
+                                  <div className={`h-full w-full rounded-full ${above ? 'bg-green-600' : 'bg-red-600'}`} />
+                                </div>
+                                {expertMode && <span className="text-xs text-slate-400 font-mono w-20 text-right">{fmtPrice(val)}</span>}
+                                <span className={`text-xs font-bold ${above ? 'text-green-400' : 'text-red-400'}`}>{above ? '▲' : '▼'}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </IndicatorCard>
+                  );
+                })()}
+
+                {/* Bollinger */}
+                {(() => {
+                  const { badge, cls } = signalBadge(sigs?.bb?.signal);
+                  return (
+                    <IndicatorCard title="Bollinger Bands (20)" badge={badge} badgeColor={cls}>
+                      <div className="mt-2">
+                        <BollingerBar bb={ind?.bollingerBands?.current} price={currentPrice} />
+                        {expertMode && ind?.bollingerBands?.current && (
+                          <div className="mt-2 space-y-1">
+                            {[['upper', 'Superior'], ['middle', 'Media'], ['lower', 'Inferior']].map(([k, lbl]) => (
+                              <div key={k} className="flex justify-between text-xs">
+                                <span className="text-slate-500">{lbl}</span>
+                                <span className="text-slate-300">{fmtPrice(ind.bollingerBands.current[k])}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </IndicatorCard>
+                  );
+                })()}
               </div>
-            )}
-          </>
+            </div>
+
+            {/* ── Card 4: Contexto ───────────────────────────────── */}
+            <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-5 space-y-4">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Contexto de mercado</p>
+
+              {/* Fear & Greed */}
+              {fgCtx && (
+                <div className="flex items-start gap-3 pb-4 border-b border-slate-700/30">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${fgVal < 25 ? 'bg-red-900/40' : fgVal > 75 ? 'bg-green-900/40' : 'bg-slate-700/40'}`}>
+                    {fgVal < 25 ? '😱' : fgVal > 75 ? '🤑' : '😐'}
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 mb-0.5">Fear &amp; Greed Index</p>
+                    <p className="text-sm text-slate-300 leading-relaxed">{fgCtx}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* 52-week range */}
+              {candles && currentPrice && (
+                <div className="pb-4 border-b border-slate-700/30">
+                  <p className="text-xs text-slate-500 mb-2">Rango de 52 semanas</p>
+                  <PriceRangeBar candles={candles} currentPrice={currentPrice} />
+                </div>
+              )}
+
+              {/* Volatility */}
+              {ind?.atr?.current && currentPrice && (
+                <div className="pb-4 border-b border-slate-700/30">
+                  <VolatilityWidget atr={ind.atr.current} currentPrice={currentPrice} expertMode={expertMode} />
+                </div>
+              )}
+
+              {/* News sentiment */}
+              {newsData && (
+                <div className="pb-4 border-b border-slate-700/30">
+                  <p className="text-xs text-slate-500 mb-1.5">Sentimiento de noticias</p>
+                  <NewsSummary news={newsData} />
+                </div>
+              )}
+
+              {/* Best day of week */}
+              {bestDay && (
+                <div className="pb-4 border-b border-slate-700/30">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">📅</span>
+                    <div>
+                      <p className="text-sm text-slate-300">
+                        <span className="font-semibold text-white">{asset.symbol}</span> sube más los{' '}
+                        <span className="text-brand-400 font-semibold">{bestDay.day}</span> históricamente
+                      </p>
+                      {expertMode && (
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Días positivos: {bestDay.rate}% (últimas 52 semanas)
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Disclaimer */}
+              <p className="text-xs text-slate-600 text-center leading-relaxed">
+                ⚠️ Esto no es asesoramiento financiero. El trading conlleva riesgo de pérdida de capital.
+              </p>
+            </div>
+
+          </div>
         )}
       </div>
     </div>
