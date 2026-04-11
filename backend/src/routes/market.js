@@ -245,7 +245,7 @@ marketRouter.get('/whale-alerts', async (_req, res) => {
       btcPrice = priceRes.data?.bitcoin?.usd ?? btcPrice;
     } catch { /* usa default */ }
 
-    const BTC_THRESHOLD = 50; // BTC mínimo para considerar "whale"
+    const BTC_THRESHOLD = 10; // BTC mínimo para considerar "whale"
     const SAT = 1e8;
 
     const whales = data
