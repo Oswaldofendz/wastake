@@ -17,11 +17,13 @@ export function Dashboard() {
   const [expandedCats, setExpandedCats]   = useState({ crypto: true });
 
   const CATALOG_CATEGORIES = [
-    { id: 'crypto',    label: 'Cripto',      icon: '₿',  color: 'text-amber-400' },
-    { id: 'stock',     label: 'Acciones',    icon: '🏢', color: 'text-sky-400'   },
-    { id: 'etf',       label: 'ETFs',        icon: '📈', color: 'text-blue-400'  },
-    { id: 'commodity', label: 'Commodities', icon: '🥇', color: 'text-yellow-400'},
-    { id: 'forex',     label: 'Divisas',     icon: '💱', color: 'text-purple-400'},
+    { id: 'crypto',      label: 'Crypto',         icon: '₿',  color: 'text-orange-400', ids: ['bitcoin','ethereum','solana','ripple','binancecoin','cardano','dogecoin','polkadot','avalanche-2','chainlink','shiba-inu','litecoin','cosmos','uniswap','near'] },
+    { id: 'stocks',      label: 'Acciones',        icon: '🏢', color: 'text-sky-400',    ids: ['AAPL','MSFT','NVDA','TSLA','AMZN','GOOGL','META','NFLX','JPM','V'] },
+    { id: 'etfs',        label: 'ETFs',            icon: '📊', color: 'text-green-400',  ids: ['SPY','QQQ','DIA','IWM','URTH','EEM','VTI','ARKK','XLK','XLF','XLE'] },
+    { id: 'forex',       label: 'Forex',           icon: '💱', color: 'text-purple-400', ids: ['EURUSD=X','GBPUSD=X','USDJPY=X','USDMXN=X','USDBRL=X'] },
+    { id: 'commodities', label: 'Materias Primas', icon: '🥇', color: 'text-yellow-400', ids: ['GC=F','SI=F'] },
+    { id: 'indices',     label: 'Índices',         icon: '📈', color: 'text-blue-400',   ids: ['^GSPC','^NDX','^DJI','^FTSE','^N225','^GDAXI'] },
+    { id: 'bonds',       label: 'Bonos',           icon: '🏛️', color: 'text-cyan-400',   ids: ['TLT','IEF','SHY','HYG','LQD'] },
   ];
 
   // JS-based breakpoint — bypasses any Tailwind purge issues
@@ -44,6 +46,7 @@ export function Dashboard() {
       setExtraAssets(prev => [asset, ...prev]);
     }
     setSelectedAsset(asset);
+    if (isMobile) setSidebarOpen(false);
   }
 
   return (
@@ -114,7 +117,7 @@ export function Dashboard() {
             ) : (
               <div className="flex flex-col gap-1">
                 {CATALOG_CATEGORIES.map(cat => {
-                  const catAssets = displayAssets.filter(a => a.type === cat.id);
+                  const catAssets = displayAssets.filter(a => cat.ids.includes(a.id));
                   if (!catAssets.length) return null;
                   const isOpen = !!expandedCats[cat.id];
                   return (
