@@ -33,18 +33,18 @@ const STOCK_ASSETS = [
 ];
 
 function fmtPrice(n) {
-  if (n == null) return '—';
+  if (n == null || isNaN(n) || n <= 0) return '—';
   if (n >= 1000) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
   if (n >= 1)    return `$${n.toFixed(2)}`;
   return `$${n.toFixed(4)}`;
 }
 
 function fmtMktCap(n) {
-  if (n == null) return null;
+  if (!n || isNaN(n) || n <= 0) return null;
   if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
   if (n >= 1e9)  return `$${(n / 1e9).toFixed(1)}B`;
   if (n >= 1e6)  return `$${(n / 1e6).toFixed(1)}M`;
-  return null;
+  return `$${n.toLocaleString()}`;
 }
 
 function AssetLogo({ asset }) {
@@ -59,7 +59,7 @@ function AssetLogo({ asset }) {
 
 function HeatCell({ asset }) {
   const [expanded, setExpanded] = useState(false);
-  const change = asset.change24h ?? 0;
+  const change = (asset.change24h != null && !isNaN(asset.change24h)) ? asset.change24h : 0;
   const { bg, text } = heatColor(change);
   const cap = fmtMktCap(asset.marketCap);
   const vol = asset.volume24h ? fmtMktCap(asset.volume24h) : null;
@@ -80,7 +80,7 @@ function HeatCell({ asset }) {
       </div>
       <p className="text-xs font-mono text-white/60 truncate">{fmtPrice(asset.price)}</p>
       <p className={`font-bold font-mono ${text} ${expanded ? 'text-2xl' : 'text-base'}`}>
-        {change >= 0 ? '+' : ''}{change.toFixed(2)}%
+        {change >= 0 ? '+' : ''}{Number(change).toFixed(2)}%
       </p>
       {expanded && (
         <div className="mt-auto flex flex-col gap-1 pt-2 border-t border-white/10">
