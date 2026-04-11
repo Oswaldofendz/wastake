@@ -13,19 +13,22 @@ const ASSETS = [
 // Pearson correlation coefficient
 function pearson(a, b) {
   const n = Math.min(a.length, b.length);
-  if (n < 5) return null;
-  const ax = a.slice(-n); const bx = b.slice(-n);
+  if (n < 10) return null;
+  const ax = a.slice(-n);
+  const bx = b.slice(-n);
   const ma = ax.reduce((s, v) => s + v, 0) / n;
   const mb = bx.reduce((s, v) => s + v, 0) / n;
   let num = 0, da = 0, db = 0;
   for (let i = 0; i < n; i++) {
-    const ra = ax[i] - ma; const rb = bx[i] - mb;
+    const ra = ax[i] - ma;
+    const rb = bx[i] - mb;
     num += ra * rb;
     da  += ra * ra;
     db  += rb * rb;
   }
-  if (da === 0 || db === 0) return null;
-  return num / Math.sqrt(da * db);
+  if (da < 1e-10 || db < 1e-10) return null;
+  const r = num / Math.sqrt(da * db);
+  return isNaN(r) ? null : Math.max(-1, Math.min(1, r));
 }
 
 // Daily returns from OHLCV candles
@@ -54,65 +57,51 @@ function corrLabel(r) {
   return r.toFixed(2);
 }
 
-function AssetSparkline({ asset }) {
-  const [candles, setCandles] = useState(null);
-
-  useEffect(() => {
-    fetchOHLCV(
-      asset.id,
-      asset.type === 'crypto' ? 'crypto' : 'stock',
-      asset.type === 'crypto' ? { days: 90 } : {}
-    ).then(setCandles).catch(() => {});
-  }, [asset.id]);
-
-  if (!candles?.length) return (
-    <div className="bg-slate-900/40 rounded-lg p-3 animate-pulse">
-      <div className="h-3 bg-slate-700 rounded w-1/2 mb-2"/>
-      <div className="h-12 bg-slate-700/40 rounded"/>
+function AssetSparkline({ asset, index, returnsData }) {
+  if (!returnsData?.[index]?.length) return (
+    <div className="bg-slate-900/40 rounded-lg p-3">
+      <p className="text-xs font-semibold text-slate-400 mb-2">{asset.symbol}</p>
+      <p className="text-xs text-slate-600">Sin datos</p>
     </div>
   );
 
-  const closes = candles.map(c => c.close);
-  const min = Math.min(...closes);
-  const max = Math.max(...closes);
-  const range = max - min || 1;
+  const rets = returnsData[index];
+  const cumulative = [1];
+  for (const r of rets) cumulative.push(cumulative[cumulative.length - 1] * (1 + r));
+
+  const min = Math.min(...cumulative);
+  const max = Math.max(...cumulative);
+  const range = max - min || 0.001;
   const w = 200, h = 50;
-  const points = closes.map((v, i) => {
-    const x = (i / (closes.length - 1)) * w;
+  const points = cumulative.map((v, i) => {
+    const x = (i / (cumulative.length - 1)) * w;
     const y = h - ((v - min) / range) * h;
     return `${x},${y}`;
   }).join(' ');
-  const first = closes[0];
-  const last = closes[closes.length - 1];
-  const pct = ((last - first) / first) * 100;
-  const color = pct >= 0 ? '#22c55e' : '#ef4444';
+
+  const totalReturn = (cumulative[cumulative.length - 1] - 1) * 100;
+  const color = totalReturn >= 0 ? '#22c55e' : '#ef4444';
 
   return (
     <div className="bg-slate-900/40 rounded-lg p-3">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-semibold text-slate-300">{asset.symbol}</p>
         <p className="text-xs font-mono font-bold" style={{ color }}>
-          {pct >= 0 ? '+' : ''}{pct.toFixed(1)}%
+          {totalReturn >= 0 ? '+' : ''}{totalReturn.toFixed(1)}%
         </p>
       </div>
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-12" preserveAspectRatio="none">
-        <polyline
-          points={points}
-          fill="none"
-          stroke={color}
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-10" preserveAspectRatio="none">
+        <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     </div>
   );
 }
 
 export function CorrelationMatrix() {
-  const [matrix, setMatrix]   = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
+  const [matrix, setMatrix]         = useState(null);
+  const [returnsData, setReturnsData] = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState(null);
 
   useEffect(() => {
     async function load() {
@@ -125,7 +114,8 @@ export function CorrelationMatrix() {
                 a.type === 'crypto' ? 'crypto' : 'stock',
                 a.type === 'crypto' ? { days: 90 } : {}
               );
-              return returns(candles ?? []);
+              if (!candles?.length) return [];
+              return returns(candles);
             } catch {
               return [];
             }
@@ -134,12 +124,14 @@ export function CorrelationMatrix() {
 
         const n = ASSETS.length;
         const mat = Array.from({ length: n }, (_, i) =>
-          Array.from({ length: n }, (_, j) =>
-            i === j ? 1 : pearson(allReturns[i], allReturns[j])
-          )
+          Array.from({ length: n }, (_, j) => {
+            if (i === j) return 1;
+            if (!allReturns[i].length || !allReturns[j].length) return null;
+            return pearson(allReturns[i], allReturns[j]);
+          })
         );
-
         setMatrix(mat);
+        setReturnsData(allReturns);
       } catch (e) {
         setError(e.message);
       } finally {
@@ -245,8 +237,8 @@ export function CorrelationMatrix() {
         <div className="mt-4">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Precios relativos — últimos 90 días</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {ASSETS.map((asset) => (
-              <AssetSparkline key={asset.id} asset={asset} />
+            {ASSETS.map((asset, i) => (
+              <AssetSparkline key={asset.id} asset={asset} index={i} returnsData={returnsData} />
             ))}
           </div>
         </div>

@@ -579,12 +579,10 @@ export function Panorama() {
             </button>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
-            {/* Row 1: 3 cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 
               {/* Card 1: Señal */}
-              <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 flex flex-col items-center justify-center gap-3 min-h-[280px]">
+              <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 flex flex-col items-center justify-center gap-3 min-h-[320px]">
                 <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold self-start">Señal</p>
                 <div className="flex items-center gap-4 w-full justify-center flex-1">
                   <TrafficLight signal={signal} size="lg" />
@@ -648,11 +646,6 @@ export function Panorama() {
                   </span>
                 </div>
               </div>
-
-            </div>
-
-            {/* Row 2: 2 cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
               {/* Card 4: Contexto de mercado */}
               <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 flex flex-col gap-3">
@@ -790,7 +783,6 @@ export function Panorama() {
               {/* Card 6: Comparación con mercado */}
               <MarketComparisonWidget asset={asset} currentPrice={currentPrice} analysis={analysis} />
 
-            </div>
           </div>
         )}
       </div>

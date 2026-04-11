@@ -94,6 +94,25 @@ export const ASSET_CATEGORIES = [
 
   // ────────────────────────────────────────────────────────────────────────────
   {
+    id: 'stocks', label: 'Acciones', icon: '🏢',
+    color: 'text-sky-400', bg: 'bg-sky-900/20',
+    border: 'border-sky-700/40', dot: 'bg-sky-400',
+    assets: [
+      { id: 'AAPL',  name: 'Apple',       symbol: 'AAPL',  type: 'stock', analysisType: 'stock', tvSymbol: 'NASDAQ:AAPL',  image: 'https://logo.clearbit.com/apple.com'     },
+      { id: 'MSFT',  name: 'Microsoft',   symbol: 'MSFT',  type: 'stock', analysisType: 'stock', tvSymbol: 'NASDAQ:MSFT',  image: 'https://logo.clearbit.com/microsoft.com' },
+      { id: 'NVDA',  name: 'NVIDIA',      symbol: 'NVDA',  type: 'stock', analysisType: 'stock', tvSymbol: 'NASDAQ:NVDA',  image: 'https://logo.clearbit.com/nvidia.com'    },
+      { id: 'TSLA',  name: 'Tesla',       symbol: 'TSLA',  type: 'stock', analysisType: 'stock', tvSymbol: 'NASDAQ:TSLA',  image: 'https://logo.clearbit.com/tesla.com'     },
+      { id: 'AMZN',  name: 'Amazon',      symbol: 'AMZN',  type: 'stock', analysisType: 'stock', tvSymbol: 'NASDAQ:AMZN',  image: 'https://logo.clearbit.com/amazon.com'    },
+      { id: 'GOOGL', name: 'Alphabet',    symbol: 'GOOGL', type: 'stock', analysisType: 'stock', tvSymbol: 'NASDAQ:GOOGL', image: 'https://logo.clearbit.com/google.com'    },
+      { id: 'META',  name: 'Meta',        symbol: 'META',  type: 'stock', analysisType: 'stock', tvSymbol: 'NASDAQ:META',  image: 'https://logo.clearbit.com/meta.com'      },
+      { id: 'NFLX',  name: 'Netflix',     symbol: 'NFLX',  type: 'stock', analysisType: 'stock', tvSymbol: 'NASDAQ:NFLX',  image: 'https://logo.clearbit.com/netflix.com'   },
+      { id: 'JPM',   name: 'JPMorgan',    symbol: 'JPM',   type: 'stock', analysisType: 'stock', tvSymbol: 'NYSE:JPM',     image: 'https://logo.clearbit.com/jpmorganchase.com' },
+      { id: 'V',     name: 'Visa',        symbol: 'V',     type: 'stock', analysisType: 'stock', tvSymbol: 'NYSE:V',       image: 'https://logo.clearbit.com/visa.com'      },
+    ],
+  },
+
+  // ────────────────────────────────────────────────────────────────────────────
+  {
     id: 'forex', label: 'Forex', icon: '💱',
     color: 'text-purple-400', bg: 'bg-purple-900/20',
     border: 'border-purple-700/40', dot: 'bg-purple-400',

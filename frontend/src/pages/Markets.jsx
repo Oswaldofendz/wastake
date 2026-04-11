@@ -8,11 +8,10 @@ import { EconomicCalendar }  from '../components/EconomicCalendar.jsx';
 import { MacroRatesTable }   from '../components/MacroRatesTable.jsx';
 
 const TABS = [
-  { id: 'overview',   label: 'Resumen'        },
-  { id: 'heatmap',    label: 'Heatmap'        },
-  { id: 'correlations', label: 'Correlaciones' },
-  { id: 'calendar',   label: 'Calendario'     },
-  { id: 'macro',      label: 'Macro'          },
+  { id: 'overview',     label: 'Resumen'            },
+  { id: 'heatmap',      label: 'Heatmap'            },
+  { id: 'correlations', label: 'Correlaciones'      },
+  { id: 'calendar',     label: 'Calendario & Macro' },
 ];
 
 export function Markets({ allAssets }) {
@@ -74,14 +73,12 @@ export function Markets({ allAssets }) {
           <CorrelationMatrix />
         )}
 
-        {/* ── Calendar ─────────────────────────────────────────── */}
+        {/* ── Calendar & Macro ─────────────────────────────────── */}
         {tab === 'calendar' && (
-          <EconomicCalendar />
-        )}
-
-        {/* ── Macro ────────────────────────────────────────────── */}
-        {tab === 'macro' && (
-          <MacroRatesTable />
+          <div className="space-y-4">
+            <EconomicCalendar />
+            <MacroRatesTable />
+          </div>
         )}
       </div>
     </div>

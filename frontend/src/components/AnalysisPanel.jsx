@@ -118,14 +118,14 @@ function fmtValue(v) {
 }
 
 function scoreColor(score) {
-  if (score > 25)  return { text: 'text-green-400', ring: 'stroke-green-500' };
-  if (score < -25) return { text: 'text-red-400',   ring: 'stroke-red-500'   };
-  return            { text: 'text-amber-400',        ring: 'stroke-amber-500' };
+  if (score >= 25)  return { text: 'text-green-400', ring: 'stroke-green-500' };
+  if (score <= -25) return { text: 'text-red-400',   ring: 'stroke-red-500'   };
+  return             { text: 'text-amber-400',        ring: 'stroke-amber-500' };
 }
 
 function scoreToSignal(score) {
-  if (score > 25)  return 'buy';
-  if (score < -25) return 'sell';
+  if (score >= 25)  return 'buy';
+  if (score <= -25) return 'sell';
   return 'hold';
 }
 

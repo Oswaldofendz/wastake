@@ -13,6 +13,16 @@ export function Dashboard() {
   const { allAssets, loading, error } = usePrices(60_000);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [extraAssets, setExtraAssets]     = useState([]);
+  const [sidebarOpen, setSidebarOpen]     = useState(false);
+  const [expandedCats, setExpandedCats]   = useState({ crypto: true });
+
+  const CATALOG_CATEGORIES = [
+    { id: 'crypto',    label: 'Cripto',      icon: '₿',  color: 'text-amber-400' },
+    { id: 'stock',     label: 'Acciones',    icon: '🏢', color: 'text-sky-400'   },
+    { id: 'etf',       label: 'ETFs',        icon: '📈', color: 'text-blue-400'  },
+    { id: 'commodity', label: 'Commodities', icon: '🥇', color: 'text-yellow-400'},
+    { id: 'forex',     label: 'Divisas',     icon: '💱', color: 'text-purple-400'},
+  ];
 
   // JS-based breakpoint — bypasses any Tailwind purge issues
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
@@ -51,46 +61,95 @@ export function Dashboard() {
         }}
       >
         {/* ── Asset list ── */}
-        <aside
-          style={{
-            width: isMobile ? '100%' : '288px',
-            flexShrink: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            borderRight: isMobile ? 'none' : '1px solid rgba(100,116,139,0.3)',
-            borderBottom: isMobile ? '1px solid rgba(100,116,139,0.3)' : 'none',
-            padding: '0 12px 12px',
-            maxHeight: isMobile ? '250px' : 'none',
-            overflowY: 'auto',
-          }}
-        >
-          <div style={{ marginBottom: '12px' }}>
-            <AssetSearch onSelect={handleSearch} />
-          </div>
-
-          {loading && !displayAssets.length ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px' }}>
-              <div className="text-center">
-                <div className="w-6 h-6 border-2 border-slate-600 border-t-brand-400 rounded-full animate-spin mx-auto mb-2" />
-                <p className="text-sm text-slate-500">{t('loading')}</p>
-              </div>
+        <>
+          {/* Mobile hamburger toggle */}
+          {isMobile && (
+            <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(100,116,139,0.3)' }}>
+              <button
+                onClick={() => setSidebarOpen(o => !o)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700/50 text-sm text-slate-300 w-full hover:bg-slate-700/60 transition-colors"
+              >
+                <span className="text-base leading-none">{sidebarOpen ? '✕' : '☰'}</span>
+                <span className="flex-1 text-left font-medium">
+                  {chartAsset ? chartAsset.symbol : t('loading')}
+                </span>
+                {chartAsset && (
+                  <span className={`text-sm font-mono font-bold ${(chartAsset.change24h ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {(chartAsset.change24h ?? 0) >= 0 ? '+' : ''}{chartAsset.change24h?.toFixed(2)}%
+                  </span>
+                )}
+                <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 text-slate-500 transition-transform ${sidebarOpen ? 'rotate-180' : ''}`}>
+                  <path d="M8 10.5L2.5 5h11L8 10.5Z" />
+                </svg>
+              </button>
             </div>
-          ) : error ? (
-            <p className="text-base text-red-400 px-2">{t('error_fetch')}: {error}</p>
-          ) : (
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {displayAssets.map(asset => (
-                <li key={asset.id}>
-                  <PriceCard
-                    asset={asset}
-                    isSelected={chartAsset?.id === asset.id}
-                    onClick={setSelectedAsset}
-                  />
-                </li>
-              ))}
-            </ul>
           )}
-        </aside>
+
+          <aside
+            style={{
+              width: isMobile ? '100%' : '288px',
+              flexShrink: 0,
+              display: isMobile && !sidebarOpen ? 'none' : 'flex',
+              flexDirection: 'column',
+              borderRight: isMobile ? 'none' : '1px solid rgba(100,116,139,0.3)',
+              borderBottom: isMobile ? '1px solid rgba(100,116,139,0.3)' : 'none',
+              padding: '0 12px 12px',
+              maxHeight: isMobile ? '320px' : 'none',
+              overflowY: 'auto',
+            }}
+          >
+            <div style={{ marginBottom: '12px', paddingTop: '12px' }}>
+              <AssetSearch onSelect={handleSearch} />
+            </div>
+
+            {loading && !displayAssets.length ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px' }}>
+                <div className="text-center">
+                  <div className="w-6 h-6 border-2 border-slate-600 border-t-brand-400 rounded-full animate-spin mx-auto mb-2" />
+                  <p className="text-sm text-slate-500">{t('loading')}</p>
+                </div>
+              </div>
+            ) : error ? (
+              <p className="text-base text-red-400 px-2">{t('error_fetch')}: {error}</p>
+            ) : (
+              <div className="flex flex-col gap-1">
+                {CATALOG_CATEGORIES.map(cat => {
+                  const catAssets = displayAssets.filter(a => a.type === cat.id);
+                  if (!catAssets.length) return null;
+                  const isOpen = !!expandedCats[cat.id];
+                  return (
+                    <div key={cat.id} className="rounded-lg overflow-hidden border border-slate-700/30">
+                      <button
+                        onClick={() => setExpandedCats(p => ({ ...p, [cat.id]: !p[cat.id] }))}
+                        className="w-full flex items-center gap-2 px-3 py-2 bg-slate-800/60 hover:bg-slate-700/40 transition-colors"
+                      >
+                        <span className="text-sm leading-none">{cat.icon}</span>
+                        <span className={`text-xs font-semibold uppercase tracking-wide ${cat.color}`}>{cat.label}</span>
+                        <span className="text-xs text-slate-600 ml-1">({catAssets.length})</span>
+                        <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 text-slate-500 ml-auto transition-transform ${isOpen ? 'rotate-180' : ''}`}>
+                          <path d="M8 10.5L2.5 5h11L8 10.5Z" />
+                        </svg>
+                      </button>
+                      {isOpen && (
+                        <ul className="flex flex-col gap-1 p-1 bg-slate-900/20">
+                          {catAssets.map(asset => (
+                            <li key={asset.id}>
+                              <PriceCard
+                                asset={asset}
+                                isSelected={chartAsset?.id === asset.id}
+                                onClick={(a) => { setSelectedAsset(a); if (isMobile) setSidebarOpen(false); }}
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </aside>
+        </>
 
         {/* ── Chart + analysis ── */}
         <main
