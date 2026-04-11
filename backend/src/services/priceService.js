@@ -170,6 +170,29 @@ async function fetchStooqPrices(symbols) {
   return result;
 }
 
+async function fetchYahooPrices(symbols) {
+  const result = {};
+  await Promise.all(symbols.map(async (sym) => {
+    try {
+      const { data } = await axios.get(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=5d`,
+        { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WaStake/1.0)' }, timeout: 8000 }
+      );
+      const meta = data.chart?.result?.[0]?.meta;
+      if (!meta) return;
+      const price = meta.regularMarketPrice;
+      const prev = meta.chartPreviousClose;
+      if (!price) return;
+      result[sym] = {
+        price,
+        change: prev > 0 ? ((price - prev) / prev) * 100 : 0,
+        volume: meta.regularMarketVolume ?? 0,
+      };
+    } catch { /* skip */ }
+  }));
+  return result;
+}
+
 export async function getTraditionalPrices() {
   const key = 'traditional_prices';
   const cached = fromCache(key);
@@ -187,7 +210,7 @@ export async function getTraditionalPrices() {
 
   const [etfData, stockData] = await Promise.all([
     fetchStooqPrices(['SPY', 'URTH', 'EEM']),
-    fetchStooqPrices(['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOGL', 'META', 'NFLX', 'JPM', 'V']),
+    fetchYahooPrices(['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOGL', 'META', 'NFLX', 'JPM', 'V']),
   ]);
 
   const result = {
