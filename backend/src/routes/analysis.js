@@ -55,6 +55,7 @@ analysisRouter.get('/:id/narrative', async (req, res) => {
   const { id } = req.params;
   const { type = 'crypto', lang = 'es' } = req.query;
   const cacheKey = `narrative_${id}_${lang}`;
+  analysisCache.delete(cacheKey);
   const cached = getCache(cacheKey);
   if (cached) return res.json(cached);
 
