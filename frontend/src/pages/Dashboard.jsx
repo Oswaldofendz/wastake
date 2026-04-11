@@ -224,7 +224,7 @@ function StatCard({ label, value, mono = false, positive }) {
 }
 
 function fmtPrice(n) {
-  if (n == null) return '—';
+  if (n == null || isNaN(n)) return '—';
   if (n >= 1000) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
   if (n >= 1)    return `$${n.toFixed(2)}`;
   return `$${n.toFixed(4)}`;

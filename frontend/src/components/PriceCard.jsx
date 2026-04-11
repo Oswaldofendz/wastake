@@ -18,7 +18,7 @@ function fmt(n) {
 }
 
 function fmtPrice(n) {
-  if (n == null) return '—';
+  if (n == null || isNaN(n)) return '—';
   if (n >= 1000) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
   if (n >= 1)    return `$${n.toFixed(2)}`;
   return `$${n.toFixed(4)}`;
@@ -84,7 +84,9 @@ export function PriceCard({ asset, isSelected, onClick }) {
           <div className="flex items-center justify-between mt-0.5">
             <p className="text-sm font-semibold text-white font-mono">{fmtPrice(asset.price)}</p>
             <span className={['text-xs font-medium', positive ? 'text-green-400' : 'text-red-400'].join(' ')}>
-              {positive ? '+' : ''}{asset.change24h?.toFixed(2)}%
+              {asset.change24h != null && !isNaN(asset.change24h)
+                ? `${positive ? '+' : ''}${asset.change24h.toFixed(2)}%`
+                : '—'}
             </span>
           </div>
 
