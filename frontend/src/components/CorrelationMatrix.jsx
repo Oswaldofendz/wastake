@@ -109,12 +109,13 @@ export function CorrelationMatrix() {
         const allReturns = await Promise.all(
           ASSETS.map(async a => {
             try {
-              const candles = await fetchOHLCV(
+              const raw = await fetchOHLCV(
                 a.id,
                 a.type === 'crypto' ? 'crypto' : 'stock',
                 a.type === 'crypto' ? { days: 90 } : {}
               );
-              if (!candles?.length) return [];
+              const candles = Array.isArray(raw) ? raw : raw?.candles ?? [];
+              if (candles.length < 10) return [];
               return returns(candles);
             } catch {
               return [];
