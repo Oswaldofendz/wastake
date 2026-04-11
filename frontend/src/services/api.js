@@ -54,6 +54,10 @@ export const fetchWhaleAlerts = () => get('/api/market/whale-alerts');
 // ForexFactory economic calendar (this week)
 export const fetchCalendar = () => get('/api/market/calendar');
 
+// VIX & DXY market indices
+export const fetchVIX = () => get('/api/market/vix');
+export const fetchDXY = () => get('/api/market/dxy');
+
 // MyMemory translation proxy
 export const translateText = (q, to) => {
   const qs = new URLSearchParams({ q, to }).toString();

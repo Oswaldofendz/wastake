@@ -274,3 +274,48 @@ marketRouter.get('/whale-alerts', async (_req, res) => {
     res.status(502).json({ error: 'Mempool API unavailable', detail: err.message });
   }
 });
+
+// GET /api/market/vix — CBOE Volatility Index via stooq
+marketRouter.get('/vix', async (req, res) => {
+  try {
+    const response = await fetch('https://stooq.com/q/l/?s=%5Evix&f=sd2t2ohlcvn&e=csv', {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    const text = await response.text();
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) return res.status(404).json({ error: 'No VIX data' });
+    const cols = lines[1].split(',');
+    const value = parseFloat(cols[4]);
+    if (isNaN(value)) return res.status(404).json({ error: 'Invalid VIX data' });
+    const level = value < 15 ? 'low' : value < 25 ? 'moderate' : value < 35 ? 'high' : 'extreme';
+    const label = value < 15 ? 'Baja volatilidad — mercado tranquilo' :
+                  value < 25 ? 'Volatilidad moderada — condiciones normales' :
+                  value < 35 ? 'Alta volatilidad — mercado nervioso' :
+                               'Volatilidad extrema — pánico en el mercado';
+    res.json({ value, level, label });
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// GET /api/market/dxy — US Dollar Index via stooq
+marketRouter.get('/dxy', async (req, res) => {
+  try {
+    const response = await fetch('https://stooq.com/q/l/?s=dxy&f=sd2t2ohlcvn&e=csv', {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    const text = await response.text();
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) return res.status(404).json({ error: 'No DXY data' });
+    const cols = lines[1].split(',');
+    const value = parseFloat(cols[4]);
+    if (isNaN(value)) return res.status(404).json({ error: 'Invalid DXY data' });
+    const trend = value > 104 ? 'strong' : value > 100 ? 'neutral' : 'weak';
+    const label = value > 104 ? 'Dólar fuerte — presión bajista para el oro' :
+                  value > 100 ? 'Dólar neutro — sin efecto claro en commodities' :
+                                'Dólar débil — favorable para oro y plata';
+    res.json({ value, trend, label });
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
