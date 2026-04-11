@@ -7,7 +7,7 @@ import { DonutChart } from '../components/DonutChart.jsx';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtUsd(n) {
-  if (n == null) return '—';
+  if (n == null || isNaN(n)) return '—';
   if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
   if (Math.abs(n) >= 1000) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
   return `$${Math.abs(n) < 1 ? n.toFixed(4) : n.toFixed(2)}`;

@@ -13,7 +13,7 @@ const ALERT_TYPES = [
 
 function formatPrice(price) {
   if (price == null) return '';
-  if (price >= 1000) return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (price >= 1000) return (price != null && !isNaN(price) ? price : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (price >= 1)    return price.toFixed(4);
   return price.toPrecision(4);
 }

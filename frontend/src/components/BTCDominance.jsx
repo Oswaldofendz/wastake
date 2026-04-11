@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { fetchGlobalMarket } from '../services/api.js';
 
 function fmt(n) {
-  if (n == null) return '—';
+  if (n == null || isNaN(n)) return '—';
   if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
   if (n >= 1e9)  return `$${(n / 1e9).toFixed(1)}B`;
   return `$${n.toLocaleString()}`;

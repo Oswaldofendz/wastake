@@ -59,7 +59,7 @@ function computeBestDay(candles) {
 
 // ─── Format price ─────────────────────────────────────────────────────────────
 function fmtPrice(n) {
-  if (n == null) return '—';
+  if (n == null || isNaN(n)) return '—';
   if (n >= 1000) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
   return `$${n.toFixed(n < 1 ? 4 : 2)}`;
 }
@@ -722,7 +722,7 @@ export function Panorama() {
                   const atr = ind.atr.current;
                   const targetLow = Math.max(bb.lower, currentPrice - atr * 2);
                   const targetHigh = Math.min(bb.upper, currentPrice + atr * 2);
-                  const fmtP = n => n >= 1000 ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : `$${n.toFixed(2)}`;
+                  const fmtP = n => (n == null || isNaN(n)) ? '—' : n >= 1000 ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : `$${n.toFixed(2)}`;
                   return (
                     <div className="bg-slate-900/60 rounded-lg p-3">
                       <p className="text-xs text-slate-400 font-semibold mb-2">Rango objetivo (ATR + Bollinger)</p>
