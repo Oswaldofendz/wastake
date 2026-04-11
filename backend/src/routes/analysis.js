@@ -55,15 +55,21 @@ analysisRouter.get('/:id/narrative', async (req, res) => {
   const { id } = req.params;
   const { type = 'crypto', lang = 'es' } = req.query;
   const cacheKey = `narrative_${id}_${lang}`;
-  analysisCache.delete(cacheKey);
+
   const cached = getCache(cacheKey);
   if (cached) return res.json(cached);
 
   try {
-    const aType = type;
-    const candles = type === 'crypto'
-      ? await (await import('../services/priceService.js')).getCryptoOHLCV(id, 90)
-      : await (await import('../services/priceService.js')).getTraditionalOHLCV(id);
+    let candles;
+    if (type === 'crypto') {
+      candles = await getCryptoOHLCV(id, 90);
+    } else {
+      candles = await getTraditionalOHLCV(id);
+    }
+
+    if (!candles || candles.length < 10) {
+      return res.status(404).json({ error: 'Insufficient data for narrative' });
+    }
 
     const analysis = computeIndicators(candles);
     const { indicators, signals, summary } = analysis;
@@ -82,7 +88,7 @@ analysisRouter.get('/:id/narrative', async (req, res) => {
 
 Write only the analysis paragraph, no titles, no bullet points, no markdown.`;
 
-    const response = await fetch(
+    const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: 'POST',
@@ -90,12 +96,18 @@ Write only the analysis paragraph, no titles, no bullet points, no markdown.`;
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
       }
     );
-    const data = await response.json();
-    const narrative = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? null;
+
+    const geminiData = await geminiRes.json();
+    console.log('[narrative] status:', geminiRes.status);
+    console.log('[narrative] response:', JSON.stringify(geminiData).slice(0, 300));
+
+    const narrative = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? null;
     const result = { id, lang, narrative };
-    setCache(cacheKey, result);
+    if (narrative) setCache(cacheKey, result);
     res.json(result);
+
   } catch (err) {
+    console.error('[narrative] error:', err.message);
     res.status(502).json({ error: err.message });
   }
 });
