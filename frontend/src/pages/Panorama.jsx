@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { fetchAnalysis, fetchFearGreed, fetchNews, fetchOHLCV, fetchNarrative } from '../services/api.js';
+import { fetchAnalysis, fetchFearGreed, fetchNews, fetchOHLCV, fetchNarrative, fetchVIX, fetchDXY } from '../services/api.js';
 import { ANALYZABLE_CATEGORIES } from '../data/assetCatalog.js';
 import { usePrices } from '../hooks/usePrices.js';
 
@@ -300,6 +300,8 @@ export function Panorama() {
   const [candles,          setCandles]          = useState(null);
   const [narrativeData,    setNarrativeData]    = useState(null);
   const [narrativeLoading, setNarrativeLoading] = useState(false);
+  const [vixData,          setVixData]          = useState(null);
+  const [dxyData,          setDxyData]          = useState(null);
   const [loading,          setLoading]          = useState(true);
   const [error,            setError]            = useState(null);
 
@@ -337,6 +339,11 @@ export function Panorama() {
 
     setLoading(false);
 
+    if (a.type !== 'crypto') {
+      fetchVIX().then(setVixData).catch(() => {});
+      fetchDXY().then(setDxyData).catch(() => {});
+    }
+
     setNarrativeLoading(true);
     setNarrativeData(null);
     fetchNarrative(a.id, aType, i18n.language.split('-')[0])
@@ -370,12 +377,6 @@ export function Panorama() {
   const ind          = analysis?.indicators;
   const sigs         = analysis?.signals;
 
-  // Fear & Greed
-  const fgVal  = fgData?.current?.value ? parseInt(fgData.current.value) : null;
-  const fgText = fgData?.current?.value_classification ?? '';
-  const fgCtx  = fgVal != null
-    ? `"${fgText}" (${fgVal}/100) — ${fgVal < 25 ? 'históricamente buen momento de acumulación' : fgVal > 75 ? 'históricamente zona de euforia y precaución' : 'sentimiento neutral de mercado'}`
-    : null;
 
   return (
     <div
@@ -569,19 +570,110 @@ export function Panorama() {
               {/* Card 4: Contexto de mercado */}
               <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 flex flex-col gap-3">
                 <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Contexto de mercado</p>
-                {fgCtx && (
+
+                {/* Fear & Greed — solo para crypto */}
+                {asset.type === 'crypto' && fgData && (() => {
+                  const val = parseInt(fgData.current?.value ?? 0);
+                  const history = fgData.history ?? [];
+                  const color = val <= 25 ? '#ef4444' : val <= 45 ? '#f97316' : val <= 55 ? '#eab308' : val <= 75 ? '#84cc16' : '#22c55e';
+                  const label = val <= 25 ? 'Miedo Extremo' : val <= 45 ? 'Miedo' : val <= 55 ? 'Neutral' : val <= 75 ? 'Codicia' : 'Codicia Extrema';
+                  const points = history.slice(0, 7).reverse();
+                  const max = Math.max(...points.map(p => parseInt(p.value)));
+                  const min = Math.min(...points.map(p => parseInt(p.value)));
+                  const range = max - min || 1;
+                  const w = 140, h = 40;
+                  const pathD = points.map((p, i) => {
+                    const x = (i / (points.length - 1)) * w;
+                    const y = h - ((parseInt(p.value) - min) / range) * h;
+                    return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+                  }).join(' ');
+                  return (
+                    <div className="bg-slate-900/60 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs text-slate-400 font-semibold">Fear &amp; Greed Index</p>
+                        <span className="text-xs font-bold" style={{ color }}>{val} — {label}</span>
+                      </div>
+                      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-10">
+                        <path d={pathD} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        {points.map((p, i) => {
+                          const x = (i / (points.length - 1)) * w;
+                          const y = h - ((parseInt(p.value) - min) / range) * h;
+                          return <circle key={i} cx={x} cy={y} r="2.5" fill={color}/>;
+                        })}
+                      </svg>
+                      <p className="text-xs text-slate-500 mt-1">Últimos 7 días — índice de sentimiento crypto</p>
+                    </div>
+                  );
+                })()}
+
+                {/* VIX — para ETFs de acciones */}
+                {(asset.type === 'etf' || asset.type === 'stock') && vixData && (
                   <div className="bg-slate-900/60 rounded-lg p-3">
-                    <p className="text-xs text-slate-400 font-semibold mb-1">Fear &amp; Greed</p>
-                    <p className="text-xs text-slate-300 leading-relaxed">{fgCtx}</p>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs text-slate-400 font-semibold">VIX — Índice de volatilidad</p>
+                      <span className={`text-xs font-bold ${
+                        vixData.level === 'low' ? 'text-green-400' :
+                        vixData.level === 'moderate' ? 'text-amber-400' :
+                        'text-red-400'
+                      }`}>{vixData.value?.toFixed(2)}</span>
+                    </div>
+                    <p className="text-xs text-slate-300">{vixData.label}</p>
                   </div>
                 )}
+
+                {/* DXY — para commodities */}
+                {(asset.type === 'commodity') && dxyData && (
+                  <div className="bg-slate-900/60 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs text-slate-400 font-semibold">DXY — Índice del dólar</p>
+                      <span className={`text-xs font-bold ${
+                        dxyData.trend === 'weak' ? 'text-green-400' :
+                        dxyData.trend === 'strong' ? 'text-red-400' :
+                        'text-amber-400'
+                      }`}>{dxyData.value?.toFixed(2)}</span>
+                    </div>
+                    <p className="text-xs text-slate-300">{dxyData.label}</p>
+                  </div>
+                )}
+
+                {/* Precio objetivo basado en ATR y Bollinger */}
+                {ind?.bollingerBands?.current && ind?.atr?.current && currentPrice && (() => {
+                  const bb = ind.bollingerBands.current;
+                  const atr = ind.atr.current;
+                  const targetLow = Math.max(bb.lower, currentPrice - atr * 2);
+                  const targetHigh = Math.min(bb.upper, currentPrice + atr * 2);
+                  const fmtP = n => n >= 1000 ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : `$${n.toFixed(2)}`;
+                  return (
+                    <div className="bg-slate-900/60 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 font-semibold mb-2">Rango objetivo (ATR + Bollinger)</p>
+                      <div className="flex items-center justify-between">
+                        <div className="text-center">
+                          <p className="text-xs text-slate-500">Soporte</p>
+                          <p className="text-sm font-bold text-red-400 font-mono">{fmtP(targetLow)}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-slate-500">Actual</p>
+                          <p className="text-sm font-bold text-white font-mono">{fmtP(currentPrice)}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-slate-500">Resistencia</p>
+                          <p className="text-sm font-bold text-green-400 font-mono">{fmtP(targetHigh)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Mejor día histórico */}
                 {bestDay && (
                   <div className="bg-slate-900/60 rounded-lg p-3">
                     <p className="text-xs text-slate-400 font-semibold mb-1">Mejor día histórico</p>
-                    <p className="text-xs text-slate-300">{bestDay.day} — {bestDay.rate}% alcista</p>
+                    <p className="text-xs text-slate-300">{bestDay.day} — {bestDay.rate}% de velas alcistas</p>
                   </div>
                 )}
+
                 <VolatilityWidget atr={ind?.atr?.current} currentPrice={currentPrice} expertMode={expertMode} />
+
                 {newsData?.length > 0 && (
                   <div>
                     <p className="text-xs text-slate-400 font-semibold mb-2">Últimas noticias</p>
