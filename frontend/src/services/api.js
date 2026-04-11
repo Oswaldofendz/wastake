@@ -30,6 +30,12 @@ export const fetchAnalysis = (id, type = 'crypto', days = 90) => {
   return get(`/api/analysis/${encodeURIComponent(id)}?${qs}`);
 };
 
+// Narrative AI analysis (Gemini)
+export const fetchNarrative = (id, type = 'crypto', lang = 'es') => {
+  const qs = new URLSearchParams({ type, lang }).toString();
+  return get(`/api/analysis/${encodeURIComponent(id)}/narrative?${qs}`);
+};
+
 // Noticias con sentimiento (Gemini)
 export const fetchNews = (id, type = 'crypto') => {
   const qs = new URLSearchParams({ type }).toString();

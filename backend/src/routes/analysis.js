@@ -49,3 +49,52 @@ analysisRouter.get('/:id', async (req, res) => {
     res.status(status).json({ error: err.message });
   }
 });
+
+// GET /api/analysis/:id/narrative?type=crypto&lang=es
+analysisRouter.get('/:id/narrative', async (req, res) => {
+  const { id } = req.params;
+  const { type = 'crypto', lang = 'es' } = req.query;
+  const cacheKey = `narrative_${id}_${lang}`;
+  const cached = getCache(cacheKey);
+  if (cached) return res.json(cached);
+
+  try {
+    const aType = type;
+    const candles = type === 'crypto'
+      ? await (await import('../services/priceService.js')).getCryptoOHLCV(id, 90)
+      : await (await import('../services/priceService.js')).getTraditionalOHLCV(id);
+
+    const analysis = computeIndicators(candles);
+    const { indicators, signals, summary } = analysis;
+    const lastPrice = analysis.meta.lastPrice;
+
+    const langNames = { es: 'Spanish', pt: 'Portuguese', en: 'English' };
+    const langName = langNames[lang] || 'Spanish';
+
+    const prompt = `You are a professional financial analyst. Write a concise market analysis paragraph in ${langName} (2-3 sentences, max 120 words) for ${id.toUpperCase()} based on these indicators:
+- Price: $${lastPrice}
+- RSI: ${indicators.rsi.current} (${signals.rsi.signal})
+- MACD histogram: ${indicators.macd.current?.histogram} (${signals.macd.signal})
+- EMA20: ${indicators.ema20.current}, EMA50: ${indicators.ema50.current} (${signals.ema.signal})
+- Bollinger: ${signals.bb.signal}
+- Overall score: ${summary.score}/100 (${summary.overall})
+
+Write only the analysis paragraph, no titles, no bullet points, no markdown.`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      }
+    );
+    const data = await response.json();
+    const narrative = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? null;
+    const result = { id, lang, narrative };
+    setCache(cacheKey, result);
+    res.json(result);
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});

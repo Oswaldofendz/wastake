@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchAnalysis, fetchFearGreed, fetchNews, fetchOHLCV } from '../services/api.js';
+import { useTranslation } from 'react-i18next';
+import { fetchAnalysis, fetchFearGreed, fetchNews, fetchOHLCV, fetchNarrative } from '../services/api.js';
 import { ANALYZABLE_CATEGORIES } from '../data/assetCatalog.js';
 import { usePrices } from '../hooks/usePrices.js';
 
@@ -22,37 +23,6 @@ const SIGNAL = {
   hold: { label: 'MANTENER', color: 'text-amber-400', glowColor: 'rgba(251,191,36,0.55)', hex: '#f59e0b', activeDot: 'bg-amber-400 border-amber-300',  darkDot: 'bg-amber-950/30 border-amber-900/10'  },
   sell: { label: 'VENDER',   color: 'text-red-400',   glowColor: 'rgba(239,68,68,0.55)',  hex: '#ef4444', activeDot: 'bg-red-500 border-red-400',    darkDot: 'bg-red-950/40 border-red-900/20'      },
 };
-
-// ─── Natural language narrative ───────────────────────────────────────────────
-function buildNarrative(analysis) {
-  if (!analysis) return null;
-  const { signals, indicators, summary } = analysis;
-  const parts = [];
-  const rsi   = indicators?.rsi?.current;
-  const hist  = indicators?.macd?.current?.histogram;
-  const e20   = indicators?.ema20?.current;
-  const e50   = indicators?.ema50?.current;
-
-  if (rsi != null) {
-    if (rsi < 30)      parts.push('el RSI indica activo sobrevendido');
-    else if (rsi > 70) parts.push('el RSI indica activo sobrecomprado');
-    else               parts.push(`el RSI (${rsi.toFixed(1)}) está en zona neutral`);
-  }
-  if (hist != null) {
-    parts.push(hist > 0 ? 'el MACD muestra momentum alcista' : 'el MACD muestra momentum bajista');
-  }
-  if (e20 && e50) {
-    parts.push(e20 > e50
-      ? 'las EMAs confirman tendencia alcista'
-      : 'las EMAs muestran tendencia bajista');
-  }
-
-  const sig = scoreToSignal(toPanoramaScore(summary));
-  const intro = sig === 'buy'  ? 'Los indicadores apuntan a un posible movimiento alcista: '
-              : sig === 'sell' ? 'Los indicadores muestran presión bajista: '
-              :                  'Los indicadores muestran señales mixtas: ';
-  return intro + (parts.join(', ') || 'datos insuficientes') + '.';
-}
 
 // ─── Signal history via localStorage ─────────────────────────────────────────
 const histKey = id => `wf_panorama_h_${id}`;
@@ -316,20 +286,22 @@ function LoadingSkeleton() {
 // ═══════════════════════════════════════════════════════════════════════════════
 export function Panorama() {
   const { allAssets } = usePrices(60_000);
+  const { i18n } = useTranslation();
   const [asset, setAsset]           = useState(DEFAULT_ASSET);
   const [expertMode, setExpertMode] = useState(false);
-  const [expanded, setExpanded]     = useState(false);
   const [fadeIn, setFadeIn]         = useState(true);
   const [dropOpen, setDropOpen]     = useState(false);
   const [expandedCats, setExpandedCats] = useState({ crypto: true });
 
   // Data states
-  const [mainData,   setMainData]   = useState(null);
-  const [fgData,     setFgData]     = useState(null);
-  const [newsData,   setNewsData]   = useState(null);
-  const [candles,    setCandles]    = useState(null);
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState(null);
+  const [mainData,         setMainData]         = useState(null);
+  const [fgData,           setFgData]           = useState(null);
+  const [newsData,         setNewsData]         = useState(null);
+  const [candles,          setCandles]          = useState(null);
+  const [narrativeData,    setNarrativeData]    = useState(null);
+  const [narrativeLoading, setNarrativeLoading] = useState(false);
+  const [loading,          setLoading]          = useState(true);
+  const [error,            setError]            = useState(null);
 
   const load = useCallback(async (a) => {
     setLoading(true);
@@ -364,7 +336,14 @@ export function Panorama() {
     }
 
     setLoading(false);
-  }, []);
+
+    setNarrativeLoading(true);
+    setNarrativeData(null);
+    fetchNarrative(a.id, aType, i18n.language.split('-')[0])
+      .then(r => setNarrativeData(r.narrative))
+      .catch(() => setNarrativeData(null))
+      .finally(() => setNarrativeLoading(false));
+  }, [i18n.language]);
 
   // On asset change: reset data and auto-load
   useEffect(() => {
@@ -387,7 +366,6 @@ export function Panorama() {
   const signal       = scoreToSignal(score);
   const cfg          = SIGNAL[signal];
   const strongSignal = score >= 75 || score <= 25;
-  const narrative    = analysis ? buildNarrative(analysis) : null;
   const bestDay      = computeBestDay(candles);
   const ind          = analysis?.indicators;
   const sigs         = analysis?.signals;
@@ -513,99 +491,124 @@ export function Panorama() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3" style={{ gridTemplateRows: 'auto auto' }}>
+          <div className="flex flex-col gap-3">
+            {/* Row 1: 3 cards */}
+            <div className="grid grid-cols-3 gap-3">
 
-            {/* Card 1: Señal */}
-            <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 flex flex-col items-center justify-center gap-2 min-h-[280px]">
-              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold self-start">Señal</p>
-              <div className="flex items-center gap-4 w-full justify-center">
-                <TrafficLight signal={signal} size="lg" />
-                <div className="flex flex-col gap-1">
-                  <p className={`text-3xl font-extrabold tracking-tight ${cfg.color}`} style={{ textShadow: `0 0 30px ${cfg.glowColor}` }}>
-                    {cfg.label}
-                  </p>
-                  {strongSignal && (
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border w-fit ${
-                      signal === 'buy' ? 'bg-green-900/40 border-green-500/40 text-green-400' :
-                      signal === 'sell' ? 'bg-red-900/40 border-red-500/40 text-red-400' :
-                      'bg-amber-900/40 border-amber-500/40 text-amber-400'
-                    }`}>⚡ Señal fuerte</span>
-                  )}
-                  {narrative && <p className="text-xs text-slate-400 leading-relaxed max-w-[180px]">{narrative}</p>}
+              {/* Card 1: Señal */}
+              <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 flex flex-col items-center justify-center gap-3">
+                <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold self-start">Señal</p>
+                <div className="flex items-center gap-4 w-full justify-center">
+                  <TrafficLight signal={signal} size="lg" />
+                  <div className="flex flex-col gap-1">
+                    <p className={`text-3xl font-extrabold tracking-tight ${cfg.color}`} style={{ textShadow: `0 0 30px ${cfg.glowColor}` }}>
+                      {cfg.label}
+                    </p>
+                    {strongSignal && (
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border w-fit ${
+                        signal === 'buy' ? 'bg-green-900/40 border-green-500/40 text-green-400' :
+                        signal === 'sell' ? 'bg-red-900/40 border-red-500/40 text-red-400' :
+                        'bg-amber-900/40 border-amber-500/40 text-amber-400'
+                      }`}>⚡ Señal fuerte</span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Card 2: Confluencia */}
-            <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 flex flex-col items-center justify-center gap-2 min-h-[280px]">
-              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold self-start">Confluencia</p>
-              <ConfluenceGauge score={score} />
-              <div className="flex gap-2 mt-1">
-                <span className="flex items-center gap-1 text-xs bg-green-900/40 text-green-400 border border-green-700/40 rounded-full px-2 py-0.5 font-semibold">
-                  {analysis?.summary?.counts?.buy ?? 0}
-                  <svg viewBox="0 0 10 10" className="w-2 h-2 fill-current"><path d="M5 2 L8 7 L2 7 Z"/></svg>
-                </span>
-                <span className="flex items-center gap-1 text-xs bg-slate-700/40 text-slate-400 border border-slate-600/40 rounded-full px-2 py-0.5 font-semibold">
-                  {analysis?.summary?.counts?.neutral ?? 0} —
-                </span>
-                <span className="flex items-center gap-1 text-xs bg-red-900/40 text-red-400 border border-red-700/40 rounded-full px-2 py-0.5 font-semibold">
-                  {analysis?.summary?.counts?.sell ?? 0}
-                  <svg viewBox="0 0 10 10" className="w-2 h-2 fill-current"><path d="M5 8 L8 3 L2 3 Z"/></svg>
-                </span>
+              {/* Card 2: Indicadores */}
+              <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4">
+                <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-3">Indicadores técnicos</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(() => { const { badge, cls } = signalBadge(sigs?.rsi?.signal); return (
+                    <IndicatorCard title="RSI (14)" badge={badge} badgeColor={cls}>
+                      <RSIGauge value={ind?.rsi?.current} />
+                    </IndicatorCard>
+                  ); })()}
+                  {(() => { const { badge, cls } = signalBadge(sigs?.macd?.signal); return (
+                    <IndicatorCard title="MACD" badge={badge} badgeColor={cls}>
+                      <p className="text-sm font-bold font-mono text-slate-300 mt-1">{ind?.macd?.current?.histogram?.toFixed(2) ?? '—'}</p>
+                    </IndicatorCard>
+                  ); })()}
+                  {(() => { const { badge, cls } = signalBadge(sigs?.ema?.signal); return (
+                    <IndicatorCard title="EMA 20/50" badge={badge} badgeColor={cls}>
+                      <p className="text-xs font-mono text-slate-300 mt-1">{ind?.ema20?.current?.toFixed(0) ?? '—'} / {ind?.ema50?.current?.toFixed(0) ?? '—'}</p>
+                    </IndicatorCard>
+                  ); })()}
+                  {(() => { const { badge, cls } = signalBadge(sigs?.bb?.signal); return (
+                    <IndicatorCard title="Bollinger" badge={badge} badgeColor={cls}>
+                      <BollingerBar bb={ind?.bollingerBands?.current} price={currentPrice} />
+                    </IndicatorCard>
+                  ); })()}
+                </div>
               </div>
-            </div>
 
-            {/* Card 3: Indicadores */}
-            <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 min-h-[280px]">
-              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-3">Indicadores técnicos</p>
-              <div className="grid grid-cols-2 gap-2">
-                {(() => { const { badge, cls } = signalBadge(sigs?.rsi?.signal); return (
-                  <IndicatorCard title="RSI (14)" badge={badge} badgeColor={cls}>
-                    <RSIGauge value={ind?.rsi?.current} />
-                  </IndicatorCard>
-                ); })()}
-                {(() => { const { badge, cls } = signalBadge(sigs?.macd?.signal); return (
-                  <IndicatorCard title="MACD" badge={badge} badgeColor={cls}>
-                    <p className="text-xs font-mono text-slate-300 mt-1">{ind?.macd?.current?.histogram?.toFixed(2) ?? '—'}</p>
-                  </IndicatorCard>
-                ); })()}
-                {(() => { const { badge, cls } = signalBadge(sigs?.ema?.signal); return (
-                  <IndicatorCard title="EMA 20/50" badge={badge} badgeColor={cls}>
-                    <p className="text-xs font-mono text-slate-300 mt-1">{ind?.ema20?.current?.toFixed(0) ?? '—'} / {ind?.ema50?.current?.toFixed(0) ?? '—'}</p>
-                  </IndicatorCard>
-                ); })()}
-                {(() => { const { badge, cls } = signalBadge(sigs?.bb?.signal); return (
-                  <IndicatorCard title="Bollinger" badge={badge} badgeColor={cls}>
-                    <BollingerBar bb={ind?.bollingerBands?.current} price={currentPrice} />
-                  </IndicatorCard>
-                ); })()}
+              {/* Card 3: Confluencia */}
+              <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 flex flex-col items-center justify-center gap-2">
+                <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold self-start">Confluencia</p>
+                <ConfluenceGauge score={score} />
+                <div className="flex gap-2 mt-1">
+                  <span className="flex items-center gap-1 text-xs bg-green-900/40 text-green-400 border border-green-700/40 rounded-full px-2 py-0.5 font-semibold">
+                    {analysis?.summary?.counts?.buy ?? 0}
+                    <svg viewBox="0 0 10 10" className="w-2 h-2 fill-current"><path d="M5 2 L8 7 L2 7 Z"/></svg>
+                  </span>
+                  <span className="flex items-center gap-1 text-xs bg-slate-700/40 text-slate-400 border border-slate-600/40 rounded-full px-2 py-0.5 font-semibold">
+                    {analysis?.summary?.counts?.neutral ?? 0} —
+                  </span>
+                  <span className="flex items-center gap-1 text-xs bg-red-900/40 text-red-400 border border-red-700/40 rounded-full px-2 py-0.5 font-semibold">
+                    {analysis?.summary?.counts?.sell ?? 0}
+                    <svg viewBox="0 0 10 10" className="w-2 h-2 fill-current"><path d="M5 8 L8 3 L2 3 Z"/></svg>
+                  </span>
+                </div>
               </div>
+
             </div>
 
-            {/* Card 4: Contexto */}
-            <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 min-h-[280px] flex flex-col gap-3">
-              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Contexto de mercado</p>
-              {fgCtx && (
-                <div className="bg-slate-900/60 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 font-semibold mb-1">Fear &amp; Greed</p>
-                  <p className="text-xs text-slate-300 leading-relaxed">{fgCtx}</p>
-                </div>
-              )}
-              {bestDay && (
-                <div className="bg-slate-900/60 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 font-semibold mb-1">Mejor día histórico</p>
-                  <p className="text-xs text-slate-300">{bestDay.day} — {bestDay.rate}% alcista</p>
-                </div>
-              )}
-              <VolatilityWidget atr={ind?.atr?.current} currentPrice={currentPrice} expertMode={expertMode} />
-              {newsData?.length > 0 && (
-                <div>
-                  <p className="text-xs text-slate-400 font-semibold mb-2">Últimas noticias</p>
-                  <NewsSummary news={newsData} />
-                </div>
-              )}
-            </div>
+            {/* Row 2: 2 cards */}
+            <div className="grid grid-cols-2 gap-3">
 
+              {/* Card 4: Contexto de mercado */}
+              <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 flex flex-col gap-3">
+                <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Contexto de mercado</p>
+                {fgCtx && (
+                  <div className="bg-slate-900/60 rounded-lg p-3">
+                    <p className="text-xs text-slate-400 font-semibold mb-1">Fear &amp; Greed</p>
+                    <p className="text-xs text-slate-300 leading-relaxed">{fgCtx}</p>
+                  </div>
+                )}
+                {bestDay && (
+                  <div className="bg-slate-900/60 rounded-lg p-3">
+                    <p className="text-xs text-slate-400 font-semibold mb-1">Mejor día histórico</p>
+                    <p className="text-xs text-slate-300">{bestDay.day} — {bestDay.rate}% alcista</p>
+                  </div>
+                )}
+                <VolatilityWidget atr={ind?.atr?.current} currentPrice={currentPrice} expertMode={expertMode} />
+                {newsData?.length > 0 && (
+                  <div>
+                    <p className="text-xs text-slate-400 font-semibold mb-2">Últimas noticias</p>
+                    <NewsSummary news={newsData} />
+                  </div>
+                )}
+              </div>
+
+              {/* Card 5: Análisis narrativo IA */}
+              <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Análisis IA</p>
+                  <span className="text-xs bg-brand-900/40 text-brand-400 border border-brand-700/40 rounded-full px-2 py-0.5 font-semibold">Gemini</span>
+                </div>
+                {narrativeLoading ? (
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <span className="w-3 h-3 border border-brand-400 border-t-transparent rounded-full animate-spin"/>
+                    Generando análisis...
+                  </div>
+                ) : narrativeData ? (
+                  <p className="text-sm text-slate-300 leading-relaxed">{narrativeData}</p>
+                ) : (
+                  <p className="text-xs text-slate-500">No se pudo generar el análisis.</p>
+                )}
+              </div>
+
+            </div>
           </div>
         )}
       </div>
