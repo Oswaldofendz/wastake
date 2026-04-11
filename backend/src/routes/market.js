@@ -275,17 +275,17 @@ marketRouter.get('/whale-alerts', async (_req, res) => {
   }
 });
 
-// GET /api/market/vix — CBOE Volatility Index via stooq
+// GET /api/market/vix — CBOE Volatility Index via Yahoo Finance
 marketRouter.get('/vix', async (req, res) => {
   try {
-    const response = await fetch('https://stooq.com/q/l/?s=%5Evix&f=sd2t2ohlcvn&e=csv', {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    });
-    const text = await response.text();
-    const lines = text.trim().split('\n');
-    if (lines.length < 2) return res.status(404).json({ error: 'No VIX data' });
-    const cols = lines[1].split(',');
-    const value = parseFloat(cols[4]);
+    const response = await fetch(
+      'https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=5d',
+      { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WaStake/1.0)' } }
+    );
+    const data = await response.json();
+    const meta = data.chart?.result?.[0]?.meta;
+    if (!meta) return res.status(404).json({ error: 'No VIX data' });
+    const value = parseFloat(meta.regularMarketPrice);
     if (isNaN(value)) return res.status(404).json({ error: 'Invalid VIX data' });
     const level = value < 15 ? 'low' : value < 25 ? 'moderate' : value < 35 ? 'high' : 'extreme';
     const label = value < 15 ? 'Baja volatilidad — mercado tranquilo' :
@@ -298,17 +298,17 @@ marketRouter.get('/vix', async (req, res) => {
   }
 });
 
-// GET /api/market/dxy — US Dollar Index via stooq
+// GET /api/market/dxy — US Dollar Index via Yahoo Finance
 marketRouter.get('/dxy', async (req, res) => {
   try {
-    const response = await fetch('https://stooq.com/q/l/?s=dxy&f=sd2t2ohlcvn&e=csv', {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    });
-    const text = await response.text();
-    const lines = text.trim().split('\n');
-    if (lines.length < 2) return res.status(404).json({ error: 'No DXY data' });
-    const cols = lines[1].split(',');
-    const value = parseFloat(cols[4]);
+    const response = await fetch(
+      'https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB?interval=1d&range=5d',
+      { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WaStake/1.0)' } }
+    );
+    const data = await response.json();
+    const meta = data.chart?.result?.[0]?.meta;
+    if (!meta) return res.status(404).json({ error: 'No DXY data' });
+    const value = parseFloat(meta.regularMarketPrice);
     if (isNaN(value)) return res.status(404).json({ error: 'Invalid DXY data' });
     const trend = value > 104 ? 'strong' : value > 100 ? 'neutral' : 'weak';
     const label = value > 104 ? 'Dólar fuerte — presión bajista para el oro' :
