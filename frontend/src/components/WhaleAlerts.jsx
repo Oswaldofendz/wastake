@@ -26,7 +26,7 @@ function SizeIndicator({ btc }) {
   };
   return (
     <span className={`text-xs px-1.5 py-0.5 rounded-full border font-mono font-bold ${styles[size]}`}>
-      {btc >= 1000 ? '🐋' : btc >= 500 ? '🦈' : '🐬'} {btc != null && !isNaN(btc) ? btc.toFixed(0) : '0'} BTC
+      {btc >= 1000 ? '🐋' : btc >= 500 ? '🦈' : '🐬'} {btc != null && !isNaN(btc) ? btc.toFixed(2) : '0'} BTC
     </span>
   );
 }
@@ -57,7 +57,7 @@ export function WhaleAlerts() {
           <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
             Whale Alerts — BTC
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">Grandes txs en mempool · mín 50 BTC</p>
+          <p className="text-xs text-slate-500 mt-0.5">Grandes txs en mempool · mín 5 BTC</p>
         </div>
         <button
           onClick={load}
@@ -98,8 +98,8 @@ export function WhaleAlerts() {
 
                 {/* Amount */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-mono font-bold text-white">{fmt(w.usdAmount)}</p>
-                  <SizeIndicator btc={w.btcAmount} />
+                  <p className="text-sm font-mono font-bold text-white">{fmt(w.usd ?? w.usdAmount)}</p>
+                  <SizeIndicator btc={w.btc ?? w.btcAmount} />
                 </div>
 
                 {/* Link icon */}

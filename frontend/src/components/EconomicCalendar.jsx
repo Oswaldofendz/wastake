@@ -81,7 +81,7 @@ export function EconomicCalendar() {
   const [source, setSource]       = useState(null); // 'live' | 'fallback'
   const [loading, setLoading]     = useState(true);
   const [filterImpact, setImpact] = useState('all');
-  const [showPast, setShowPast]   = useState(false);
+  const [showPast, setShowPast]   = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -178,8 +178,16 @@ export function EconomicCalendar() {
         {loading ? (
           <Skeleton />
         ) : Object.keys(grouped).length === 0 ? (
-          <div className="px-4 py-8 text-center text-slate-500 text-sm">
-            Sin eventos para este período
+          <div className="px-4 py-8 text-center space-y-2">
+            <p className="text-slate-500 text-sm">Sin eventos para este período</p>
+            {!showPast && (
+              <button
+                onClick={() => setShowPast(true)}
+                className="text-xs text-brand-400 hover:text-brand-300 underline"
+              >
+                Mostrar eventos pasados
+              </button>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-slate-700/30">

@@ -57,18 +57,15 @@ function corrLabel(r) {
   return r.toFixed(2);
 }
 
-function AssetSparkline({ asset, index, returnsData }) {
-  if (!returnsData?.[index]?.length) return (
+function AssetSparkline({ asset, index, cumulativeData }) {
+  if (!cumulativeData?.[index]?.length) return (
     <div className="bg-slate-900/40 rounded-lg p-3">
       <p className="text-xs font-semibold text-slate-400 mb-2">{asset.symbol}</p>
       <p className="text-xs text-slate-600">Sin datos</p>
     </div>
   );
 
-  const rets = returnsData[index];
-  const cumulative = [1];
-  for (const r of rets) cumulative.push(cumulative[cumulative.length - 1] * (1 + r));
-
+  const cumulative = cumulativeData[index];
   const min = Math.min(...cumulative);
   const max = Math.max(...cumulative);
   const range = max - min || 0.001;
@@ -98,10 +95,10 @@ function AssetSparkline({ asset, index, returnsData }) {
 }
 
 export function CorrelationMatrix() {
-  const [matrix, setMatrix]         = useState(null);
-  const [returnsData, setReturnsData] = useState(null);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState(null);
+  const [matrix, setMatrix]               = useState(null);
+  const [cumulativeData, setCumulativeData] = useState(null);
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState(null);
 
   useEffect(() => {
     async function load() {
@@ -132,7 +129,13 @@ export function CorrelationMatrix() {
           })
         );
         setMatrix(mat);
-        setReturnsData(allReturns);
+        const cumulativeReturns = allReturns.map(rets => {
+          if (!rets.length) return [];
+          const cumulative = [1];
+          for (const r of rets) cumulative.push(cumulative[cumulative.length - 1] * (1 + r));
+          return cumulative;
+        });
+        setCumulativeData(cumulativeReturns);
       } catch (e) {
         setError(e.message);
       } finally {
@@ -239,7 +242,7 @@ export function CorrelationMatrix() {
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Precios relativos — últimos 90 días</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {ASSETS.map((asset, i) => (
-              <AssetSparkline key={asset.id} asset={asset} index={i} returnsData={returnsData} />
+              <AssetSparkline key={asset.id} asset={asset} index={i} cumulativeData={cumulativeData} />
             ))}
           </div>
         </div>
