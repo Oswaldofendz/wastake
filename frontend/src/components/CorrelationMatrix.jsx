@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { fetchOHLCV } from '../services/api.js';
 
 const ASSETS = [
-  { id: 'bitcoin',  symbol: 'BTC', type: 'crypto' },
-  { id: 'ethereum', symbol: 'ETH', type: 'crypto' },
-  { id: 'solana',   symbol: 'SOL', type: 'crypto' },
-  { id: 'SPY',      symbol: 'SPY', type: 'stock'  },
-  { id: 'GC=F',     symbol: 'XAU', type: 'stock'  },
+  { id: 'bitcoin',  symbol: 'BTC',  type: 'crypto' },
+  { id: 'ethereum', symbol: 'ETH',  type: 'crypto' },
+  { id: 'solana',   symbol: 'SOL',  type: 'crypto' },
+  { id: 'SPY',      symbol: 'SPY',  type: 'stock'  },
+  { id: 'GC=F',     symbol: 'XAU',  type: 'stock'  },
+  { id: 'URTH',     symbol: 'URTH', type: 'stock'  },
 ];
 
 // Pearson correlation coefficient
@@ -53,6 +54,61 @@ function corrLabel(r) {
   return r.toFixed(2);
 }
 
+function AssetSparkline({ asset }) {
+  const [candles, setCandles] = useState(null);
+
+  useEffect(() => {
+    fetchOHLCV(
+      asset.id,
+      asset.type === 'crypto' ? 'crypto' : 'stock',
+      asset.type === 'crypto' ? { days: 90 } : {}
+    ).then(setCandles).catch(() => {});
+  }, [asset.id]);
+
+  if (!candles?.length) return (
+    <div className="bg-slate-900/40 rounded-lg p-3 animate-pulse">
+      <div className="h-3 bg-slate-700 rounded w-1/2 mb-2"/>
+      <div className="h-12 bg-slate-700/40 rounded"/>
+    </div>
+  );
+
+  const closes = candles.map(c => c.close);
+  const min = Math.min(...closes);
+  const max = Math.max(...closes);
+  const range = max - min || 1;
+  const w = 200, h = 50;
+  const points = closes.map((v, i) => {
+    const x = (i / (closes.length - 1)) * w;
+    const y = h - ((v - min) / range) * h;
+    return `${x},${y}`;
+  }).join(' ');
+  const first = closes[0];
+  const last = closes[closes.length - 1];
+  const pct = ((last - first) / first) * 100;
+  const color = pct >= 0 ? '#22c55e' : '#ef4444';
+
+  return (
+    <div className="bg-slate-900/40 rounded-lg p-3">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold text-slate-300">{asset.symbol}</p>
+        <p className="text-xs font-mono font-bold" style={{ color }}>
+          {pct >= 0 ? '+' : ''}{pct.toFixed(1)}%
+        </p>
+      </div>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-12" preserveAspectRatio="none">
+        <polyline
+          points={points}
+          fill="none"
+          stroke={color}
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </div>
+  );
+}
+
 export function CorrelationMatrix() {
   const [matrix, setMatrix]   = useState(null);
   const [loading, setLoading] = useState(true);
@@ -63,8 +119,16 @@ export function CorrelationMatrix() {
       try {
         const allReturns = await Promise.all(
           ASSETS.map(async a => {
-            const candles = await fetchOHLCV(a.id, a.type === 'crypto' ? 'crypto' : 'stock', { days: 90 });
-            return returns(candles ?? []);
+            try {
+              const candles = await fetchOHLCV(
+                a.id,
+                a.type === 'crypto' ? 'crypto' : 'stock',
+                a.type === 'crypto' ? { days: 90 } : {}
+              );
+              return returns(candles ?? []);
+            } catch {
+              return [];
+            }
           })
         );
 
@@ -176,6 +240,15 @@ export function CorrelationMatrix() {
               <p className="text-xs text-slate-500">{item.label}</p>
             </div>
           ))}
+        </div>
+
+        <div className="mt-4">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Precios relativos — últimos 90 días</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {ASSETS.map((asset) => (
+              <AssetSparkline key={asset.id} asset={asset} />
+            ))}
+          </div>
         </div>
       </div>
     </div>
