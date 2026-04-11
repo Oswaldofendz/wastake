@@ -411,7 +411,13 @@ export function AnalysisPanel({ asset }) {
             {/* Card 1: Fear & Greed */}
             <div className="flex flex-col items-center justify-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-3 py-4 gap-2">
               <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Fear & Greed</p>
-              <FearGreedInline />
+              {asset?.type === 'crypto' && <FearGreedInline />}
+              {asset?.type !== 'crypto' && (
+                <div className="flex flex-col items-center gap-1">
+                  <p className="text-xs text-slate-500 text-center">Sentimiento</p>
+                  <p className="text-xs text-slate-400 text-center">Ver sección Panorama</p>
+                </div>
+              )}
             </div>
 
             {/* Card 2: Traffic Light + signal */}

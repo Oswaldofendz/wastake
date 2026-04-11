@@ -283,33 +283,40 @@ function LoadingSkeleton() {
 
 // ─── Market Comparison Widget ─────────────────────────────────────────────────
 function MarketComparisonWidget({ asset, currentPrice, analysis }) {
-  const [btcData, setBtcData] = useState(null);
+  const [compareData, setCompareData] = useState(null);
   const { allAssets } = usePrices(60_000);
 
-  useEffect(() => {
-    fetchAnalysis('bitcoin', 'crypto', 90)
-      .then(r => setBtcData(r.analysis))
-      .catch(() => {});
-  }, []);
+  const compareId = asset.id === 'bitcoin' ? 'SPY' : asset.type === 'crypto' ? 'bitcoin' : 'SPY';
+  const compareType = compareId === 'SPY' ? 'stock' : 'crypto';
+  const compareLabel = compareId === 'bitcoin' ? 'BTC' : 'SPY';
 
-  if (!btcData || !analysis) return null;
+  useEffect(() => {
+    fetchAnalysis(compareId, compareType, 90)
+      .then(r => setCompareData(r.analysis))
+      .catch(() => {});
+  }, [compareId]);
+
+  if (!compareData || !analysis) return (
+    <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 flex items-center justify-center min-h-[200px]">
+      <div className="w-4 h-4 border border-brand-400 border-t-transparent rounded-full animate-spin"/>
+    </div>
+  );
 
   const assetScore = analysis.summary?.score ?? 0;
-  const btcScore = btcData.summary?.score ?? 0;
-  const scoreDiff = assetScore - btcScore;
+  const compareScore = compareData.summary?.score ?? 0;
+  const scoreDiff = assetScore - compareScore;
 
-  const btcAsset = allAssets.find(a => a.id === 'bitcoin');
-  const btcChange = btcAsset?.change24h ?? 0;
   const assetChange = allAssets.find(a => a.id === asset.id)?.change24h ?? 0;
-  const relativePerf = assetChange - btcChange;
+  const compareChange = allAssets.find(a => a.id === compareId.toLowerCase())?.change24h ?? 0;
+  const relativePerf = assetChange - compareChange;
 
   const signal = scoreDiff > 15 ? 'outperform' : scoreDiff < -15 ? 'underperform' : 'inline';
   const signalColor = signal === 'outperform' ? 'text-green-400' : signal === 'underperform' ? 'text-red-400' : 'text-amber-400';
-  const signalLabel = signal === 'outperform' ? 'Supera al mercado' : signal === 'underperform' ? 'Por debajo del mercado' : 'En línea con el mercado';
+  const signalLabel = signal === 'outperform' ? 'Supera referencia' : signal === 'underperform' ? 'Por debajo' : 'En línea';
 
   return (
     <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 flex flex-col gap-3">
-      <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Comparación vs Bitcoin</p>
+      <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Comparación vs {compareLabel}</p>
 
       <div className="grid grid-cols-3 gap-2 text-center">
         <div className="bg-slate-900/60 rounded-lg p-3">
@@ -319,16 +326,16 @@ function MarketComparisonWidget({ asset, currentPrice, analysis }) {
           </p>
           <p className="text-xs text-slate-500">24h</p>
         </div>
-        <div className="bg-slate-900/60 rounded-lg p-3 flex flex-col items-center justify-center">
-          <p className={`text-sm font-bold ${signalColor}`}>{signalLabel}</p>
-          <p className={`text-xs font-mono mt-1 ${relativePerf >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {relativePerf >= 0 ? '+' : ''}{relativePerf?.toFixed(2)}% vs BTC
+        <div className="bg-slate-900/60 rounded-lg p-3 flex flex-col items-center justify-center gap-1">
+          <p className={`text-xs font-bold ${signalColor}`}>{signalLabel}</p>
+          <p className={`text-xs font-mono ${relativePerf >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {relativePerf >= 0 ? '+' : ''}{relativePerf?.toFixed(2)}%
           </p>
         </div>
         <div className="bg-slate-900/60 rounded-lg p-3">
-          <p className="text-xs text-slate-500 mb-1">BTC</p>
-          <p className={`text-lg font-bold font-mono ${btcChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {btcChange >= 0 ? '+' : ''}{btcChange?.toFixed(2)}%
+          <p className="text-xs text-slate-500 mb-1">{compareLabel}</p>
+          <p className={`text-lg font-bold font-mono ${compareChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {compareChange >= 0 ? '+' : ''}{compareChange?.toFixed(2)}%
           </p>
           <p className="text-xs text-slate-500">24h</p>
         </div>
@@ -336,24 +343,23 @@ function MarketComparisonWidget({ asset, currentPrice, analysis }) {
 
       <div className="bg-slate-900/60 rounded-lg p-3">
         <p className="text-xs text-slate-400 font-semibold mb-2">Score de confluencia</p>
-        <div className="flex items-center gap-3">
-          <div className="flex-1">
+        <div className="space-y-2">
+          <div>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-slate-500">{asset.symbol}</span>
+              <span className="text-slate-400">{asset.symbol}</span>
               <span className={assetScore >= 0 ? 'text-green-400' : 'text-red-400'}>{assetScore > 0 ? '+' : ''}{assetScore}</span>
             </div>
             <div className="h-1.5 bg-slate-700 rounded-full">
-              <div className="h-full rounded-full bg-brand-500" style={{ width: `${Math.max(0, Math.min(100, (assetScore + 100) / 2))}%` }}/>
+              <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${Math.max(2, Math.min(100, (assetScore + 100) / 2))}%` }}/>
             </div>
           </div>
-          <span className="text-slate-600 text-xs">vs</span>
-          <div className="flex-1">
+          <div>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-slate-500">BTC</span>
-              <span className={btcScore >= 0 ? 'text-green-400' : 'text-red-400'}>{btcScore > 0 ? '+' : ''}{btcScore}</span>
+              <span className="text-slate-400">{compareLabel}</span>
+              <span className={compareScore >= 0 ? 'text-green-400' : 'text-red-400'}>{compareScore > 0 ? '+' : ''}{compareScore}</span>
             </div>
             <div className="h-1.5 bg-slate-700 rounded-full">
-              <div className="h-full rounded-full bg-amber-500" style={{ width: `${Math.max(0, Math.min(100, (btcScore + 100) / 2))}%` }}/>
+              <div className="h-full rounded-full bg-amber-500 transition-all" style={{ width: `${Math.max(2, Math.min(100, (compareScore + 100) / 2))}%` }}/>
             </div>
           </div>
         </div>
@@ -578,11 +584,11 @@ export function Panorama() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 
               {/* Card 1: Señal */}
-              <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 flex flex-col items-center justify-center gap-3">
+              <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 flex flex-col items-center justify-center gap-3 min-h-[280px]">
                 <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold self-start">Señal</p>
-                <div className="flex items-center gap-4 w-full justify-center">
+                <div className="flex items-center gap-4 w-full justify-center flex-1">
                   <TrafficLight signal={signal} size="lg" />
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-2">
                     <p className={`text-3xl font-extrabold tracking-tight ${cfg.color}`} style={{ textShadow: `0 0 30px ${cfg.glowColor}` }}>
                       {cfg.label}
                     </p>
@@ -592,9 +598,6 @@ export function Panorama() {
                         signal === 'sell' ? 'bg-red-900/40 border-red-500/40 text-red-400' :
                         'bg-amber-900/40 border-amber-500/40 text-amber-400'
                       }`}>⚡ Señal fuerte</span>
-                    )}
-                    {narrativeData && (
-                      <p className="text-xs text-slate-400 leading-relaxed mt-1 max-w-[200px]">{narrativeData}</p>
                     )}
                   </div>
                 </div>
@@ -785,9 +788,7 @@ export function Panorama() {
               </div>
 
               {/* Card 6: Comparación con mercado */}
-              {asset.id !== 'bitcoin' && (
-                <MarketComparisonWidget asset={asset} currentPrice={currentPrice} analysis={analysis} />
-              )}
+              <MarketComparisonWidget asset={asset} currentPrice={currentPrice} analysis={analysis} />
 
             </div>
           </div>
