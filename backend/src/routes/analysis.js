@@ -88,20 +88,28 @@ analysisRouter.get('/:id/narrative', async (req, res) => {
 
 Write only the analysis paragraph, no titles, no bullet points, no markdown.`;
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    const groqRes = await fetch(
+      'https://api.groq.com/openai/v1/chat/completions',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 200,
+          temperature: 0.7,
+        }),
       }
     );
 
-    const geminiData = await geminiRes.json();
-    console.log('[narrative] status:', geminiRes.status);
-    console.log('[narrative] response:', JSON.stringify(geminiData).slice(0, 300));
+    const groqData = await groqRes.json();
+    console.log('[narrative] groq status:', groqRes.status);
+    console.log('[narrative] groq response:', JSON.stringify(groqData).slice(0, 300));
 
-    const narrative = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? null;
+    const narrative = groqData.choices?.[0]?.message?.content?.trim() ?? null;
     const result = { id, lang, narrative };
     if (narrative) setCache(cacheKey, result);
     res.json(result);
