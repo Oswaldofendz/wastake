@@ -229,49 +229,54 @@ marketRouter.get('/whale-alerts', async (_req, res) => {
   if (cached) return res.json(cached);
 
   try {
-    // Transacciones recientes del mempool de BTC
-    const { data } = await axios.get(
-      'https://mempool.space/api/mempool/recent',
-      { timeout: 8000 }
-    );
+    const btcPrice = await fetch('https://mempool.space/api/v1/prices')
+      .then(r => r.json())
+      .then(d => d.USD ?? 70000)
+      .catch(() => 70000);
 
-    // Precio de BTC para convertir sats a USD
-    let btcPrice = 90000;
-    try {
-      const priceRes = await axios.get(
-        'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd',
-        { timeout: 4000 }
-      );
-      btcPrice = priceRes.data?.bitcoin?.usd ?? btcPrice;
-    } catch { /* usa default */ }
+    const BTC_THRESHOLD = 5;
+    const SATOSHI = 100_000_000;
 
-    const BTC_THRESHOLD = 10; // BTC mínimo para considerar "whale"
-    const SAT = 1e8;
+    const [recent, blocks] = await Promise.allSettled([
+      fetch('https://mempool.space/api/mempool/recent').then(r => r.json()),
+      fetch('https://mempool.space/api/v1/blocks').then(r => r.json())
+        .then(async blks => {
+          if (!blks?.length) return [];
+          const txids = await fetch(`https://mempool.space/api/block/${blks[0].id}/txids`).then(r => r.json()).catch(() => []);
+          const sample = txids.slice(0, 50);
+          const txs = await Promise.all(sample.map(id =>
+            fetch(`https://mempool.space/api/tx/${id}`).then(r => r.json()).catch(() => null)
+          ));
+          return txs.filter(Boolean);
+        }),
+    ]);
 
-    const whales = data
-      .filter(tx => {
-        const totalOut = (tx.vout ?? []).reduce((s, o) => s + (o.value ?? 0), 0);
-        return totalOut / SAT >= BTC_THRESHOLD;
-      })
+    const allTxs = [
+      ...(recent.status === 'fulfilled' ? recent.value : []),
+      ...(blocks.status === 'fulfilled' ? blocks.value : []),
+    ];
+
+    const whales = allTxs
+      .filter(tx => tx && (tx.value ?? tx.vout?.reduce((s, o) => s + (o.value ?? 0), 0) ?? 0) / SATOSHI >= BTC_THRESHOLD)
       .slice(0, 20)
       .map(tx => {
-        const totalOut = (tx.vout ?? []).reduce((s, o) => s + (o.value ?? 0), 0);
-        const btcAmount = totalOut / SAT;
+        const valueSat = tx.value ?? tx.vout?.reduce((s, o) => s + (o.value ?? 0), 0) ?? 0;
+        const btcAmount = valueSat / SATOSHI;
         return {
-          txid:      tx.txid,
-          btcAmount: parseFloat(btcAmount.toFixed(2)),
-          usdAmount: Math.round(btcAmount * btcPrice),
-          time:      tx.firstSeen ?? Date.now() / 1000,
-          url:       `https://mempool.space/tx/${tx.txid}`,
+          txid:  tx.txid,
+          btc:   parseFloat(btcAmount.toFixed(4)),
+          usd:   Math.round(btcAmount * btcPrice),
+          url:   `https://mempool.space/tx/${tx.txid}`,
+          time:  tx.firstSeen ?? tx.status?.block_time ?? Date.now() / 1000,
         };
       })
-      .sort((a, b) => b.btcAmount - a.btcAmount);
+      .sort((a, b) => b.btc - a.btc);
 
     const result = { whales, btcPrice, updatedAt: Date.now() };
-    toCache('whale_alerts', result);
+    if (whales.length) toCache('whale_alerts', result);
     res.json(result);
   } catch (err) {
-    res.status(502).json({ error: 'Mempool API unavailable', detail: err.message });
+    res.status(502).json({ error: err.message });
   }
 });
 
