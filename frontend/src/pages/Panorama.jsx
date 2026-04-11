@@ -322,20 +322,20 @@ function MarketComparisonWidget({ asset, currentPrice, analysis }) {
         <div className="bg-slate-900/60 rounded-lg p-3">
           <p className="text-xs text-slate-500 mb-1">{asset.symbol}</p>
           <p className={`text-lg font-bold font-mono ${assetChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {assetChange >= 0 ? '+' : ''}{assetChange?.toFixed(2)}%
+            {assetChange >= 0 ? '+' : ''}{assetChange != null && !isNaN(assetChange) ? assetChange.toFixed(2) : '0.00'}%
           </p>
           <p className="text-xs text-slate-500">24h</p>
         </div>
         <div className="bg-slate-900/60 rounded-lg p-3 flex flex-col items-center justify-center gap-1">
           <p className={`text-xs font-bold ${signalColor}`}>{signalLabel}</p>
           <p className={`text-xs font-mono ${relativePerf >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {relativePerf >= 0 ? '+' : ''}{relativePerf?.toFixed(2)}%
+            {relativePerf >= 0 ? '+' : ''}{relativePerf != null && !isNaN(relativePerf) ? relativePerf.toFixed(2) : '0.00'}%
           </p>
         </div>
         <div className="bg-slate-900/60 rounded-lg p-3">
           <p className="text-xs text-slate-500 mb-1">{compareLabel}</p>
           <p className={`text-lg font-bold font-mono ${compareChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {compareChange >= 0 ? '+' : ''}{compareChange?.toFixed(2)}%
+            {compareChange >= 0 ? '+' : ''}{compareChange != null && !isNaN(compareChange) ? compareChange.toFixed(2) : '0.00'}%
           </p>
           <p className="text-xs text-slate-500">24h</p>
         </div>

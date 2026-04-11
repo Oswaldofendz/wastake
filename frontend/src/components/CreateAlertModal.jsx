@@ -176,7 +176,7 @@ export function CreateAlertModal({ isOpen, onClose, onSave, assets }) {
               )}
               {alertTypeMeta.unit === '%' && selectedAsset?.change24h != null && (
                 <p className="mt-1 text-slate-500 text-xs">
-                  Variación 24h actual: {selectedAsset.change24h.toFixed(2)}%
+                  Variación 24h actual: {selectedAsset.change24h != null && !isNaN(selectedAsset.change24h) ? selectedAsset.change24h.toFixed(2) : '0.00'}%
                 </p>
               )}
             </div>

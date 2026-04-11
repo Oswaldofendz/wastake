@@ -14,7 +14,7 @@ function fmtUsd(n) {
 }
 
 function fmtPct(n) {
-  if (n == null) return '—';
+  if (n == null || isNaN(n)) return '—';
   return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
 }
 

@@ -78,7 +78,7 @@ export function Dashboard() {
                 </span>
                 {chartAsset && (
                   <span className={`text-sm font-mono font-bold ${(chartAsset.change24h ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {(chartAsset.change24h ?? 0) >= 0 ? '+' : ''}{chartAsset.change24h?.toFixed(2)}%
+                    {(chartAsset.change24h ?? 0) >= 0 ? '+' : ''}{chartAsset.change24h != null && !isNaN(chartAsset.change24h) ? chartAsset.change24h.toFixed(2) : '0.00'}%
                   </span>
                 )}
                 <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 text-slate-500 transition-transform ${sidebarOpen ? 'rotate-180' : ''}`}>

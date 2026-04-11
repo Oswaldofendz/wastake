@@ -26,7 +26,7 @@ function SizeIndicator({ btc }) {
   };
   return (
     <span className={`text-xs px-1.5 py-0.5 rounded-full border font-mono font-bold ${styles[size]}`}>
-      {btc >= 1000 ? '🐋' : btc >= 500 ? '🦈' : '🐬'} {btc.toFixed(0)} BTC
+      {btc >= 1000 ? '🐋' : btc >= 500 ? '🦈' : '🐬'} {btc != null && !isNaN(btc) ? btc.toFixed(0) : '0'} BTC
     </span>
   );
 }
