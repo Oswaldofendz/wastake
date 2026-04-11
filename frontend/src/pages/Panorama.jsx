@@ -594,7 +594,7 @@ export function Panorama() {
               <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 flex flex-col gap-3">
                 <div className="flex items-center gap-2">
                   <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Análisis IA</p>
-                  <span className="text-xs bg-brand-900/40 text-brand-400 border border-brand-700/40 rounded-full px-2 py-0.5 font-semibold">Gemini</span>
+                  <span className="text-xs bg-brand-900/40 text-brand-400 border border-brand-700/40 rounded-full px-2 py-0.5 font-semibold">Groq</span>
                 </div>
                 {narrativeLoading ? (
                   <div className="flex items-center gap-2 text-xs text-slate-500">
