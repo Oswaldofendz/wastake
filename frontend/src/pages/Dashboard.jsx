@@ -172,8 +172,8 @@ export function Dashboard() {
                 <StatCard label={t('price')} value={fmtPrice(chartAsset.price)} mono />
                 <StatCard
                   label={t('change_24h')}
-                  value={`${chartAsset.change24h >= 0 ? '+' : ''}${chartAsset.change24h?.toFixed(2)}%`}
-                  positive={chartAsset.change24h >= 0}
+                  value={chartAsset.change24h != null && !isNaN(chartAsset.change24h) ? `${chartAsset.change24h >= 0 ? '+' : ''}${chartAsset.change24h.toFixed(2)}%` : '—'}
+                  positive={(chartAsset.change24h ?? 0) >= 0}
                 />
                 <StatCard label={t('volume')} value={fmtCompact(chartAsset.volume24h)} />
               </div>
@@ -231,7 +231,7 @@ function fmtPrice(n) {
 }
 
 function fmtCompact(n) {
-  if (n == null) return '—';
+  if (n == null || isNaN(n) || n <= 0) return '—';
   if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
   if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
   return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
