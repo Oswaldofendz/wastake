@@ -31,6 +31,16 @@ export const TRADITIONAL_ASSETS = {
   EEM:    { name: 'Mercados Emergentes', type: 'etf' },
   'GC=F': { name: 'Oro (Gold)',          type: 'commodity' },
   'SI=F': { name: 'Plata (Silver)',      type: 'commodity' },
+  'AAPL':  { name: 'Apple',     symbol: 'AAPL',  type: 'stock' },
+  'MSFT':  { name: 'Microsoft', symbol: 'MSFT',  type: 'stock' },
+  'NVDA':  { name: 'NVIDIA',    symbol: 'NVDA',  type: 'stock' },
+  'TSLA':  { name: 'Tesla',     symbol: 'TSLA',  type: 'stock' },
+  'AMZN':  { name: 'Amazon',    symbol: 'AMZN',  type: 'stock' },
+  'GOOGL': { name: 'Alphabet',  symbol: 'GOOGL', type: 'stock' },
+  'META':  { name: 'Meta',      symbol: 'META',  type: 'stock' },
+  'NFLX':  { name: 'Netflix',   symbol: 'NFLX',  type: 'stock' },
+  'JPM':   { name: 'JPMorgan',  symbol: 'JPM',   type: 'stock' },
+  'V':     { name: 'Visa',      symbol: 'V',     type: 'stock' },
 };
 
 export async function getCryptoPrices(ids = Object.keys(CRYPTO_ASSETS)) {
@@ -175,7 +185,10 @@ export async function getTraditionalPrices() {
     if (data['silver']?.usd)   silverPrice = data['silver'].usd;
   } catch { /* usar default */ }
 
-  const etfData = await fetchStooqPrices(['SPY', 'URTH', 'EEM']);
+  const [etfData, stockData] = await Promise.all([
+    fetchStooqPrices(['SPY', 'URTH', 'EEM']),
+    fetchStooqPrices(['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOGL', 'META', 'NFLX', 'JPM', 'V']),
+  ]);
 
   const result = {
     SPY:    { id: 'SPY',  symbol: 'SPY',  name: 'S&P 500 (SPY)',       type: 'etf',       price: etfData.SPY?.price  ?? 560, change24h: etfData.SPY?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
@@ -183,6 +196,16 @@ export async function getTraditionalPrices() {
     EEM:    { id: 'EEM',  symbol: 'EEM',  name: 'Mercados Emergentes', type: 'etf',       price: etfData.EEM?.price  ?? 42,  change24h: etfData.EEM?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
     'GC=F': { id: 'GC=F', symbol: 'XAU',  name: 'Oro (Gold)',          type: 'commodity', price: goldPrice,                   change24h: 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
     'SI=F': { id: 'SI=F', symbol: 'XAG',  name: 'Plata (Silver)',      type: 'commodity', price: silverPrice,                 change24h: 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
+    'AAPL':  { id: 'AAPL',  symbol: 'AAPL',  name: 'Apple',     type: 'stock', price: stockData.AAPL?.price  ?? null, change24h: stockData.AAPL?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/apple.com'     },
+    'MSFT':  { id: 'MSFT',  symbol: 'MSFT',  name: 'Microsoft', type: 'stock', price: stockData.MSFT?.price  ?? null, change24h: stockData.MSFT?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/microsoft.com' },
+    'NVDA':  { id: 'NVDA',  symbol: 'NVDA',  name: 'NVIDIA',    type: 'stock', price: stockData.NVDA?.price  ?? null, change24h: stockData.NVDA?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/nvidia.com'    },
+    'TSLA':  { id: 'TSLA',  symbol: 'TSLA',  name: 'Tesla',     type: 'stock', price: stockData.TSLA?.price  ?? null, change24h: stockData.TSLA?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/tesla.com'     },
+    'AMZN':  { id: 'AMZN',  symbol: 'AMZN',  name: 'Amazon',    type: 'stock', price: stockData.AMZN?.price  ?? null, change24h: stockData.AMZN?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/amazon.com'    },
+    'GOOGL': { id: 'GOOGL', symbol: 'GOOGL', name: 'Alphabet',  type: 'stock', price: stockData.GOOGL?.price ?? null, change24h: stockData.GOOGL?.change ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/google.com'    },
+    'META':  { id: 'META',  symbol: 'META',  name: 'Meta',      type: 'stock', price: stockData.META?.price  ?? null, change24h: stockData.META?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/meta.com'      },
+    'NFLX':  { id: 'NFLX',  symbol: 'NFLX',  name: 'Netflix',   type: 'stock', price: stockData.NFLX?.price  ?? null, change24h: stockData.NFLX?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/netflix.com'   },
+    'JPM':   { id: 'JPM',   symbol: 'JPM',   name: 'JPMorgan',  type: 'stock', price: stockData.JPM?.price   ?? null, change24h: stockData.JPM?.change   ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/jpmorganchase.com' },
+    'V':     { id: 'V',     symbol: 'V',     name: 'Visa',      type: 'stock', price: stockData.V?.price     ?? null, change24h: stockData.V?.change     ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/visa.com'      },
   };
 
   toCache(key, result, CACHE_TTL.price);
