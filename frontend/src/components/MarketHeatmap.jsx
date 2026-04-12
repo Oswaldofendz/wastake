@@ -1,61 +1,32 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { fetchAllPrices } from '../services/api.js';
 
-// ─── Market caps in billions USD (approximate) ────────────────────────────────
-const MCAP = {
-  // Crypto
-  bitcoin: 1400, ethereum: 280, solana: 50, ripple: 120,
-  binancecoin: 85, dogecoin: 22, cardano: 18, 'avalanche-2': 12,
-  chainlink: 8, polkadot: 7, 'shiba-inu': 10, litecoin: 6,
-  near: 5, uniswap: 5, 'bitcoin-cash': 7, stellar: 4,
-  cosmos: 5, 'internet-computer': 8,
-  // Technology
-  AAPL: 3200, MSFT: 2900, NVDA: 2200, GOOGL: 1800,
-  META: 1400, NFLX: 380, AMD: 240, ORCL: 400,
-  CRM: 280, ADBE: 220, INTC: 90, UBER: 140,
-  SHOP: 110, PYPL: 75,
-  // Consumer / E-commerce
-  AMZN: 1900, TSLA: 800, WMT: 750, MCD: 220,
-  DIS: 200, KO: 260, PEP: 220, NKE: 120,
-  // Finance
-  JPM: 700, V: 600, GS: 160, MS: 150,
-  // Healthcare
-  JNJ: 380, PFE: 160,
-  // Energy / Industrial
-  XOM: 470, BA: 110,
-  // Commodities
-  'GC=F': 180, 'SI=F': 17,
+// ─── Market caps in full USD ──────────────────────────────────────────────────
+const MARKET_CAPS = {
+  bitcoin: 1400e9, ethereum: 260e9, solana: 47e9, ripple: 120e9,
+  binancecoin: 85e9, cardano: 25e9, dogecoin: 22e9, 'avalanche-2': 12e9,
+  chainlink: 8e9, polkadot: 7e9, 'shiba-inu': 14e9, litecoin: 4e9,
+  uniswap: 2e9, 'bitcoin-cash': 8e9, stellar: 5e9, cosmos: 1e9,
+  near: 2e9, 'internet-computer': 1.3e9,
+  AAPL: 3900e9, MSFT: 2800e9, NVDA: 2300e9, AMZN: 2100e9,
+  GOOGL: 1900e9, META: 1500e9, TSLA: 1000e9, JPM: 700e9,
+  V: 650e9, NFLX: 400e9, AMD: 400e9, INTC: 260e9,
+  ORCL: 380e9, CRM: 160e9, ADBE: 200e9, PYPL: 65e9,
+  UBER: 150e9, SHOP: 140e9, DIS: 180e9, BA: 130e9,
+  GS: 180e9, MS: 150e9, WMT: 760e9, KO: 320e9,
+  PEP: 210e9, MCD: 220e9, NKE: 65e9, PFE: 150e9,
+  JNJ: 360e9, XOM: 500e9,
+  'GC=F': 18000e9, 'SI=F': 1700e9,
 };
 
 const SECTORS = [
-  {
-    id: 'tech', label: 'Tecnología', color: '#3b82f6',
-    ids: ['AAPL','MSFT','NVDA','GOOGL','META','NFLX','AMD','ORCL','CRM','ADBE','INTC','UBER','SHOP','PYPL'],
-  },
-  {
-    id: 'consumer', label: 'Consumo', color: '#8b5cf6',
-    ids: ['AMZN','TSLA','WMT','MCD','DIS','KO','PEP','NKE'],
-  },
-  {
-    id: 'finance', label: 'Finanzas', color: '#10b981',
-    ids: ['JPM','V','GS','MS'],
-  },
-  {
-    id: 'healthcare', label: 'Salud', color: '#ec4899',
-    ids: ['JNJ','PFE'],
-  },
-  {
-    id: 'energy', label: 'Energía/Ind.', color: '#f59e0b',
-    ids: ['XOM','BA'],
-  },
-  {
-    id: 'crypto', label: 'Crypto', color: '#f97316',
-    ids: ['bitcoin','ethereum','solana','ripple','binancecoin','dogecoin','cardano','avalanche-2','chainlink','polkadot','shiba-inu','litecoin','near','uniswap','bitcoin-cash','stellar','cosmos','internet-computer'],
-  },
-  {
-    id: 'commodities', label: 'Mat. Primas', color: '#eab308',
-    ids: ['GC=F','SI=F'],
-  },
+  { id: 'tech',       label: 'Tecnología',  color: '#3b82f6', ids: ['AAPL','MSFT','NVDA','GOOGL','META','NFLX','AMD','INTC','ORCL','CRM','ADBE'] },
+  { id: 'consumer',   label: 'Consumo',     color: '#8b5cf6', ids: ['AMZN','TSLA','PYPL','UBER','SHOP','DIS','WMT','MCD','KO','PEP','NKE'] },
+  { id: 'finance',    label: 'Finanzas',    color: '#10b981', ids: ['JPM','V','GS','MS'] },
+  { id: 'health',     label: 'Salud',       color: '#ec4899', ids: ['JNJ','PFE'] },
+  { id: 'energy',     label: 'Energía/Ind.',color: '#f59e0b', ids: ['XOM','BA'] },
+  { id: 'crypto',     label: 'Crypto',      color: '#f97316', ids: ['bitcoin','ethereum','solana','ripple','binancecoin','cardano','dogecoin','avalanche-2','chainlink','polkadot','shiba-inu','litecoin','uniswap','bitcoin-cash','stellar','cosmos','near','internet-computer'] },
+  { id: 'commodities',label: 'Mat. Primas', color: '#eab308', ids: ['GC=F','SI=F'] },
 ];
 
 const CRYPTO_LOGOS = {
@@ -79,46 +50,16 @@ const CRYPTO_LOGOS = {
   'internet-computer': 'https://assets.coingecko.com/coins/images/14495/thumb/Internet_Computer_logo.png',
 };
 
-const GAP = 2;
-
-// ─── Binary-split treemap layout ─────────────────────────────────────────────
-function computeLayout(items, x, y, w, h) {
-  if (!items.length) return [];
-  if (items.length === 1) {
-    return [{ id: items[0].id, x: x + GAP, y: y + GAP, w: Math.max(1, w - GAP * 2), h: Math.max(1, h - GAP * 2) }];
-  }
-
-  const total = items.reduce((s, i) => s + i.value, 0);
-
-  // Find the split closest to 50/50 by cumulative value
-  let cumVal = 0;
-  let splitIdx = 1;
-  for (let i = 0; i < items.length - 1; i++) {
-    const before = Math.abs(cumVal - total / 2);
-    cumVal += items[i].value;
-    const after = Math.abs(cumVal - total / 2);
-    splitIdx = i + 1;
-    if (after >= before) break;
-  }
-  splitIdx = Math.max(1, Math.min(splitIdx, items.length - 1));
-
-  const leftItems = items.slice(0, splitIdx);
-  const rightItems = items.slice(splitIdx);
-  const leftVal = leftItems.reduce((s, i) => s + i.value, 0);
-
-  if (w >= h) {
-    const leftW = Math.round((leftVal / total) * w);
-    return [
-      ...computeLayout(leftItems,  x,          y, leftW,     h),
-      ...computeLayout(rightItems, x + leftW,  y, w - leftW, h),
-    ];
-  } else {
-    const leftH = Math.round((leftVal / total) * h);
-    return [
-      ...computeLayout(leftItems,  x, y,          w, leftH),
-      ...computeLayout(rightItems, x, y + leftH,  w, h - leftH),
-    ];
-  }
+// ─── Log-scale col span ───────────────────────────────────────────────────────
+function getColSpan(cap, minCap, maxCap) {
+  if (!cap || cap <= 0) return 1;
+  const logMin = Math.log(minCap);
+  const logMax = Math.log(maxCap);
+  const logCap = Math.log(cap);
+  const normalized = (logCap - logMin) / (logMax - logMin || 1);
+  if (normalized > 0.8) return 3;
+  if (normalized > 0.5) return 2;
+  return 1;
 }
 
 // ─── Heat color by % change ───────────────────────────────────────────────────
@@ -146,90 +87,74 @@ function fmtPrice(n) {
 }
 
 // ─── Single asset cell ────────────────────────────────────────────────────────
-function AssetCell({ asset, layout }) {
-  const { x, y, w, h } = layout;
-  if (w < 4 || h < 4) return null;
-
+function HeatCell({ asset, colSpan = 1 }) {
   const change = asset?.change24h != null && !isNaN(asset.change24h) ? asset.change24h : 0;
   const bg     = heatColor(change);
-  const symbol = asset?.symbol ?? layout.id;
-  const logo   = asset?.image ?? CRYPTO_LOGOS[layout.id] ?? CRYPTO_LOGOS[asset?.id];
+  const id     = asset?.id ?? '';
+  const symbol = asset?.symbol ?? id;
+  const logo   = asset?.image ?? CRYPTO_LOGOS[id];
   const price  = fmtPrice(asset?.price);
 
-  const isXL    = w > 140 && h > 100;
-  const isLarge = w > 85  && h > 65;
-  const isMed   = w > 50  && h > 42;
-  const isSmall = w > 28  && h > 22;
+  const isXL   = colSpan >= 3;
+  const isLg   = colSpan >= 2;
 
   return (
     <div
       title={`${asset?.name ?? symbol}  ${fmtChange(change)}${price ? '  ' + price : ''}`}
       style={{
-        position: 'absolute',
-        left: x, top: y, width: w, height: h,
         backgroundColor: bg,
-        borderRadius: 3,
+        gridColumn: `span ${colSpan}`,
+        minHeight: isXL ? '140px' : isLg ? '100px' : '75px',
+        borderRadius: 4,
         overflow: 'hidden',
         cursor: 'pointer',
-        border: '1px solid rgba(255,255,255,0.05)',
+        border: '1px solid rgba(255,255,255,0.06)',
         boxSizing: 'border-box',
         transition: 'filter 0.1s',
       }}
       onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.25)'; e.currentTarget.style.zIndex = 10; }}
       onMouseLeave={e => { e.currentTarget.style.filter = ''; e.currentTarget.style.zIndex = ''; }}
     >
-      {isSmall && (
-        <div style={{
-          width: '100%', height: '100%',
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          gap: isLarge ? 3 : 1,
-          padding: isXL ? 10 : isLarge ? 6 : 3,
+      <div style={{
+        width: '100%', height: '100%',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        gap: isXL ? 4 : 2,
+        padding: isXL ? 10 : isLg ? 6 : 4,
+      }}>
+        {isLg && logo && (
+          <img
+            src={logo} alt={symbol}
+            style={{ width: isXL ? 36 : 22, height: isXL ? 36 : 22, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+            onError={e => { e.target.style.display = 'none'; }}
+          />
+        )}
+        <span style={{
+          color: 'rgba(255,255,255,0.95)', fontWeight: 700,
+          fontSize: isXL ? 13 : isLg ? 11 : 9,
+          lineHeight: 1.1, textAlign: 'center',
         }}>
-          {isLarge && logo && (
-            <img
-              src={logo} alt={symbol}
-              style={{ width: isXL ? 38 : 24, height: isXL ? 38 : 24, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-              onError={e => { e.target.style.display = 'none'; }}
-            />
-          )}
-          {isMed && (
-            <span style={{ color: 'rgba(255,255,255,0.95)', fontWeight: 700, fontSize: isXL ? 14 : isLarge ? 11 : 9, lineHeight: 1.1, textAlign: 'center' }}>
-              {symbol}
-            </span>
-          )}
-          {isXL && price && (
-            <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10, fontFamily: 'monospace' }}>{price}</span>
-          )}
-          <span style={{ color: 'white', fontWeight: 700, fontSize: isXL ? 17 : isLarge ? 13 : isMed ? 10 : 8, fontFamily: 'monospace', lineHeight: 1, textAlign: 'center' }}>
-            {fmtChange(change)}
-          </span>
-        </div>
-      )}
+          {symbol}
+        </span>
+        {isXL && price && (
+          <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10, fontFamily: 'monospace' }}>{price}</span>
+        )}
+        <span style={{
+          color: 'white', fontWeight: 700,
+          fontSize: isXL ? 16 : isLg ? 12 : 10,
+          fontFamily: 'monospace', lineHeight: 1, textAlign: 'center',
+        }}>
+          {fmtChange(change)}
+        </span>
+      </div>
     </div>
   );
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export function MarketHeatmap({ assets: assetsProp }) {
-  const containerRef = useRef(null);
-  const [containerW, setContainerW] = useState(0);
-  const [ownAssets, setOwnAssets]   = useState([]);
-  const [loading, setLoading]       = useState(false);
-
-  const HEIGHT = 600;
-  const LABEL_H = 15;
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    setContainerW(Math.floor(el.getBoundingClientRect().width));
-    const ro = new ResizeObserver(entries => {
-      setContainerW(Math.floor(entries[0].contentRect.width));
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const [ownAssets, setOwnAssets] = useState([]);
+  const [loading, setLoading]     = useState(false);
 
   useEffect(() => {
     if (assetsProp?.length) return;
@@ -246,13 +171,6 @@ export function MarketHeatmap({ assets: assetsProp }) {
   }, [assetsProp]);
 
   const allAssets = assetsProp?.length ? assetsProp : ownAssets;
-
-  // Sector layout — sorted by total market cap descending
-  const sectorItems = SECTORS
-    .map(s => ({ id: s.id, value: s.ids.reduce((sum, id) => sum + (MCAP[id] ?? 5), 0) }))
-    .sort((a, b) => b.value - a.value);
-
-  const sectorLayouts = containerW > 0 ? computeLayout(sectorItems, 0, 0, containerW, HEIGHT) : [];
 
   return (
     <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl overflow-hidden">
@@ -276,55 +194,53 @@ export function MarketHeatmap({ assets: assetsProp }) {
         </div>
       </div>
 
-      {/* Treemap */}
-      <div ref={containerRef} style={{ position: 'relative', height: HEIGHT, background: '#0f172a', overflow: 'hidden' }}>
-        {(loading || containerW === 0) ? (
-          <div className="absolute inset-0 flex items-center justify-center">
+      {/* Sectors */}
+      <div style={{ background: '#0f172a', padding: 8 }}>
+        {loading ? (
+          <div className="flex items-center justify-center" style={{ height: 400 }}>
             <div className="w-6 h-6 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : sectorLayouts.map(sLayout => {
-          const sector = SECTORS.find(s => s.id === sLayout.id);
-          if (!sector) return null;
+        ) : (
+          <div className="flex flex-col gap-2">
+            {SECTORS.map(sector => {
+              const sectorAssets = sector.ids.map(id => {
+                const live = allAssets.find(a => a.id === id || a.symbol === id);
+                return live ?? { id, symbol: id, name: id, price: null, change24h: null };
+              });
 
-          const { x, y, w, h } = sLayout;
+              const caps   = sectorAssets.map(a => MARKET_CAPS[a.id] ?? MARKET_CAPS[a.symbol] ?? 10e9);
+              const minCap = Math.min(...caps);
+              const maxCap = Math.max(...caps);
 
-          // Asset layout within sector bounds, offset by label height
-          const assetItems = sector.ids
-            .map(id => ({ id, value: MCAP[id] ?? 5 }))
-            .sort((a, b) => b.value - a.value);
-
-          const assetLayouts = computeLayout(assetItems, x, y + LABEL_H, w, h - LABEL_H);
-
-          return (
-            <div key={sector.id}>
-              {/* Sector border */}
-              <div style={{
-                position: 'absolute', left: x, top: y, width: w, height: h,
-                border: `1px solid ${sector.color}45`,
-                borderRadius: 5,
-                pointerEvents: 'none',
-                zIndex: 2,
-                boxSizing: 'border-box',
-              }} />
-              {/* Sector label */}
-              <div style={{
-                position: 'absolute', left: x + 5, top: y + 3,
-                zIndex: 3, color: sector.color,
-                fontSize: 9, fontWeight: 700,
-                textTransform: 'uppercase', letterSpacing: '0.07em',
-                background: 'rgba(0,0,0,0.55)', padding: '1px 4px', borderRadius: 2,
-                pointerEvents: 'none', whiteSpace: 'nowrap',
-              }}>
-                {sector.label}
-              </div>
-              {/* Asset cells */}
-              {assetLayouts.map(aLayout => {
-                const asset = allAssets.find(a => a.id === aLayout.id || a.symbol === aLayout.id);
-                return <AssetCell key={aLayout.id} asset={asset} layout={aLayout} />;
-              })}
-            </div>
-          );
-        })}
+              return (
+                <div key={sector.id}>
+                  {/* Sector label */}
+                  <p style={{ color: sector.color, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4, paddingLeft: 2 }}>
+                    {sector.label}
+                  </p>
+                  {/* Asset grid */}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gap: 6,
+                      gridTemplateColumns: 'repeat(6, 1fr)',
+                      gridAutoRows: 'auto',
+                      border: `1px solid ${sector.color}30`,
+                      borderRadius: 5,
+                      padding: 6,
+                    }}
+                  >
+                    {sectorAssets.map(asset => {
+                      const cap     = MARKET_CAPS[asset.id] ?? MARKET_CAPS[asset.symbol] ?? 10e9;
+                      const colSpan = getColSpan(cap, minCap, maxCap);
+                      return <HeatCell key={asset.id} asset={asset} colSpan={colSpan} />;
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
