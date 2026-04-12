@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-brand: #a0a0a0;
+  --color-brand-light: #c8c8c8;
+  --color-brand-dark: #686868;
+  --color-accent: #d4d4d4;
+}
+
 @layer base {
   html, body, #root {
     height: 100%;
