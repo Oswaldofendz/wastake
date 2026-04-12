@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import * as d3 from 'd3';
 import { fetchAllPrices } from '../services/api.js';
 
-// ─── Market caps in full USD ──────────────────────────────────────────────────
 const MARKET_CAPS = {
   bitcoin: 1400e9, ethereum: 260e9, solana: 47e9, ripple: 120e9,
   binancecoin: 85e9, cardano: 25e9, dogecoin: 22e9, 'avalanche-2': 12e9,
@@ -16,56 +16,21 @@ const MARKET_CAPS = {
   GS: 180e9, MS: 150e9, WMT: 760e9, KO: 320e9,
   PEP: 210e9, MCD: 220e9, NKE: 65e9, PFE: 150e9,
   JNJ: 360e9, XOM: 500e9,
-  'GC=F': 18000e9, 'SI=F': 1700e9,
+  'GC=F': 500e9,
 };
 
 const SECTORS = [
-  { id: 'tech',       label: 'Tecnología',   color: '#3b82f6', ids: ['AAPL','MSFT','NVDA','GOOGL','META','NFLX','AMD','INTC','ORCL','CRM','ADBE'] },
-  { id: 'consumer',   label: 'Consumo',      color: '#8b5cf6', ids: ['AMZN','TSLA','PYPL','UBER','SHOP','DIS','WMT','MCD','KO','PEP','NKE'] },
-  { id: 'finance',    label: 'Finanzas',     color: '#10b981', ids: ['JPM','V','GS','MS'] },
-  { id: 'health',     label: 'Salud',        color: '#ec4899', ids: ['JNJ','PFE'] },
-  { id: 'energy',     label: 'Energía/Ind.', color: '#f59e0b', ids: ['XOM','BA'] },
-  { id: 'crypto',     label: 'Crypto',       color: '#f97316', ids: ['bitcoin','ethereum','solana','ripple','binancecoin','cardano','dogecoin','avalanche-2','chainlink','polkadot','shiba-inu','litecoin','uniswap','bitcoin-cash','stellar','cosmos','near','internet-computer'] },
-  { id: 'commodities',label: 'Mat. Primas',  color: '#eab308', ids: ['GC=F','SI=F'] },
+  { id: 'crypto',      label: 'Crypto',      children: ['bitcoin','ethereum','solana','ripple','binancecoin','cardano','dogecoin','avalanche-2','chainlink','polkadot','shiba-inu','litecoin','uniswap','bitcoin-cash','stellar','cosmos','near','internet-computer'] },
+  { id: 'tech',        label: 'Tecnología',  children: ['AAPL','MSFT','NVDA','GOOGL','META','NFLX','AMD','INTC','ORCL','CRM','ADBE'] },
+  { id: 'consumer',    label: 'Consumo',     children: ['AMZN','TSLA','PYPL','UBER','SHOP','DIS','WMT','MCD','KO','PEP','NKE'] },
+  { id: 'finance',     label: 'Finanzas',    children: ['JPM','V','GS','MS'] },
+  { id: 'health',      label: 'Salud',       children: ['JNJ','PFE'] },
+  { id: 'energy',      label: 'Energía',     children: ['XOM','BA'] },
+  { id: 'commodities', label: 'Mat. Primas', children: ['GC=F'] },
 ];
 
-const CRYPTO_LOGOS = {
-  bitcoin: 'https://assets.coingecko.com/coins/images/1/thumb/bitcoin.png',
-  ethereum: 'https://assets.coingecko.com/coins/images/279/thumb/ethereum.png',
-  solana: 'https://assets.coingecko.com/coins/images/4128/thumb/solana.png',
-  ripple: 'https://assets.coingecko.com/coins/images/44/thumb/xrp-symbol-white-128.png',
-  binancecoin: 'https://assets.coingecko.com/coins/images/825/thumb/bnb-icon2_2x.png',
-  cardano: 'https://assets.coingecko.com/coins/images/975/thumb/cardano.png',
-  dogecoin: 'https://assets.coingecko.com/coins/images/5/thumb/dogecoin.png',
-  'avalanche-2': 'https://assets.coingecko.com/coins/images/12559/thumb/Avalanche_Circle_RedWhite_Trans.png',
-  chainlink: 'https://assets.coingecko.com/coins/images/877/thumb/chainlink-new-logo.png',
-  polkadot: 'https://assets.coingecko.com/coins/images/12171/thumb/polkadot.png',
-  'shiba-inu': 'https://assets.coingecko.com/coins/images/11939/thumb/shiba.png',
-  litecoin: 'https://assets.coingecko.com/coins/images/2/thumb/litecoin.png',
-  near: 'https://assets.coingecko.com/coins/images/14877/thumb/NEAR.png',
-  uniswap: 'https://assets.coingecko.com/coins/images/12504/thumb/uni.jpg',
-  'bitcoin-cash': 'https://assets.coingecko.com/coins/images/780/thumb/bitcoin-cash-circle.png',
-  stellar: 'https://assets.coingecko.com/coins/images/100/thumb/Stellar_symbol_black_RGB.png',
-  cosmos: 'https://assets.coingecko.com/coins/images/1481/thumb/cosmos_hub.png',
-  'internet-computer': 'https://assets.coingecko.com/coins/images/14495/thumb/Internet_Computer_logo.png',
-};
-
-// ─── Log-scale col span (12-column grid) ─────────────────────────────────────
-function getColSpan(cap, minCap, maxCap) {
-  if (!cap || cap <= 0) return 1;
-  const logMin = Math.log10(Math.max(minCap, 1e8));
-  const logMax = Math.log10(Math.max(maxCap, 1e8));
-  const logCap = Math.log10(Math.max(cap, 1e8));
-  const range = logMax - logMin || 1;
-  const normalized = (logCap - logMin) / range;
-  if (normalized > 0.85) return 4;
-  if (normalized > 0.65) return 3;
-  if (normalized > 0.40) return 2;
-  return 1;
-}
-
-// ─── Heat color by % change ───────────────────────────────────────────────────
 function heatColor(change) {
+  if (change == null || isNaN(change)) return '#1e293b';
   if (change >= 5)  return '#15803d';
   if (change >= 3)  return '#16a34a';
   if (change >= 1)  return '#166534';
@@ -76,152 +41,209 @@ function heatColor(change) {
   return '#dc2626';
 }
 
-function fmtChange(c) {
-  if (c == null || isNaN(c)) return '+0.00%';
-  return `${c >= 0 ? '+' : ''}${c.toFixed(2)}%`;
-}
-
 function fmtPrice(n) {
-  if (!n || isNaN(n) || n <= 0) return null;
+  if (n == null || isNaN(n) || n <= 0) return '—';
   if (n >= 1000) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
   if (n >= 1) return `$${n.toFixed(2)}`;
   return `$${n.toFixed(4)}`;
 }
 
-// ─── Single asset cell ────────────────────────────────────────────────────────
-function HeatCell({ asset, colSpan = 1 }) {
-  const change = asset?.change24h != null && !isNaN(asset.change24h) ? asset.change24h : 0;
-  const bg     = heatColor(change);
-  const id     = asset?.id ?? '';
-  const symbol = asset?.symbol ?? id;
-  const logo   = asset?.image ?? CRYPTO_LOGOS[id];
-  const price  = fmtPrice(asset?.price);
-
-  const isXL = colSpan >= 4;
-  const isLg = colSpan >= 3;
-  const isMd = colSpan >= 2;
-
-  return (
-    <div
-      title={`${asset?.name ?? symbol}  ${fmtChange(change)}${price ? '  ' + price : ''}`}
-      style={{
-        backgroundColor: bg,
-        gridColumn: `span ${colSpan}`,
-        position: 'relative',
-      }}
-      className="rounded-lg border border-white/5 cursor-pointer transition-all duration-200 hover:scale-105 hover:z-10 hover:shadow-2xl group overflow-hidden"
-    >
-      <div className="w-full h-full flex flex-col items-center justify-center gap-1 p-1.5">
-        {isLg && logo && (
-          <img
-            src={logo} alt={symbol}
-            style={{ width: isXL ? 34 : 24, height: isXL ? 34 : 24, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-            onError={e => { e.target.style.display = 'none'; }}
-          />
-        )}
-        <span style={{
-          color: 'rgba(255,255,255,0.95)', fontWeight: 700,
-          fontSize: isXL ? 13 : isLg ? 11 : isMd ? 10 : 8,
-          lineHeight: 1.1, textAlign: 'center',
-        }}>
-          {symbol}
-        </span>
-        {isXL && price && (
-          <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 9, fontFamily: 'monospace' }}>{price}</span>
-        )}
-        <span style={{
-          color: 'white', fontWeight: 700,
-          fontSize: isXL ? 15 : isLg ? 12 : isMd ? 10 : 9,
-          fontFamily: 'monospace', lineHeight: 1, textAlign: 'center',
-        }}>
-          {fmtChange(change)}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// ─── Main component ───────────────────────────────────────────────────────────
 export function MarketHeatmap({ assets: assetsProp }) {
-  const [ownAssets, setOwnAssets] = useState([]);
-  const [loading, setLoading]     = useState(false);
+  const [assets, setAssets]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [tooltip, setTooltip] = useState(null);
+  const containerRef          = useRef(null);
+  const [dims, setDims]       = useState({ width: 1200, height: 600 });
 
   useEffect(() => {
-    if (assetsProp?.length) return;
-    setLoading(true);
+    if (assetsProp?.length) {
+      setAssets(assetsProp.filter(a => a.type !== 'etf'));
+      setLoading(false);
+      return;
+    }
     fetchAllPrices()
       .then(data => {
-        setOwnAssets([
+        const list = [
           ...Object.values(data?.crypto ?? {}),
           ...Object.values(data?.traditional ?? {}),
-        ]);
+        ].filter(a => a.type !== 'etf');
+        setAssets(list);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [assetsProp]);
 
-  const allAssets = assetsProp?.length ? assetsProp : ownAssets;
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver(entries => {
+      const { width } = entries[0].contentRect;
+      setDims({ width, height: Math.max(500, width * 0.5) });
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  const treemapData = {
+    id: 'root',
+    children: SECTORS.map(sector => ({
+      id: sector.id,
+      label: sector.label,
+      children: sector.children
+        .map(id => assets.find(a => a.id === id || a.symbol === id))
+        .filter(Boolean)
+        .map(asset => ({
+          id: asset.id,
+          name: asset.name,
+          symbol: asset.symbol,
+          price: asset.price,
+          change: asset.change24h ?? 0,
+          image: asset.image,
+          value: MARKET_CAPS[asset.id] ?? MARKET_CAPS[asset.symbol] ?? 5e9,
+        })),
+    })).filter(s => s.children.length > 0),
+  };
+
+  const root = d3.hierarchy(treemapData)
+    .sum(d => d.value ?? 0)
+    .sort((a, b) => b.value - a.value);
+
+  d3.treemap()
+    .size([dims.width, dims.height])
+    .paddingOuter(4)
+    .paddingTop(24)
+    .paddingInner(2)
+    .round(true)(root);
+
+  if (loading) return (
+    <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-6 animate-pulse" style={{ height: 600 }}>
+      <div className="h-3 bg-slate-700 rounded w-40 mb-4" />
+      <div className="h-full bg-slate-700/30 rounded" />
+    </div>
+  );
 
   return (
-    <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl overflow-hidden">
-      {/* Header */}
-      <div className="px-4 py-2.5 border-b border-slate-700/40 flex items-center justify-between flex-wrap gap-2">
+    <div className="bg-slate-900/80 border border-slate-700/40 rounded-xl overflow-hidden">
+      <div className="px-4 py-3 border-b border-slate-700/40 flex items-center justify-between">
         <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Heatmap de Mercado</h3>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {SECTORS.map(s => (
-            <span key={s.id} style={{ color: s.color, background: `${s.color}18` }} className="text-xs px-1.5 py-0.5 rounded font-medium">
-              {s.label}
-            </span>
-          ))}
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          {[['#dc2626','≤−5%'],['#7f1d1d','−1%'],['#14532d','0%'],['#166534','+1%'],['#15803d','≥+5%']].map(([c, l]) => (
-            <span key={l} className="flex items-center gap-1">
-              <span className="w-3 h-2 rounded inline-block" style={{ background: c }} />
-              <span className="text-slate-500">{l}</span>
-            </span>
-          ))}
+        <div className="flex items-center gap-3 text-xs text-slate-500">
+          <span className="flex items-center gap-1"><span className="w-3 h-2 rounded" style={{ background: '#dc2626' }} /> {'≤-5%'}</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-2 rounded" style={{ background: '#14532d' }} /> 0%</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-2 rounded" style={{ background: '#15803d' }} /> {'+5%'}</span>
         </div>
       </div>
 
-      {/* Body */}
-      <div style={{ background: '#0f172a' }}>
-        {loading ? (
-          <div className="flex items-center justify-center" style={{ height: 400 }}>
-            <div className="w-6 h-6 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : (
-          <div className="p-4 space-y-6">
-            {SECTORS.map(sector => {
-              const sectorAssets = sector.ids.map(id => {
-                const live = allAssets.find(a => a.id === id || a.symbol === id);
-                return live ?? { id, symbol: id, name: id, price: null, change24h: null };
-              });
-
-              const caps   = sectorAssets.map(a => MARKET_CAPS[a.id] ?? MARKET_CAPS[a.symbol] ?? 10e9);
-              const minCap = Math.min(...caps);
-              const maxCap = Math.max(...caps);
-
-              return (
-                <div key={sector.id}>
-                  {/* Sector label */}
-                  <p style={{ color: sector.color, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
-                    {sector.label}
-                  </p>
-                  {/* 12-column asset grid */}
-                  <div
-                    className="grid gap-1"
-                    style={{ gridTemplateColumns: 'repeat(12, 1fr)', gridAutoRows: '80px' }}
+      <div ref={containerRef} style={{ position: 'relative', width: '100%', height: dims.height }}>
+        <svg width={dims.width} height={dims.height} style={{ position: 'absolute', top: 0, left: 0 }}>
+          {root.children?.map(sector => (
+            <g key={sector.data.id}>
+              <rect
+                x={sector.x0} y={sector.y0}
+                width={sector.x1 - sector.x0}
+                height={sector.y1 - sector.y0}
+                fill="transparent"
+                stroke="#334155"
+                strokeWidth={1}
+                rx={4}
+              />
+              <text
+                x={sector.x0 + 6}
+                y={sector.y0 + 16}
+                fill="#94a3b8"
+                fontSize={11}
+                fontWeight={600}
+                style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}
+              >
+                {sector.data.label}
+              </text>
+              {sector.children?.map(node => {
+                const w = node.x1 - node.x0;
+                const h = node.y1 - node.y0;
+                if (w < 20 || h < 20) return null;
+                const d = node.data;
+                const bg = heatColor(d.change);
+                const showLogo  = d.image && w > 60 && h > 60;
+                const showPrice = w > 70 && h > 55;
+                const showName  = w > 45 && h > 35;
+                return (
+                  <g
+                    key={node.data.id}
+                    style={{ cursor: 'pointer' }}
+                    onMouseEnter={e => setTooltip({ x: e.clientX, y: e.clientY, data: d })}
+                    onMouseLeave={() => setTooltip(null)}
+                    onMouseMove={e => setTooltip(t => t ? { ...t, x: e.clientX, y: e.clientY } : null)}
                   >
-                    {sectorAssets.map(asset => {
-                      const cap     = MARKET_CAPS[asset.id] ?? MARKET_CAPS[asset.symbol] ?? 10e9;
-                      const colSpan = getColSpan(cap, minCap, maxCap);
-                      return <HeatCell key={asset.id} asset={asset} colSpan={colSpan} />;
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+                    <rect
+                      x={node.x0 + 1} y={node.y0 + 1}
+                      width={w - 2} height={h - 2}
+                      fill={bg}
+                      rx={3}
+                      style={{ transition: 'filter 0.15s' }}
+                    />
+                    {showLogo && (
+                      <image
+                        href={d.image}
+                        x={node.x0 + w / 2 - 14}
+                        y={node.y0 + (showPrice ? h / 2 - 28 : h / 2 - 14)}
+                        width={28} height={28}
+                        style={{ borderRadius: '50%' }}
+                      />
+                    )}
+                    {showName && (
+                      <text
+                        x={node.x0 + w / 2}
+                        y={node.y0 + h / 2 + (showLogo ? 6 : -4)}
+                        textAnchor="middle"
+                        fill="white"
+                        fontSize={w > 80 ? 13 : 11}
+                        fontWeight={700}
+                      >
+                        {d.symbol}
+                      </text>
+                    )}
+                    {showPrice && (
+                      <text
+                        x={node.x0 + w / 2}
+                        y={node.y0 + h / 2 + (showLogo ? 22 : 12)}
+                        textAnchor="middle"
+                        fill="rgba(255,255,255,0.75)"
+                        fontSize={w > 80 ? 11 : 9}
+                      >
+                        {fmtPrice(d.price)}
+                      </text>
+                    )}
+                    <text
+                      x={node.x0 + w / 2}
+                      y={node.y0 + h / 2 + (showLogo ? 38 : showPrice ? 26 : 8)}
+                      textAnchor="middle"
+                      fill="white"
+                      fontSize={w > 80 ? 13 : w > 50 ? 11 : 9}
+                      fontWeight={600}
+                    >
+                      {d.change >= 0 ? '+' : ''}{Number(d.change).toFixed(2)}%
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+          ))}
+        </svg>
+
+        {tooltip && (
+          <div
+            style={{
+              position: 'fixed',
+              left: tooltip.x + 12,
+              top: tooltip.y - 10,
+              zIndex: 9999,
+              pointerEvents: 'none',
+            }}
+            className="bg-slate-800 border border-slate-600 rounded-lg p-3 shadow-2xl text-xs"
+          >
+            <p className="font-bold text-white text-sm">{tooltip.data.name} ({tooltip.data.symbol})</p>
+            <p className="text-slate-300 mt-1">Precio: {fmtPrice(tooltip.data.price)}</p>
+            <p className={tooltip.data.change >= 0 ? 'text-green-400' : 'text-red-400'}>
+              Cambio 24h: {tooltip.data.change >= 0 ? '+' : ''}{Number(tooltip.data.change).toFixed(2)}%
+            </p>
           </div>
         )}
       </div>
