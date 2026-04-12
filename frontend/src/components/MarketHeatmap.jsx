@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { fetchAllPrices } from '../services/api.js';
 
+// ─── Market caps ──────────────────────────────────────────────────────────────
 const MARKET_CAPS = {
   bitcoin: 1400e9, ethereum: 260e9, solana: 47e9, ripple: 120e9,
   binancecoin: 85e9, cardano: 25e9, dogecoin: 22e9, 'avalanche-2': 12e9,
@@ -16,17 +17,29 @@ const MARKET_CAPS = {
   GS: 180e9, MS: 150e9, WMT: 760e9, KO: 320e9,
   PEP: 210e9, MCD: 220e9, NKE: 65e9, PFE: 150e9,
   JNJ: 360e9, XOM: 500e9,
-  'GC=F': 500e9,
+  'GC=F': 200e9,
+};
+
+// ─── Stock brand colors for SVG fallback logos ────────────────────────────────
+const STOCK_COLORS = {
+  AAPL: '#555555', MSFT: '#00a4ef', NVDA: '#76b900', AMZN: '#ff9900',
+  GOOGL: '#4285f4', META: '#0866ff', TSLA: '#e31937', JPM: '#003087',
+  V: '#1a1f71', NFLX: '#e50914', AMD: '#ed1c24', INTC: '#0071c5',
+  ORCL: '#f80000', CRM: '#00a1e0', ADBE: '#ff0000', PYPL: '#003087',
+  UBER: '#000000', SHOP: '#96bf48', DIS: '#006e99', BA: '#1d428a',
+  GS: '#6d6e71', MS: '#004f9f', WMT: '#0071ce', KO: '#f40009',
+  PEP: '#004b93', MCD: '#ffbc0d', NKE: '#f05a22', PFE: '#0093d0',
+  JNJ: '#d51f29', XOM: '#ee0000',
 };
 
 const SECTORS = [
-  { id: 'crypto',      label: 'Crypto',      children: ['bitcoin','ethereum','solana','ripple','binancecoin','cardano','dogecoin','avalanche-2','chainlink','polkadot','shiba-inu','litecoin','uniswap','bitcoin-cash','stellar','cosmos','near','internet-computer'] },
-  { id: 'tech',        label: 'Tecnología',  children: ['AAPL','MSFT','NVDA','GOOGL','META','NFLX','AMD','INTC','ORCL','CRM','ADBE'] },
-  { id: 'consumer',    label: 'Consumo',     children: ['AMZN','TSLA','PYPL','UBER','SHOP','DIS','WMT','MCD','KO','PEP','NKE'] },
-  { id: 'finance',     label: 'Finanzas',    children: ['JPM','V','GS','MS'] },
-  { id: 'health',      label: 'Salud',       children: ['JNJ','PFE'] },
-  { id: 'energy',      label: 'Energía',     children: ['XOM','BA'] },
-  { id: 'commodities', label: 'Mat. Primas', children: ['GC=F'] },
+  { id: 'crypto',      label: 'Crypto',        children: ['bitcoin','ethereum','solana','ripple','binancecoin','cardano','dogecoin','avalanche-2','chainlink','polkadot','shiba-inu','litecoin','uniswap','bitcoin-cash','stellar','cosmos','near','internet-computer'] },
+  { id: 'tech',        label: 'Tecnología',    children: ['AAPL','MSFT','NVDA','GOOGL','META','NFLX','AMD','INTC','ORCL','CRM','ADBE'] },
+  { id: 'consumer',    label: 'Consumo',       children: ['AMZN','TSLA','PYPL','UBER','SHOP','DIS','WMT','MCD','KO','PEP','NKE'] },
+  { id: 'finance',     label: 'Finanzas',      children: ['JPM','V','GS','MS'] },
+  { id: 'health',      label: 'Salud',         children: ['JNJ','PFE'] },
+  { id: 'energy',      label: 'Energía/Ind.',  children: ['XOM','BA'] },
+  { id: 'commodities', label: 'Mat. Primas',   children: ['GC=F'] },
 ];
 
 function heatColor(change) {
@@ -49,11 +62,12 @@ function fmtPrice(n) {
 }
 
 export function MarketHeatmap({ assets: assetsProp }) {
-  const [assets, setAssets]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [tooltip, setTooltip] = useState(null);
-  const containerRef          = useRef(null);
-  const [dims, setDims]       = useState({ width: 1200, height: 600 });
+  const [assets, setAssets]           = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [tooltip, setTooltip]         = useState(null);
+  const [focusedSector, setFocusedSector] = useState(null);
+  const containerRef                  = useRef(null);
+  const [dims, setDims]               = useState({ width: 1200, height: 600 });
 
   useEffect(() => {
     if (assetsProp?.length) {
@@ -83,24 +97,29 @@ export function MarketHeatmap({ assets: assetsProp }) {
     return () => ro.disconnect();
   }, []);
 
+  // When focused, expand height 1.8×
+  const treeHeight = focusedSector ? dims.height * 1.8 : dims.height;
+
   const treemapData = {
     id: 'root',
-    children: SECTORS.map(sector => ({
-      id: sector.id,
-      label: sector.label,
-      children: sector.children
-        .map(id => assets.find(a => a.id === id || a.symbol === id))
-        .filter(Boolean)
-        .map(asset => ({
-          id: asset.id,
-          name: asset.name,
-          symbol: asset.symbol,
-          price: asset.price,
-          change: asset.change24h ?? 0,
-          image: asset.image,
-          value: MARKET_CAPS[asset.id] ?? MARKET_CAPS[asset.symbol] ?? 5e9,
-        })),
-    })).filter(s => s.children.length > 0),
+    children: SECTORS
+      .filter(s => !focusedSector || s.id === focusedSector)
+      .map(sector => ({
+        id: sector.id,
+        label: sector.label,
+        children: sector.children
+          .map(id => assets.find(a => a.id === id || a.symbol === id))
+          .filter(Boolean)
+          .map(asset => ({
+            id: asset.id,
+            name: asset.name,
+            symbol: asset.symbol,
+            price: asset.price,
+            change: asset.change24h ?? 0,
+            image: asset.image,
+            value: MARKET_CAPS[asset.id] ?? MARKET_CAPS[asset.symbol] ?? 5e9,
+          })),
+      })).filter(s => s.children.length > 0),
   };
 
   const root = d3.hierarchy(treemapData)
@@ -108,7 +127,7 @@ export function MarketHeatmap({ assets: assetsProp }) {
     .sort((a, b) => b.value - a.value);
 
   d3.treemap()
-    .size([dims.width, dims.height])
+    .size([dims.width, treeHeight])
     .paddingOuter(4)
     .paddingTop(24)
     .paddingInner(2)
@@ -123,6 +142,7 @@ export function MarketHeatmap({ assets: assetsProp }) {
 
   return (
     <div className="bg-slate-900/80 border border-slate-700/40 rounded-xl overflow-hidden">
+      {/* Header */}
       <div className="px-4 py-3 border-b border-slate-700/40 flex items-center justify-between">
         <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Heatmap de Mercado</h3>
         <div className="flex items-center gap-3 text-xs text-slate-500">
@@ -132,10 +152,24 @@ export function MarketHeatmap({ assets: assetsProp }) {
         </div>
       </div>
 
-      <div ref={containerRef} style={{ position: 'relative', width: '100%', height: dims.height }}>
-        <svg width={dims.width} height={dims.height} style={{ position: 'absolute', top: 0, left: 0 }}>
+      {/* Back button when zoomed into a sector */}
+      {focusedSector && (
+        <div className="px-4 py-2 border-b border-slate-700/40">
+          <button
+            onClick={() => setFocusedSector(null)}
+            className="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition-colors"
+          >
+            ← Volver a todos los sectores
+          </button>
+        </div>
+      )}
+
+      {/* Treemap */}
+      <div ref={containerRef} style={{ position: 'relative', width: '100%', height: treeHeight }}>
+        <svg width={dims.width} height={treeHeight} style={{ position: 'absolute', top: 0, left: 0 }}>
           {root.children?.map(sector => (
             <g key={sector.data.id}>
+              {/* Sector background border */}
               <rect
                 x={sector.x0} y={sector.y0}
                 width={sector.x1 - sector.x0}
@@ -145,25 +179,35 @@ export function MarketHeatmap({ assets: assetsProp }) {
                 strokeWidth={1}
                 rx={4}
               />
+              {/* Sector label — click to zoom */}
               <text
                 x={sector.x0 + 6}
                 y={sector.y0 + 16}
-                fill="#94a3b8"
+                fill={focusedSector === sector.data.id ? '#60a5fa' : '#94a3b8'}
                 fontSize={11}
                 fontWeight={600}
-                style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                style={{ cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                onClick={() => setFocusedSector(s => s === sector.data.id ? null : sector.data.id)}
               >
-                {sector.data.label}
+                {sector.data.label}{focusedSector === sector.data.id ? ' ✕' : ''}
               </text>
+
+              {/* Asset cells */}
               {sector.children?.map(node => {
                 const w = node.x1 - node.x0;
                 const h = node.y1 - node.y0;
                 if (w < 20 || h < 20) return null;
                 const d = node.data;
                 const bg = heatColor(d.change);
-                const showLogo  = d.image && w > 60 && h > 60;
+                const showLogo  = w > 60 && h > 60;
                 const showPrice = w > 70 && h > 55;
                 const showName  = w > 45 && h > 35;
+
+                const logoY = node.y0 + (showPrice ? h / 2 - 32 : h / 2 - 18);
+                const isCryptoLogo = d.image && !STOCK_COLORS[d.symbol];
+                const hasStockColor = !!STOCK_COLORS[d.symbol];
+                const circleY = node.y0 + (showPrice ? h / 2 - 18 : h / 2 - 8);
+
                 return (
                   <g
                     key={node.data.id}
@@ -177,17 +221,40 @@ export function MarketHeatmap({ assets: assetsProp }) {
                       width={w - 2} height={h - 2}
                       fill={bg}
                       rx={3}
-                      style={{ transition: 'filter 0.15s' }}
                     />
-                    {showLogo && (
+
+                    {/* Logo: crypto uses image, stocks use colored circle + initials */}
+                    {showLogo && isCryptoLogo && (
                       <image
                         href={d.image}
                         x={node.x0 + w / 2 - 14}
-                        y={node.y0 + (showPrice ? h / 2 - 28 : h / 2 - 14)}
+                        y={logoY}
                         width={28} height={28}
-                        style={{ borderRadius: '50%' }}
                       />
                     )}
+                    {showLogo && !isCryptoLogo && (
+                      <>
+                        <circle
+                          cx={node.x0 + w / 2}
+                          cy={circleY + 6}
+                          r={14}
+                          fill={hasStockColor ? STOCK_COLORS[d.symbol] : '#334155'}
+                          opacity={0.9}
+                        />
+                        <text
+                          x={node.x0 + w / 2}
+                          y={circleY + 10}
+                          textAnchor="middle"
+                          fill="white"
+                          fontSize={9}
+                          fontWeight={700}
+                        >
+                          {d.symbol.slice(0, 3)}
+                        </text>
+                      </>
+                    )}
+
+                    {/* Symbol */}
                     {showName && (
                       <text
                         x={node.x0 + w / 2}
@@ -200,6 +267,8 @@ export function MarketHeatmap({ assets: assetsProp }) {
                         {d.symbol}
                       </text>
                     )}
+
+                    {/* Price */}
                     {showPrice && (
                       <text
                         x={node.x0 + w / 2}
@@ -211,6 +280,8 @@ export function MarketHeatmap({ assets: assetsProp }) {
                         {fmtPrice(d.price)}
                       </text>
                     )}
+
+                    {/* % change */}
                     <text
                       x={node.x0 + w / 2}
                       y={node.y0 + h / 2 + (showLogo ? 38 : showPrice ? 26 : 8)}
@@ -228,6 +299,7 @@ export function MarketHeatmap({ assets: assetsProp }) {
           ))}
         </svg>
 
+        {/* Tooltip */}
         {tooltip && (
           <div
             style={{
