@@ -7,6 +7,40 @@
   --color-brand-light: #c8c8c8;
   --color-brand-dark: #686868;
   --color-accent: #d4d4d4;
+  --silver-100: #f0f0f0;
+  --silver-300: #c0c0c0;
+  --silver-500: #888888;
+  --silver-700: #444444;
+  --gold-accent: #a8956a;
+}
+
+/* Smoother scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 transparent;
+}
+
+/* Card glass effect upgrade */
+.card-glass {
+  background: linear-gradient(135deg, rgba(30,41,59,0.8) 0%, rgba(15,23,42,0.9) 100%);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(148,163,184,0.1);
+}
+
+/* Active nav item with silver underline */
+.nav-active {
+  position: relative;
+}
+.nav-active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #c0c0c0, transparent);
+  border-radius: 2px;
 }
 
 @layer base {

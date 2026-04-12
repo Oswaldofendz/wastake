@@ -53,16 +53,27 @@ export function Navbar({
 
   return (
     <>
-      <header className="h-14 border-b border-slate-700/50 flex items-center justify-between px-4 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-40 gap-3">
+      <header className="h-20 border-b border-slate-700/50 flex items-center justify-between px-4 backdrop-blur-sm sticky top-0 z-40 gap-3" style={{ background: 'linear-gradient(180deg, rgba(10,15,28,0.95) 0%, rgba(15,23,42,0.90) 100%)' }}>
 
         {/* Logo + Desktop Nav */}
         <div className="flex items-center gap-4 min-w-0">
           {/* Logo image — no text next to it, the image already includes the name */}
-          <img
-            src="/logo-completo.png"
-            alt="WaStake"
-            style={{ height: '56px', width: 'auto', mixBlendMode: 'lighten' }}
-          />
+          <button
+            onClick={() => onNavigate?.('dashboard')}
+            className="flex items-center flex-shrink-0 hover:opacity-90 transition-opacity"
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+          >
+            <img
+              src="/logo-completo.png"
+              alt="WaStake"
+              style={{
+                height: '72px',
+                width: 'auto',
+                mixBlendMode: 'lighten',
+                filter: 'brightness(1.3) contrast(1.1)',
+              }}
+            />
+          </button>
 
           {/* Desktop nav — hidden below lg */}
           <nav className="hidden lg:flex gap-0.5">
@@ -73,8 +84,8 @@ export function Navbar({
                 className={[
                   'px-3 py-1.5 text-sm rounded-lg transition-colors font-medium whitespace-nowrap',
                   currentPage === item.id
-                    ? 'bg-slate-700/80 text-white'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800',
+                    ? 'bg-slate-700/60 text-white relative nav-active'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60',
                 ].join(' ')}
               >
                 {item.label}

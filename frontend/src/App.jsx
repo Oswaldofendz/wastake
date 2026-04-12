@@ -13,7 +13,15 @@ export default function App() {
   const { lastUpdated, allAssets } = usePrices(60_000);
   const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
   const { triggered, unreadCount, markRead, markAllRead } = useAlerts(user);
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [currentPage, setCurrentPage] = useState(() => {
+    const hash = window.location.hash.replace('#', '');
+    const valid = ['dashboard', 'panorama', 'markets', 'portfolio', 'alerts'];
+    return valid.includes(hash) ? hash : 'dashboard';
+  });
+
+  useEffect(() => {
+    window.location.hash = currentPage;
+  }, [currentPage]);
 
   // ── Dark / Light mode ────────────────────────────────────────
   const [darkMode, setDarkMode] = useState(() => {
@@ -34,7 +42,7 @@ export default function App() {
   }, [darkMode]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+    <div className="min-h-screen text-white flex flex-col" style={{ background: 'linear-gradient(135deg, #080c14 0%, #0d1525 50%, #080c14 100%)' }}>
       <Navbar
         lastUpdated={lastUpdated}
         currentPage={currentPage}
