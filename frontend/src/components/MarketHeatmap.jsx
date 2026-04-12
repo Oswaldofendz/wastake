@@ -20,13 +20,13 @@ const MARKET_CAPS = {
 };
 
 const SECTORS = [
-  { id: 'tech',       label: 'Tecnología',  color: '#3b82f6', ids: ['AAPL','MSFT','NVDA','GOOGL','META','NFLX','AMD','INTC','ORCL','CRM','ADBE'] },
-  { id: 'consumer',   label: 'Consumo',     color: '#8b5cf6', ids: ['AMZN','TSLA','PYPL','UBER','SHOP','DIS','WMT','MCD','KO','PEP','NKE'] },
-  { id: 'finance',    label: 'Finanzas',    color: '#10b981', ids: ['JPM','V','GS','MS'] },
-  { id: 'health',     label: 'Salud',       color: '#ec4899', ids: ['JNJ','PFE'] },
-  { id: 'energy',     label: 'Energía/Ind.',color: '#f59e0b', ids: ['XOM','BA'] },
-  { id: 'crypto',     label: 'Crypto',      color: '#f97316', ids: ['bitcoin','ethereum','solana','ripple','binancecoin','cardano','dogecoin','avalanche-2','chainlink','polkadot','shiba-inu','litecoin','uniswap','bitcoin-cash','stellar','cosmos','near','internet-computer'] },
-  { id: 'commodities',label: 'Mat. Primas', color: '#eab308', ids: ['GC=F','SI=F'] },
+  { id: 'tech',       label: 'Tecnología',   color: '#3b82f6', ids: ['AAPL','MSFT','NVDA','GOOGL','META','NFLX','AMD','INTC','ORCL','CRM','ADBE'] },
+  { id: 'consumer',   label: 'Consumo',      color: '#8b5cf6', ids: ['AMZN','TSLA','PYPL','UBER','SHOP','DIS','WMT','MCD','KO','PEP','NKE'] },
+  { id: 'finance',    label: 'Finanzas',     color: '#10b981', ids: ['JPM','V','GS','MS'] },
+  { id: 'health',     label: 'Salud',        color: '#ec4899', ids: ['JNJ','PFE'] },
+  { id: 'energy',     label: 'Energía/Ind.', color: '#f59e0b', ids: ['XOM','BA'] },
+  { id: 'crypto',     label: 'Crypto',       color: '#f97316', ids: ['bitcoin','ethereum','solana','ripple','binancecoin','cardano','dogecoin','avalanche-2','chainlink','polkadot','shiba-inu','litecoin','uniswap','bitcoin-cash','stellar','cosmos','near','internet-computer'] },
+  { id: 'commodities',label: 'Mat. Primas',  color: '#eab308', ids: ['GC=F','SI=F'] },
 ];
 
 const CRYPTO_LOGOS = {
@@ -50,15 +50,17 @@ const CRYPTO_LOGOS = {
   'internet-computer': 'https://assets.coingecko.com/coins/images/14495/thumb/Internet_Computer_logo.png',
 };
 
-// ─── Log-scale col span ───────────────────────────────────────────────────────
+// ─── Log-scale col span (12-column grid) ─────────────────────────────────────
 function getColSpan(cap, minCap, maxCap) {
   if (!cap || cap <= 0) return 1;
-  const logMin = Math.log(minCap);
-  const logMax = Math.log(maxCap);
-  const logCap = Math.log(cap);
-  const normalized = (logCap - logMin) / (logMax - logMin || 1);
-  if (normalized > 0.8) return 3;
-  if (normalized > 0.5) return 2;
+  const logMin = Math.log10(Math.max(minCap, 1e8));
+  const logMax = Math.log10(Math.max(maxCap, 1e8));
+  const logCap = Math.log10(Math.max(cap, 1e8));
+  const range = logMax - logMin || 1;
+  const normalized = (logCap - logMin) / range;
+  if (normalized > 0.85) return 4;
+  if (normalized > 0.65) return 3;
+  if (normalized > 0.40) return 2;
   return 1;
 }
 
@@ -95,8 +97,9 @@ function HeatCell({ asset, colSpan = 1 }) {
   const logo   = asset?.image ?? CRYPTO_LOGOS[id];
   const price  = fmtPrice(asset?.price);
 
-  const isXL   = colSpan >= 3;
-  const isLg   = colSpan >= 2;
+  const isXL = colSpan >= 4;
+  const isLg = colSpan >= 3;
+  const isMd = colSpan >= 2;
 
   return (
     <div
@@ -104,44 +107,31 @@ function HeatCell({ asset, colSpan = 1 }) {
       style={{
         backgroundColor: bg,
         gridColumn: `span ${colSpan}`,
-        minHeight: isXL ? '140px' : isLg ? '100px' : '75px',
-        borderRadius: 4,
-        overflow: 'hidden',
-        cursor: 'pointer',
-        border: '1px solid rgba(255,255,255,0.06)',
-        boxSizing: 'border-box',
-        transition: 'filter 0.1s',
+        position: 'relative',
       }}
-      onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.25)'; e.currentTarget.style.zIndex = 10; }}
-      onMouseLeave={e => { e.currentTarget.style.filter = ''; e.currentTarget.style.zIndex = ''; }}
+      className="rounded-lg border border-white/5 cursor-pointer transition-all duration-200 hover:scale-105 hover:z-10 hover:shadow-2xl group overflow-hidden"
     >
-      <div style={{
-        width: '100%', height: '100%',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        gap: isXL ? 4 : 2,
-        padding: isXL ? 10 : isLg ? 6 : 4,
-      }}>
+      <div className="w-full h-full flex flex-col items-center justify-center gap-1 p-1.5">
         {isLg && logo && (
           <img
             src={logo} alt={symbol}
-            style={{ width: isXL ? 36 : 22, height: isXL ? 36 : 22, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+            style={{ width: isXL ? 34 : 24, height: isXL ? 34 : 24, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
             onError={e => { e.target.style.display = 'none'; }}
           />
         )}
         <span style={{
           color: 'rgba(255,255,255,0.95)', fontWeight: 700,
-          fontSize: isXL ? 13 : isLg ? 11 : 9,
+          fontSize: isXL ? 13 : isLg ? 11 : isMd ? 10 : 8,
           lineHeight: 1.1, textAlign: 'center',
         }}>
           {symbol}
         </span>
         {isXL && price && (
-          <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10, fontFamily: 'monospace' }}>{price}</span>
+          <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 9, fontFamily: 'monospace' }}>{price}</span>
         )}
         <span style={{
           color: 'white', fontWeight: 700,
-          fontSize: isXL ? 16 : isLg ? 12 : 10,
+          fontSize: isXL ? 15 : isLg ? 12 : isMd ? 10 : 9,
           fontFamily: 'monospace', lineHeight: 1, textAlign: 'center',
         }}>
           {fmtChange(change)}
@@ -194,14 +184,14 @@ export function MarketHeatmap({ assets: assetsProp }) {
         </div>
       </div>
 
-      {/* Sectors */}
-      <div style={{ background: '#0f172a', padding: 8 }}>
+      {/* Body */}
+      <div style={{ background: '#0f172a' }}>
         {loading ? (
           <div className="flex items-center justify-center" style={{ height: 400 }}>
             <div className="w-6 h-6 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="p-4 space-y-6">
             {SECTORS.map(sector => {
               const sectorAssets = sector.ids.map(id => {
                 const live = allAssets.find(a => a.id === id || a.symbol === id);
@@ -215,20 +205,13 @@ export function MarketHeatmap({ assets: assetsProp }) {
               return (
                 <div key={sector.id}>
                   {/* Sector label */}
-                  <p style={{ color: sector.color, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4, paddingLeft: 2 }}>
+                  <p style={{ color: sector.color, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
                     {sector.label}
                   </p>
-                  {/* Asset grid */}
+                  {/* 12-column asset grid */}
                   <div
-                    style={{
-                      display: 'grid',
-                      gap: 6,
-                      gridTemplateColumns: 'repeat(6, 1fr)',
-                      gridAutoRows: 'auto',
-                      border: `1px solid ${sector.color}30`,
-                      borderRadius: 5,
-                      padding: 6,
-                    }}
+                    className="grid gap-1"
+                    style={{ gridTemplateColumns: 'repeat(12, 1fr)', gridAutoRows: '80px' }}
                   >
                     {sectorAssets.map(asset => {
                       const cap     = MARKET_CAPS[asset.id] ?? MARKET_CAPS[asset.symbol] ?? 10e9;
