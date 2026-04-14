@@ -68,10 +68,10 @@ export function Navbar({
               src="/logo-completo.png"
               alt="WaStake"
               style={{
-                height: '64px',
+                height: '52px',
                 width: 'auto',
                 mixBlendMode: 'lighten',
-                filter: 'brightness(1.3)',
+                filter: 'brightness(1.4) contrast(1.1)',
               }}
             />
           </button>

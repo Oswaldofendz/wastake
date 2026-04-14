@@ -130,9 +130,9 @@ export function MarketHeatmap({ assets: assetsProp }) {
 
   d3.treemap()
     .size([dims.width, treeHeight])
-    .paddingOuter(4)
-    .paddingTop(24)
-    .paddingInner(2)
+    .paddingOuter(2)
+    .paddingTop(22)
+    .paddingInner(1)
     .round(true)(root);
 
   if (loading) return (
