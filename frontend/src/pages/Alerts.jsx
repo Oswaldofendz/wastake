@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAlerts } from '../hooks/useAlerts.js';
 import { CreateAlertModal } from '../components/CreateAlertModal.jsx';
 import { AuthModal } from '../components/AuthModal.jsx';
+import { useToast } from '../components/Toast.jsx';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -259,6 +260,7 @@ function TriggeredAlertsSection({ alerts, onMarkRead }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function Alerts({ user, signIn, signUp, signOut, allAssets }) {
+  const toast = useToast();
   const {
     active,
     triggered,
@@ -271,6 +273,24 @@ export function Alerts({ user, signIn, signUp, signOut, allAssets }) {
   } = useAlerts(user);
 
   const [showCreate, setShowCreate] = useState(false);
+
+  async function handleCreate(data) {
+    try {
+      await createAlert(data);
+      toast.success('Alerta creada', `Monitoreando ${data.asset_name}`);
+    } catch (err) {
+      toast.error('Error al crear alerta', err.message);
+    }
+  }
+
+  async function handleDelete(id) {
+    try {
+      await deleteAlert(id);
+      toast.info('Alerta eliminada');
+    } catch (err) {
+      toast.error('Error al eliminar', err.message);
+    }
+  }
 
   // Not logged in
   if (!user) {
@@ -327,7 +347,7 @@ export function Alerts({ user, signIn, signUp, signOut, allAssets }) {
 
       {/* Sections */}
       <div className="flex flex-col gap-8">
-        <ActiveAlertsSection alerts={active} onDelete={deleteAlert} />
+        <ActiveAlertsSection alerts={active} onDelete={handleDelete} />
         <TriggeredAlertsSection alerts={triggered} onMarkRead={markRead} />
       </div>
 
@@ -335,7 +355,7 @@ export function Alerts({ user, signIn, signUp, signOut, allAssets }) {
       <CreateAlertModal
         isOpen={showCreate}
         onClose={() => setShowCreate(false)}
-        onSave={createAlert}
+        onSave={handleCreate}
         assets={allAssets ?? []}
       />
     </div>

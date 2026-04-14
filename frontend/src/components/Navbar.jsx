@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'panorama',  label: 'Panorama',  icon: '🚦' },
   { id: 'markets',   label: 'Mercados',  icon: '🌍' },
+  { id: 'screener',  label: 'Screener',  icon: '🔍' },
   { id: 'portfolio', label: 'Cartera',   icon: '💼' },
   { id: 'alerts',    label: 'Alertas',   icon: '🔔' },
 ];

@@ -8,6 +8,15 @@ import { Disclaimer } from '../components/Disclaimer.jsx';
 import { AnalysisPanel } from '../components/AnalysisPanel.jsx';
 import { NewsPanel } from '../components/NewsPanel.jsx';
 
+// Timeframes disponibles: label → días para el API de análisis
+const TIMEFRAMES = [
+  { label: '1S',  days: 30,  range: '5d'  },
+  { label: '1M',  days: 60,  range: '1mo' },
+  { label: '3M',  days: 90,  range: '3mo' },
+  { label: '6M',  days: 180, range: '6mo' },
+  { label: '1A',  days: 365, range: '1y'  },
+];
+
 export function Dashboard() {
   const { t } = useTranslation();
   const { allAssets, loading, error } = usePrices(60_000);
@@ -15,6 +24,7 @@ export function Dashboard() {
   const [extraAssets, setExtraAssets]     = useState([]);
   const [sidebarOpen, setSidebarOpen]     = useState(false);
   const [expandedCats, setExpandedCats]   = useState({ crypto: true });
+  const [activeTf, setActiveTf]           = useState(TIMEFRAMES[2]); // 3M por defecto
 
   // IDs deben coincidir exactamente con las claves de TRADITIONAL_ASSETS en el backend
   const CATALOG_CATEGORIES = [
@@ -183,21 +193,44 @@ export function Dashboard() {
                 <StatCard label={t('volume')} value={fmtCompact(chartAsset.volume24h)} />
               </div>
 
-              {/* Chart container */}
+              {/* Timeframe selector + Chart container */}
               <div
                 className="bg-slate-900 rounded-xl border border-slate-700/50 mb-3 overflow-hidden"
                 style={{
                   width: '100%',
-                  height: isMobile ? '300px' : undefined,
+                  height: isMobile ? '340px' : undefined,
                   flex: isMobile ? 'none' : '1',
-                  minHeight: isMobile ? '300px' : '260px',
-                  padding: isMobile ? '8px' : '16px',
+                  minHeight: isMobile ? '340px' : '300px',
+                  display: 'flex',
+                  flexDirection: 'column',
                 }}
               >
-                <CandleChart asset={chartAsset} />
+                {/* Barra de timeframes */}
+                <div className="flex items-center gap-1 px-3 py-2 border-b border-slate-700/50 flex-shrink-0">
+                  <span className="text-xs text-slate-500 mr-1">Período:</span>
+                  {TIMEFRAMES.map(tf => (
+                    <button
+                      key={tf.label}
+                      onClick={() => setActiveTf(tf)}
+                      className={[
+                        'px-2.5 py-1 rounded-md text-xs font-semibold transition-colors',
+                        activeTf.label === tf.label
+                          ? 'bg-brand-500/20 text-brand-300 border border-brand-500/40'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800',
+                      ].join(' ')}
+                    >
+                      {tf.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Chart */}
+                <div style={{ flex: 1, minHeight: 0, padding: isMobile ? '8px' : '12px' }}>
+                  <CandleChart asset={chartAsset} timeframe={activeTf.label} />
+                </div>
               </div>
 
-              <AnalysisPanel asset={chartAsset} />
+              <AnalysisPanel asset={chartAsset} days={activeTf.days} />
               <NewsPanel asset={chartAsset} />
             </>
           ) : (

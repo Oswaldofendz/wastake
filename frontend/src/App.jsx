@@ -5,6 +5,7 @@ import { Portfolio } from './pages/Portfolio.jsx';
 import { Alerts }    from './pages/Alerts.jsx';
 import { Markets }   from './pages/Markets.jsx';
 import { Panorama }  from './pages/Panorama.jsx';
+import { Screener }  from './pages/Screener.jsx';
 import { usePrices } from './hooks/usePrices.js';
 import { useAuth }   from './hooks/useAuth.js';
 import { useAlerts } from './hooks/useAlerts.js';
@@ -15,7 +16,7 @@ export default function App() {
   const { triggered, unreadCount, markRead, markAllRead } = useAlerts(user);
   const [currentPage, setCurrentPage] = useState(() => {
     const hash = window.location.hash.replace('#', '');
-    const valid = ['dashboard', 'panorama', 'markets', 'portfolio', 'alerts'];
+    const valid = ['dashboard', 'panorama', 'markets', 'portfolio', 'alerts', 'screener'];
     return valid.includes(hash) ? hash : 'dashboard';
   });
 
@@ -63,6 +64,8 @@ export default function App() {
           <Panorama />
         ) : currentPage === 'markets' ? (
           <Markets allAssets={allAssets} />
+        ) : currentPage === 'screener' ? (
+          <Screener />
         ) : currentPage === 'alerts' ? (
           !authLoading && (
             <Alerts

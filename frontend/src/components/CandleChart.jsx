@@ -1,40 +1,115 @@
 import { useEffect, useRef, useState } from 'react';
 
-// ── Mapping asset IDs → TradingView symbols ───────────────────
+// ── TradingView symbol map — cubre todos los activos del catálogo ─────────────
 const TV_MAP = {
-  bitcoin:   'BINANCE:BTCUSDT',
-  ethereum:  'BINANCE:ETHUSDT',
-  solana:    'BINANCE:SOLUSDT',
-  SPY:       'AMEX:SPY',
-  URTH:      'AMEX:URTH',
-  EEM:       'AMEX:EEM',
-  'GC=F':    'TVC:GOLD',
-  'SI=F':    'TVC:SILVER',
-  // from categorized browser
-  QQQ:       'NASDAQ:QQQ',
-  SPX:       'CBOE:SPX',
-  IXIC:      'NASDAQ:IXIC',
-  DJI:       'DJ:DJI',
-  DAX:       'XETR:DAX',
-  'CL=F':    'TVC:USOIL',
-  'NG=F':    'TVC:NATGAS',
-  EURUSD:    'FX:EURUSD',
-  GBPUSD:    'FX:GBPUSD',
-  USDJPY:    'FX:USDJPY',
-  USDMXN:   'FX:USDMXN',
-  binancecoin: 'BINANCE:BNBUSDT',
-  ripple:    'BINANCE:XRPUSDT',
-  cardano:   'BINANCE:ADAUSDT',
+  // Crypto
+  bitcoin:             'BINANCE:BTCUSDT',
+  ethereum:            'BINANCE:ETHUSDT',
+  solana:              'BINANCE:SOLUSDT',
+  ripple:              'BINANCE:XRPUSDT',
+  binancecoin:         'BINANCE:BNBUSDT',
+  cardano:             'BINANCE:ADAUSDT',
+  dogecoin:            'BINANCE:DOGEUSDT',
+  'avalanche-2':       'BINANCE:AVAXUSDT',
+  chainlink:           'BINANCE:LINKUSDT',
+  polkadot:            'BINANCE:DOTUSDT',
+  'shiba-inu':         'BINANCE:SHIBUSDT',
+  litecoin:            'BINANCE:LTCUSDT',
+  uniswap:             'BINANCE:UNIUSDT',
+  'bitcoin-cash':      'BINANCE:BCHUSDT',
+  stellar:             'BINANCE:XLMUSDT',
+  cosmos:              'BINANCE:ATOMUSDT',
+  near:                'BINANCE:NEARUSDT',
+  'internet-computer': 'BINANCE:ICPUSDT',
+
+  // ETFs
+  'SPY':  'AMEX:SPY',
+  'QQQ':  'NASDAQ:QQQ',
+  'DIA':  'AMEX:DIA',
+  'IWM':  'AMEX:IWM',
+  'URTH': 'AMEX:URTH',
+  'EEM':  'AMEX:EEM',
+  'VTI':  'AMEX:VTI',
+  'ARKK': 'AMEX:ARKK',
+  'XLK':  'AMEX:XLK',
+  'XLF':  'AMEX:XLF',
+  'XLE':  'AMEX:XLE',
+
+  // Acciones
+  'AAPL':  'NASDAQ:AAPL',
+  'MSFT':  'NASDAQ:MSFT',
+  'NVDA':  'NASDAQ:NVDA',
+  'TSLA':  'NASDAQ:TSLA',
+  'AMZN':  'NASDAQ:AMZN',
+  'GOOGL': 'NASDAQ:GOOGL',
+  'META':  'NASDAQ:META',
+  'NFLX':  'NASDAQ:NFLX',
+  'JPM':   'NYSE:JPM',
+  'V':     'NYSE:V',
+  'AMD':   'NASDAQ:AMD',
+  'INTC':  'NASDAQ:INTC',
+  'ORCL':  'NYSE:ORCL',
+  'CRM':   'NYSE:CRM',
+  'ADBE':  'NASDAQ:ADBE',
+  'PYPL':  'NASDAQ:PYPL',
+  'UBER':  'NYSE:UBER',
+  'SHOP':  'NYSE:SHOP',
+  'DIS':   'NYSE:DIS',
+  'BA':    'NYSE:BA',
+  'GS':    'NYSE:GS',
+  'MS':    'NYSE:MS',
+  'WMT':   'NYSE:WMT',
+  'KO':    'NYSE:KO',
+  'PEP':   'NASDAQ:PEP',
+  'MCD':   'NYSE:MCD',
+  'NKE':   'NYSE:NKE',
+  'PFE':   'NYSE:PFE',
+  'JNJ':   'NYSE:JNJ',
+  'XOM':   'NYSE:XOM',
+
+  // Forex (Yahoo ID → TradingView FX)
+  'EURUSD=X': 'FX:EURUSD',
+  'GBPUSD=X': 'FX:GBPUSD',
+  'USDJPY=X': 'FX:USDJPY',
+  'USDMXN=X': 'FX:USDMXN',
+  'USDBRL=X': 'FX:USDBRL',
+
+  // Índices
+  '^GSPC':  'SP:SPX',
+  '^NDX':   'NASDAQ:NDX',
+  '^DJI':   'DJ:DJI',
+  '^FTSE':  'SPREADEX:FTSE',
+  '^N225':  'INDEX:NKY',
+  '^GDAXI': 'XETR:DAX',
+
+  // Materias primas
+  'GC=F': 'TVC:GOLD',
+  'SI=F': 'TVC:SILVER',
+
+  // Bonos ETFs
+  'TLT': 'NASDAQ:TLT',
+  'IEF': 'NASDAQ:IEF',
+  'SHY': 'NASDAQ:SHY',
+  'HYG': 'NYSE:HYG',
+  'LQD': 'NYSE:LQD',
+};
+
+// Mapeo de timeframe → intervalo de TradingView
+const TF_TO_TV_INTERVAL = {
+  '1S': '60',   // 1 hora para semana
+  '1M': 'D',
+  '3M': 'D',
+  '6M': 'W',
+  '1A': 'W',
 };
 
 function getTVSymbol(asset) {
   if (!asset) return 'BINANCE:BTCUSDT';
-  // Asset from the new browser already has tvSymbol set
   if (asset.tvSymbol) return asset.tvSymbol;
-  return TV_MAP[asset.id] ?? `BINANCE:${asset.symbol ?? asset.id}USDT`;
+  return TV_MAP[asset.id] ?? TV_MAP[asset.symbol] ?? `BINANCE:${asset.symbol ?? asset.id}USDT`;
 }
 
-// Load the TradingView script once globally
+// Carga el script de TradingView una sola vez
 let tvScriptPromise = null;
 function loadTVScript() {
   if (tvScriptPromise) return tvScriptPromise;
@@ -51,7 +126,7 @@ function loadTVScript() {
 
 let idCounter = 0;
 
-export function CandleChart({ asset }) {
+export function CandleChart({ asset, timeframe = '3M' }) {
   const wrapperRef     = useRef(null);
   const containerIdRef = useRef(`tv_widget_${++idCounter}`);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
@@ -67,8 +142,9 @@ export function CandleChart({ asset }) {
 
     const containerId = containerIdRef.current;
     const symbol      = getTVSymbol(asset);
+    const interval    = TF_TO_TV_INTERVAL[timeframe] ?? 'D';
 
-    // Clear previous widget and create fresh container div
+    // Limpiar widget anterior y crear nuevo contenedor
     wrapperRef.current.innerHTML = '';
     const inner = document.createElement('div');
     inner.id = containerId;
@@ -83,10 +159,10 @@ export function CandleChart({ asset }) {
       new window.TradingView.widget({
         autosize:            true,
         symbol,
-        interval:            'D',
+        interval,
         timezone:            'Etc/UTC',
         theme:               'dark',
-        style:               '1',          // Candlestick
+        style:               '1',         // Velas japonesas
         locale:              'es',
         toolbar_bg:          '#0f172a',
         enable_publishing:   false,
@@ -103,7 +179,7 @@ export function CandleChart({ asset }) {
     return () => {
       if (wrapperRef.current) wrapperRef.current.innerHTML = '';
     };
-  }, [asset?.id, asset?.tvSymbol]);
+  }, [asset?.id, asset?.tvSymbol, timeframe]);
 
   return (
     <div

@@ -63,7 +63,7 @@ const INDICATOR_INFO = {
 
 // ── Data fetching hook ────────────────────────────────────────
 
-function useAnalysis(asset) {
+function useAnalysis(asset, days = 90) {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
@@ -78,7 +78,6 @@ function useAnalysis(asset) {
       setError(null);
       try {
         const type   = getAnalysisType(asset);
-        const days   = 90;
         const result = await fetchAnalysis(asset.id, type, days);
         if (!cancelled) setData(result.analysis);
       } catch (err) {
@@ -90,7 +89,7 @@ function useAnalysis(asset) {
 
     load();
     return () => { cancelled = true; };
-  }, [asset?.id]);
+  }, [asset?.id, days]);
 
   return { data, loading, error };
 }
@@ -335,8 +334,8 @@ function Skeleton() {
 
 // ── Main component ────────────────────────────────────────────
 
-export function AnalysisPanel({ asset }) {
-  const { data, loading, error } = useAnalysis(asset);
+export function AnalysisPanel({ asset, days = 90 }) {
+  const { data, loading, error } = useAnalysis(asset, days);
   const [activeInfo, setActiveInfo]   = useState(null); // { shortName, ...INDICATOR_INFO }
 
   if (loading) return (
