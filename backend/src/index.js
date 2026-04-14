@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { priceRouter }    from './routes/prices.js';
 import { assetsRouter }   from './routes/assets.js';
@@ -12,6 +13,12 @@ import { startAlertEngine } from './services/alertService.js';
 const app  = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3001;
+
+// Seguridad HTTP — headers estándar (HSTS, X-Frame-Options, CSP básico, etc.)
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }, // permite que el frontend externo consuma la API
+  contentSecurityPolicy: false, // desactivado para API REST (solo necesario en apps que sirven HTML)
+}));
 
 app.use(cors({
   origin: [

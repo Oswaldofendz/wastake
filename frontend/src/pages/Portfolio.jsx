@@ -3,6 +3,42 @@ import { usePortfolio } from '../hooks/usePortfolio.js';
 import { AuthModal } from '../components/AuthModal.jsx';
 import { AddPositionModal } from '../components/AddPositionModal.jsx';
 import { DonutChart } from '../components/DonutChart.jsx';
+import { useToast } from '../components/Toast.jsx';
+
+// ─── Export CSV ───────────────────────────────────────────────────────────────
+function exportPortfolioCSV(positions, totalValue, totalPnl, totalPnlPct) {
+  const headers = ['Activo', 'Símbolo', 'Tipo', 'Cantidad', 'Precio entrada', 'Precio actual', 'Valor actual', 'Costo base', 'P&L (USD)', 'P&L (%)', 'Cambio 24h (%)', 'Simulación'];
+  const rows = positions.map(p => [
+    p.asset_name,
+    p.asset_id,
+    p.asset_type,
+    p.quantity,
+    p.entry_price,
+    p.currentPrice ?? '',
+    p.currentValue ?? '',
+    p.costBasis,
+    p.pnlUsd ?? '',
+    p.pnlPct != null ? p.pnlPct.toFixed(2) : '',
+    p.change24h != null ? p.change24h.toFixed(2) : '',
+    p.is_simulation ? 'Sí' : 'No',
+  ]);
+
+  // Fila de totales
+  rows.push([]);
+  rows.push(['TOTAL', '', '', '', '', '', totalValue.toFixed(2), '', totalPnl.toFixed(2), totalPnlPct.toFixed(2), '', '']);
+
+  const csvContent = [headers, ...rows]
+    .map(row => row.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `wastake-portfolio-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -143,14 +179,42 @@ function PositionsSection({ title, positions, onRemove, isPaper }) {
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export function Portfolio({ user, signIn, signUp, signOut, allAssets }) {
+  const toast = useToast();
   const {
-    real, paper,
+    positions, real, paper,
     loading, error,
     addPosition, removePosition,
     totalValue, totalCost, totalPnl, totalPnlPct,
   } = usePortfolio(user, allAssets);
 
   const [showAdd, setShowAdd] = useState(false);
+
+  async function handleAdd(data) {
+    try {
+      await addPosition(data);
+      toast.success('Posición agregada', `${data.assetName} añadido a tu cartera`);
+    } catch (err) {
+      toast.error('Error al agregar', err.message);
+    }
+  }
+
+  async function handleRemove(id) {
+    try {
+      await removePosition(id);
+      toast.info('Posición eliminada');
+    } catch (err) {
+      toast.error('Error al eliminar', err.message);
+    }
+  }
+
+  function handleExportCSV() {
+    if (!positions.length) {
+      toast.warning('Sin datos', 'No hay posiciones para exportar');
+      return;
+    }
+    exportPortfolioCSV(positions, totalValue, totalPnl, totalPnlPct);
+    toast.success('CSV exportado', `${positions.length} posiciones descargadas`);
+  }
 
   // ── Sin sesión ───────────────────────────────────────────────
   if (!user) {
@@ -175,6 +239,19 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets }) {
           <p className="text-xs text-slate-500">{user.email}</p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Export CSV */}
+          {positions.length > 0 && (
+            <button
+              onClick={handleExportCSV}
+              title="Exportar a CSV"
+              className="text-slate-400 hover:text-white text-xs px-3 py-2 rounded-lg border border-slate-700/50 hover:border-slate-600 transition-colors flex items-center gap-1.5"
+            >
+              <svg viewBox="0 0 20 20" className="w-4 h-4 fill-current">
+                <path fillRule="evenodd" d="M10 3a.75.75 0 0 1 .75.75v7.69l2.22-2.22a.75.75 0 0 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5a.75.75 0 0 1 1.06-1.06l2.22 2.22V3.75A.75.75 0 0 1 10 3ZM3.75 15a.75.75 0 0 0 0 1.5h12.5a.75.75 0 0 0 0-1.5H3.75Z" clipRule="evenodd" />
+              </svg>
+              CSV
+            </button>
+          )}
           <button
             onClick={() => setShowAdd(true)}
             className="bg-brand-600 hover:bg-brand-500 text-white text-base font-medium px-4 py-2.5 rounded-lg transition-colors flex items-center gap-1.5 min-h-[44px]"
@@ -251,7 +328,7 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets }) {
           <PositionsSection
             title="Posiciones"
             positions={real}
-            onRemove={removePosition}
+            onRemove={handleRemove}
             isPaper={false}
           />
 
@@ -259,7 +336,7 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets }) {
           <PositionsSection
             title="Paper Trading"
             positions={paper}
-            onRemove={removePosition}
+            onRemove={handleRemove}
             isPaper={true}
           />
         </>
@@ -268,7 +345,7 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets }) {
       {/* Modal agregar posición */}
       {showAdd && (
         <AddPositionModal
-          onAdd={addPosition}
+          onAdd={handleAdd}
           onClose={() => setShowAdd(false)}
         />
       )}
