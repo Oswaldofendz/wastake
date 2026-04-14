@@ -88,28 +88,37 @@ analysisRouter.get('/:id/narrative', async (req, res) => {
 
 Write only the analysis paragraph, no titles, no bullet points, no markdown.`;
 
-    const groqRes = await fetch(
-      'https://api.groq.com/openai/v1/chat/completions',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: 200,
-          temperature: 0.7,
-        }),
-      }
-    );
+    // Timeout de 15s para no dejar la request colgada si Groq está lento
+    const controller = new AbortController();
+    const groqTimeout = setTimeout(() => controller.abort(), 15_000);
 
-    const groqData = await groqRes.json();
-    console.log('[narrative] groq status:', groqRes.status);
-    console.log('[narrative] groq response:', JSON.stringify(groqData).slice(0, 300));
+    let groqData;
+    try {
+      const groqRes = await fetch(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: 'llama-3.1-8b-instant',
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: 200,
+            temperature: 0.7,
+          }),
+        }
+      );
+      groqData = await groqRes.json();
+      console.log('[narrative] groq status:', groqRes.status);
+      console.log('[narrative] groq response:', JSON.stringify(groqData).slice(0, 300));
+    } finally {
+      clearTimeout(groqTimeout);
+    }
 
-    const narrative = groqData.choices?.[0]?.message?.content?.trim() ?? null;
+    const narrative = groqData?.choices?.[0]?.message?.content?.trim() ?? null;
     const result = { id, lang, narrative };
     if (narrative) setCache(cacheKey, result);
     res.json(result);

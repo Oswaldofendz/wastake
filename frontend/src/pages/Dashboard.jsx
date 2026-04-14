@@ -16,9 +16,10 @@ export function Dashboard() {
   const [sidebarOpen, setSidebarOpen]     = useState(false);
   const [expandedCats, setExpandedCats]   = useState({ crypto: true });
 
+  // IDs deben coincidir exactamente con las claves de TRADITIONAL_ASSETS en el backend
   const CATALOG_CATEGORIES = [
     { id: 'crypto',      label: 'Crypto',         icon: '₿',  color: 'text-orange-400', ids: ['bitcoin','ethereum','solana','ripple','binancecoin','cardano','dogecoin','polkadot','avalanche-2','chainlink','shiba-inu','litecoin','cosmos','uniswap','near'] },
-    { id: 'stocks',      label: 'Acciones',        icon: '🏢', color: 'text-sky-400',    ids: ['AAPL','MSFT','NVDA','TSLA','AMZN','GOOGL','META','NFLX','JPM','V'] },
+    { id: 'stocks',      label: 'Acciones',        icon: '🏢', color: 'text-sky-400',    ids: ['AAPL','MSFT','NVDA','TSLA','AMZN','GOOGL','META','NFLX','JPM','V','AMD','INTC','ORCL','CRM','ADBE','PYPL','UBER','SHOP','DIS','BA','GS','MS','WMT','KO','PEP','MCD','NKE','PFE','JNJ','XOM'] },
     { id: 'etfs',        label: 'ETFs',            icon: '📊', color: 'text-green-400',  ids: ['SPY','QQQ','DIA','IWM','URTH','EEM','VTI','ARKK','XLK','XLF','XLE'] },
     { id: 'forex',       label: 'Forex',           icon: '💱', color: 'text-purple-400', ids: ['EURUSD=X','GBPUSD=X','USDJPY=X','USDMXN=X','USDBRL=X'] },
     { id: 'commodities', label: 'Materias Primas', icon: '🥇', color: 'text-yellow-400', ids: ['GC=F','SI=F'] },
@@ -33,25 +34,6 @@ export function Dashboard() {
     window.addEventListener('resize', fn);
     return () => window.removeEventListener('resize', fn);
   }, []);
-
-  const ALL_ASSETS_FLAT = [
-    { id: 'EURUSD=X', name: 'EUR / USD',   symbol: 'EUR/USD', type: 'forex' },
-    { id: 'GBPUSD=X', name: 'GBP / USD',   symbol: 'GBP/USD', type: 'forex' },
-    { id: 'USDJPY=X', name: 'USD / JPY',   symbol: 'USD/JPY', type: 'forex' },
-    { id: 'USDMXN=X', name: 'USD / MXN',   symbol: 'USD/MXN', type: 'forex' },
-    { id: 'USDBRL=X', name: 'USD / BRL',   symbol: 'USD/BRL', type: 'forex' },
-    { id: '^GSPC',    name: 'S&P 500',     symbol: 'SPX',     type: 'index' },
-    { id: '^NDX',     name: 'NASDAQ 100',  symbol: 'NDX',     type: 'index' },
-    { id: '^DJI',     name: 'Dow Jones',   symbol: 'DJI',     type: 'index' },
-    { id: '^FTSE',    name: 'FTSE 100',    symbol: 'UKX',     type: 'index' },
-    { id: '^N225',    name: 'Nikkei 225',  symbol: 'NKY',     type: 'index' },
-    { id: '^GDAXI',   name: 'DAX 40',      symbol: 'DAX',     type: 'index' },
-    { id: 'TLT',      name: 'Bonos T 20+', symbol: 'TLT',     type: 'bond'  },
-    { id: 'IEF',      name: 'Bonos T 7-10',symbol: 'IEF',     type: 'bond'  },
-    { id: 'SHY',      name: 'Bonos T 1-3', symbol: 'SHY',     type: 'bond'  },
-    { id: 'HYG',      name: 'High Yield',  symbol: 'HYG',     type: 'bond'  },
-    { id: 'LQD',      name: 'Corp IG',     symbol: 'LQD',     type: 'bond'  },
-  ];
 
   const chartAsset = selectedAsset ?? allAssets[0] ?? null;
 
@@ -137,11 +119,9 @@ export function Dashboard() {
               <div className="flex flex-col gap-1">
                 {CATALOG_CATEGORIES.map(cat => {
                   const catAssets = cat.ids.map(id => {
+                    // El backend ahora retorna todos los activos — si no existe, aún está cargando
                     const live = displayAssets.find(a => a.id === id);
-                    if (live) return live;
-                    const catalog = ALL_ASSETS_FLAT.find(a => a.id === id);
-                    if (catalog) return { ...catalog, price: null, change24h: null, volume24h: 0 };
-                    return null;
+                    return live ?? null;
                   }).filter(Boolean);
                   if (!catAssets.length) return null;
                   const isOpen = !!expandedCats[cat.id];
@@ -217,7 +197,7 @@ export function Dashboard() {
                 <CandleChart asset={chartAsset} />
               </div>
 
-              <AnalysisPanel asset={chartAsset} fearGreedValue={null} />
+              <AnalysisPanel asset={chartAsset} />
               <NewsPanel asset={chartAsset} />
             </>
           ) : (

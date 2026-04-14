@@ -13,11 +13,13 @@ function fromCache(key) {
   if (Date.now() - entry.ts > entry.ttl) { cache.delete(key); return null; }
   return entry.data;
 }
-// Returns stale data regardless of TTL (used as 429 fallback)
+// Returns stale data regardless of TTL (used as API failure fallback)
 function fromCacheStale(key) {
   return cache.get(key)?.data ?? null;
 }
 function toCache(key, data, ttl) { cache.set(key, { data, ts: Date.now(), ttl }); }
+
+// ─── Crypto asset catalog ─────────────────────────────────────────────────────
 
 export const CRYPTO_ASSETS = {
   bitcoin:             { name: 'Bitcoin',          symbol: 'BTC',  image: 'https://assets.coingecko.com/coins/images/1/thumb/bitcoin.png' },
@@ -40,43 +42,122 @@ export const CRYPTO_ASSETS = {
   'internet-computer': { name: 'Internet Computer', symbol: 'ICP',  image: 'https://assets.coingecko.com/coins/images/14495/thumb/Internet_Computer_logo.png' },
 };
 
+// ─── Traditional asset catalog — usada para construir el resultado dinámicamente ─
+
 export const TRADITIONAL_ASSETS = {
-  SPY:    { name: 'S&P 500 (SPY)',       type: 'etf' },
-  URTH:   { name: 'MSCI World (URTH)',   type: 'etf' },
-  EEM:    { name: 'Mercados Emergentes', type: 'etf' },
-  'GC=F': { name: 'Oro (Gold)',          type: 'commodity' },
-  'SI=F': { name: 'Plata (Silver)',      type: 'commodity' },
-  'AAPL':  { name: 'Apple',              symbol: 'AAPL',  type: 'stock' },
-  'MSFT':  { name: 'Microsoft',          symbol: 'MSFT',  type: 'stock' },
-  'NVDA':  { name: 'NVIDIA',             symbol: 'NVDA',  type: 'stock' },
-  'TSLA':  { name: 'Tesla',              symbol: 'TSLA',  type: 'stock' },
-  'AMZN':  { name: 'Amazon',             symbol: 'AMZN',  type: 'stock' },
-  'GOOGL': { name: 'Alphabet',           symbol: 'GOOGL', type: 'stock' },
-  'META':  { name: 'Meta',               symbol: 'META',  type: 'stock' },
-  'NFLX':  { name: 'Netflix',            symbol: 'NFLX',  type: 'stock' },
-  'JPM':   { name: 'JPMorgan',           symbol: 'JPM',   type: 'stock' },
-  'V':     { name: 'Visa',               symbol: 'V',     type: 'stock' },
-  'AMD':   { name: 'AMD',                symbol: 'AMD',   type: 'stock' },
-  'INTC':  { name: 'Intel',              symbol: 'INTC',  type: 'stock' },
-  'ORCL':  { name: 'Oracle',             symbol: 'ORCL',  type: 'stock' },
-  'CRM':   { name: 'Salesforce',         symbol: 'CRM',   type: 'stock' },
-  'ADBE':  { name: 'Adobe',              symbol: 'ADBE',  type: 'stock' },
-  'PYPL':  { name: 'PayPal',             symbol: 'PYPL',  type: 'stock' },
-  'UBER':  { name: 'Uber',               symbol: 'UBER',  type: 'stock' },
-  'SHOP':  { name: 'Shopify',            symbol: 'SHOP',  type: 'stock' },
-  'DIS':   { name: 'Disney',             symbol: 'DIS',   type: 'stock' },
-  'BA':    { name: 'Boeing',             symbol: 'BA',    type: 'stock' },
-  'GS':    { name: 'Goldman Sachs',      symbol: 'GS',    type: 'stock' },
-  'MS':    { name: 'Morgan Stanley',     symbol: 'MS',    type: 'stock' },
-  'WMT':   { name: 'Walmart',            symbol: 'WMT',   type: 'stock' },
-  'KO':    { name: 'Coca-Cola',          symbol: 'KO',    type: 'stock' },
-  'PEP':   { name: 'PepsiCo',            symbol: 'PEP',   type: 'stock' },
-  'MCD':   { name: "McDonald's",         symbol: 'MCD',   type: 'stock' },
-  'NKE':   { name: 'Nike',               symbol: 'NKE',   type: 'stock' },
-  'PFE':   { name: 'Pfizer',             symbol: 'PFE',   type: 'stock' },
-  'JNJ':   { name: 'Johnson & Johnson',  symbol: 'JNJ',   type: 'stock' },
-  'XOM':   { name: 'ExxonMobil',         symbol: 'XOM',   type: 'stock' },
+  // ── ETFs ─────────────────────────────────────────────────────────────────────
+  'SPY':  { name: 'S&P 500 (SPY)',           symbol: 'SPY',  type: 'etf',       image: null },
+  'QQQ':  { name: 'NASDAQ-100 (QQQ)',        symbol: 'QQQ',  type: 'etf',       image: null },
+  'DIA':  { name: 'Dow Jones (DIA)',          symbol: 'DIA',  type: 'etf',       image: null },
+  'IWM':  { name: 'Russell 2000 (IWM)',       symbol: 'IWM',  type: 'etf',       image: null },
+  'URTH': { name: 'MSCI World (URTH)',        symbol: 'URTH', type: 'etf',       image: null },
+  'EEM':  { name: 'Emergentes (EEM)',         symbol: 'EEM',  type: 'etf',       image: null },
+  'VTI':  { name: 'US Total Market (VTI)',   symbol: 'VTI',  type: 'etf',       image: null },
+  'ARKK': { name: 'ARK Innovation (ARKK)',   symbol: 'ARKK', type: 'etf',       image: null },
+  'XLK':  { name: 'Tech Sector (XLK)',       symbol: 'XLK',  type: 'etf',       image: null },
+  'XLF':  { name: 'Finanzas (XLF)',          symbol: 'XLF',  type: 'etf',       image: null },
+  'XLE':  { name: 'Energía (XLE)',           symbol: 'XLE',  type: 'etf',       image: null },
+
+  // ── Acciones ─────────────────────────────────────────────────────────────────
+  'AAPL':  { name: 'Apple',              symbol: 'AAPL',  type: 'stock', image: 'https://logo.clearbit.com/apple.com'          },
+  'MSFT':  { name: 'Microsoft',          symbol: 'MSFT',  type: 'stock', image: 'https://logo.clearbit.com/microsoft.com'      },
+  'NVDA':  { name: 'NVIDIA',             symbol: 'NVDA',  type: 'stock', image: 'https://logo.clearbit.com/nvidia.com'         },
+  'TSLA':  { name: 'Tesla',              symbol: 'TSLA',  type: 'stock', image: 'https://logo.clearbit.com/tesla.com'          },
+  'AMZN':  { name: 'Amazon',             symbol: 'AMZN',  type: 'stock', image: 'https://logo.clearbit.com/amazon.com'         },
+  'GOOGL': { name: 'Alphabet',           symbol: 'GOOGL', type: 'stock', image: 'https://logo.clearbit.com/google.com'         },
+  'META':  { name: 'Meta',               symbol: 'META',  type: 'stock', image: 'https://logo.clearbit.com/meta.com'           },
+  'NFLX':  { name: 'Netflix',            symbol: 'NFLX',  type: 'stock', image: 'https://logo.clearbit.com/netflix.com'        },
+  'JPM':   { name: 'JPMorgan',           symbol: 'JPM',   type: 'stock', image: 'https://logo.clearbit.com/jpmorganchase.com'  },
+  'V':     { name: 'Visa',               symbol: 'V',     type: 'stock', image: 'https://logo.clearbit.com/visa.com'           },
+  'AMD':   { name: 'AMD',                symbol: 'AMD',   type: 'stock', image: null },
+  'INTC':  { name: 'Intel',              symbol: 'INTC',  type: 'stock', image: null },
+  'ORCL':  { name: 'Oracle',             symbol: 'ORCL',  type: 'stock', image: null },
+  'CRM':   { name: 'Salesforce',         symbol: 'CRM',   type: 'stock', image: null },
+  'ADBE':  { name: 'Adobe',              symbol: 'ADBE',  type: 'stock', image: null },
+  'PYPL':  { name: 'PayPal',             symbol: 'PYPL',  type: 'stock', image: null },
+  'UBER':  { name: 'Uber',               symbol: 'UBER',  type: 'stock', image: null },
+  'SHOP':  { name: 'Shopify',            symbol: 'SHOP',  type: 'stock', image: null },
+  'DIS':   { name: 'Disney',             symbol: 'DIS',   type: 'stock', image: null },
+  'BA':    { name: 'Boeing',             symbol: 'BA',    type: 'stock', image: null },
+  'GS':    { name: 'Goldman Sachs',      symbol: 'GS',    type: 'stock', image: null },
+  'MS':    { name: 'Morgan Stanley',     symbol: 'MS',    type: 'stock', image: null },
+  'WMT':   { name: 'Walmart',            symbol: 'WMT',   type: 'stock', image: null },
+  'KO':    { name: 'Coca-Cola',          symbol: 'KO',    type: 'stock', image: null },
+  'PEP':   { name: 'PepsiCo',            symbol: 'PEP',   type: 'stock', image: null },
+  'MCD':   { name: "McDonald's",         symbol: 'MCD',   type: 'stock', image: null },
+  'NKE':   { name: 'Nike',               symbol: 'NKE',   type: 'stock', image: null },
+  'PFE':   { name: 'Pfizer',             symbol: 'PFE',   type: 'stock', image: null },
+  'JNJ':   { name: 'Johnson & Johnson',  symbol: 'JNJ',   type: 'stock', image: null },
+  'XOM':   { name: 'ExxonMobil',         symbol: 'XOM',   type: 'stock', image: null },
+
+  // ── Forex ─────────────────────────────────────────────────────────────────────
+  'EURUSD=X': { name: 'EUR / USD', symbol: 'EUR/USD', type: 'forex', image: null },
+  'GBPUSD=X': { name: 'GBP / USD', symbol: 'GBP/USD', type: 'forex', image: null },
+  'USDJPY=X': { name: 'USD / JPY', symbol: 'USD/JPY', type: 'forex', image: null },
+  'USDMXN=X': { name: 'USD / MXN', symbol: 'USD/MXN', type: 'forex', image: null },
+  'USDBRL=X': { name: 'USD / BRL', symbol: 'USD/BRL', type: 'forex', image: null },
+
+  // ── Índices ──────────────────────────────────────────────────────────────────
+  '^GSPC':  { name: 'S&P 500',    symbol: 'SPX', type: 'index', image: null },
+  '^NDX':   { name: 'NASDAQ 100', symbol: 'NDX', type: 'index', image: null },
+  '^DJI':   { name: 'Dow Jones',  symbol: 'DJI', type: 'index', image: null },
+  '^FTSE':  { name: 'FTSE 100',   symbol: 'UKX', type: 'index', image: null },
+  '^N225':  { name: 'Nikkei 225', symbol: 'NKY', type: 'index', image: null },
+  '^GDAXI': { name: 'DAX 40',     symbol: 'DAX', type: 'index', image: null },
+
+  // ── Materias Primas ──────────────────────────────────────────────────────────
+  'GC=F': { name: 'Oro (Gold)',    symbol: 'XAU', type: 'commodity', image: null },
+  'SI=F': { name: 'Plata (Silver)', symbol: 'XAG', type: 'commodity', image: null },
+
+  // ── Bonos ETFs ───────────────────────────────────────────────────────────────
+  'TLT': { name: 'Bonos T 20+',   symbol: 'TLT', type: 'bond', image: null },
+  'IEF': { name: 'Bonos T 7-10',  symbol: 'IEF', type: 'bond', image: null },
+  'SHY': { name: 'Bonos T 1-3',   symbol: 'SHY', type: 'bond', image: null },
+  'HYG': { name: 'High Yield',    symbol: 'HYG', type: 'bond', image: null },
+  'LQD': { name: 'Corp IG',       symbol: 'LQD', type: 'bond', image: null },
 };
+
+// ─── Yahoo Finance — precio actual (soporta stocks, ETFs, forex, índices, bonos y commodities) ──
+
+async function fetchYahooPrices(symbols) {
+  const result = {};
+  // Procesar en lotes de 20 para evitar saturar Yahoo Finance con demasiadas requests concurrentes
+  const BATCH = 20;
+  for (let i = 0; i < symbols.length; i += BATCH) {
+    const batch = symbols.slice(i, i + BATCH);
+    await Promise.all(batch.map(async (sym) => {
+      try {
+        const { data } = await axios.get(
+          `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}`,
+          {
+            params: { interval: '1d', range: '5d' },
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WaStake/1.0)' },
+            timeout: 8000,
+          }
+        );
+        const meta = data.chart?.result?.[0]?.meta;
+        if (!meta) return;
+        const price = meta.regularMarketPrice;
+        const prev  = meta.chartPreviousClose;
+        if (!price || isNaN(price)) return;
+        result[sym] = {
+          price,
+          change:    prev > 0 ? ((price - prev) / prev) * 100 : 0,
+          volume:    meta.regularMarketVolume ?? 0,
+          marketCap: meta.marketCap ?? 0,
+        };
+      } catch (err) {
+        // Symbol no disponible — se omite silenciosamente
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`[Yahoo] ${sym}: ${err.message?.slice(0, 60)}`);
+        }
+      }
+    }));
+  }
+  return result;
+}
+
+// ─── Crypto prices ────────────────────────────────────────────────────────────
 
 export async function getCryptoPrices(ids = Object.keys(CRYPTO_ASSETS)) {
   const key = `crypto_prices_${ids.join(',')}`;
@@ -124,12 +205,13 @@ export async function getCryptoPrices(ids = Object.keys(CRYPTO_ASSETS)) {
       const staleEntry = cache.get(key);
       const ageMin = staleEntry ? Math.round((Date.now() - staleEntry.ts) / 60000) : '?';
       console.warn(`[PriceService] Returning stale crypto prices (${ageMin}min old)`);
-      // _isStale and _staleTs are internal markers stripped by the route handler
       return { ...stale, _isStale: true, _staleTs: staleEntry?.ts ?? Date.now() };
     }
     throw err;
   }
 }
+
+// ─── Crypto OHLCV ─────────────────────────────────────────────────────────────
 
 export async function getCryptoOHLCV(id, days = 90) {
   const key = `ohlcv_${id}_${days}`;
@@ -137,7 +219,7 @@ export async function getCryptoOHLCV(id, days = 90) {
   if (cached) return cached;
 
   try {
-    // Try /market_chart first - more reliable on free tier, returns daily OHLCV
+    // /market_chart — más fiable en el free tier, retorna daily OHLCV
     const { data } = await axios.get(
       `${process.env.COINGECKO_BASE}/coins/${id}/market_chart`,
       {
@@ -152,16 +234,14 @@ export async function getCryptoOHLCV(id, days = 90) {
 
     if (prices.length < 2) throw new Error('Insufficient data from market_chart');
 
-    // Build synthetic OHLCV candles from daily close prices
+    // Velas OHLCV sintéticas a partir de cierres diarios
     const candles = prices.map(([time, close], i) => {
-      const prev  = i > 0 ? prices[i - 1][1] : close;
-      const high  = Math.max(close, prev);
-      const low   = Math.min(close, prev);
+      const prev = i > 0 ? prices[i - 1][1] : close;
       return {
         time:   Math.floor(time / 1000),
         open:   prev,
-        high,
-        low,
+        high:   Math.max(close, prev),
+        low:    Math.min(close, prev),
         close,
         volume: volumes[i]?.[1] ?? 0,
       };
@@ -170,7 +250,7 @@ export async function getCryptoOHLCV(id, days = 90) {
     toCache(key, candles, CACHE_TTL.ohlcv);
     return candles;
   } catch (err) {
-    // Fallback to /ohlc endpoint
+    // Fallback al endpoint /ohlc
     try {
       const safeDays = Math.min(days, 30);
       const { data } = await axios.get(
@@ -193,128 +273,59 @@ export async function getCryptoOHLCV(id, days = 90) {
   }
 }
 
-async function fetchStooqPrices(symbols) {
-  const result = {};
-  await Promise.all(symbols.map(async (sym) => {
-    try {
-      const { data } = await axios.get(
-        `https://stooq.com/q/l/?s=${sym.toLowerCase()}.us&f=sd2t2ohlcvn&e=csv`,
-        { timeout: 6000 }
-      );
-      const lines = data.trim().split('\n');
-      if (lines.length >= 2) {
-        const cols = lines[1].split(',');
-        const close = parseFloat(cols[6]);
-        const open  = parseFloat(cols[4]);
-        if (!isNaN(close) && close > 0) {
-          result[sym] = {
-            price:  close,
-            change: open > 0 ? ((close - open) / open) * 100 : 0,
-            volume: parseFloat(cols[7]) || 0,
-          };
-        }
-      }
-    } catch { /* usar default */ }
-  }));
-  return result;
-}
-
-async function fetchYahooPrices(symbols) {
-  const result = {};
-  await Promise.all(symbols.map(async (sym) => {
-    try {
-      const { data } = await axios.get(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=5d`,
-        { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WaStake/1.0)' }, timeout: 8000 }
-      );
-      const meta = data.chart?.result?.[0]?.meta;
-      if (!meta) return;
-      const price = meta.regularMarketPrice;
-      const prev = meta.chartPreviousClose;
-      if (!price) return;
-      result[sym] = {
-        price,
-        change: prev > 0 ? ((price - prev) / prev) * 100 : 0,
-        volume: meta.regularMarketVolume ?? 0,
-      };
-    } catch { /* skip */ }
-  }));
-  return result;
-}
+// ─── Traditional prices — construido dinámicamente desde TRADITIONAL_ASSETS ──
 
 export async function getTraditionalPrices() {
   const key = 'traditional_prices';
   const cached = fromCache(key);
   if (cached) return cached;
 
-  let goldPrice = 3100, silverPrice = 34;
+  const symbols = Object.keys(TRADITIONAL_ASSETS);
+
   try {
-    const { data } = await axios.get(
-      `${process.env.COINGECKO_BASE}/simple/price`,
-      { params: { ids: 'pax-gold,silver', vs_currencies: 'usd', include_24hr_change: true }, headers: CG_HEADERS, timeout: 6000 }
-    );
-    if (data['pax-gold']?.usd) goldPrice = data['pax-gold'].usd;
-    if (data['silver']?.usd)   silverPrice = data['silver'].usd;
-  } catch { /* usar default */ }
+    const yahooPrices = await fetchYahooPrices(symbols);
 
-  const [etfData, stockData] = await Promise.all([
-    fetchStooqPrices(['SPY', 'URTH', 'EEM']),
-    fetchYahooPrices([
-      'AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOGL', 'META', 'NFLX', 'JPM', 'V',
-      'AMD', 'INTC', 'ORCL', 'CRM', 'ADBE', 'PYPL', 'UBER', 'SHOP', 'DIS', 'BA',
-      'GS', 'MS', 'WMT', 'KO', 'PEP', 'MCD', 'NKE', 'PFE', 'JNJ', 'XOM',
-    ]),
-  ]);
+    const result = {};
+    for (const [id, meta] of Object.entries(TRADITIONAL_ASSETS)) {
+      const yahoo = yahooPrices[id];
+      result[id] = {
+        id,
+        name:      meta.name,
+        symbol:    meta.symbol ?? id,
+        type:      meta.type,
+        image:     meta.image ?? null,
+        price:     yahoo?.price    ?? null,
+        change24h: yahoo?.change   ?? 0,
+        volume24h: yahoo?.volume   ?? 0,
+        marketCap: yahoo?.marketCap ?? 0,
+        updatedAt: Date.now(),
+      };
+    }
 
-  const result = {
-    SPY:    { id: 'SPY',  symbol: 'SPY',  name: 'S&P 500 (SPY)',       type: 'etf',       price: etfData.SPY?.price  ?? 560, change24h: etfData.SPY?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    URTH:   { id: 'URTH', symbol: 'URTH', name: 'MSCI World (URTH)',   type: 'etf',       price: etfData.URTH?.price ?? 98,  change24h: etfData.URTH?.change ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    EEM:    { id: 'EEM',  symbol: 'EEM',  name: 'Mercados Emergentes', type: 'etf',       price: etfData.EEM?.price  ?? 42,  change24h: etfData.EEM?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'GC=F': { id: 'GC=F', symbol: 'XAU',  name: 'Oro (Gold)',          type: 'commodity', price: goldPrice,                   change24h: 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'SI=F': { id: 'SI=F', symbol: 'XAG',  name: 'Plata (Silver)',      type: 'commodity', price: silverPrice,                 change24h: 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'AAPL':  { id: 'AAPL',  symbol: 'AAPL',  name: 'Apple',     type: 'stock', price: stockData.AAPL?.price  ?? null, change24h: stockData.AAPL?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/apple.com'     },
-    'MSFT':  { id: 'MSFT',  symbol: 'MSFT',  name: 'Microsoft', type: 'stock', price: stockData.MSFT?.price  ?? null, change24h: stockData.MSFT?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/microsoft.com' },
-    'NVDA':  { id: 'NVDA',  symbol: 'NVDA',  name: 'NVIDIA',    type: 'stock', price: stockData.NVDA?.price  ?? null, change24h: stockData.NVDA?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/nvidia.com'    },
-    'TSLA':  { id: 'TSLA',  symbol: 'TSLA',  name: 'Tesla',     type: 'stock', price: stockData.TSLA?.price  ?? null, change24h: stockData.TSLA?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/tesla.com'     },
-    'AMZN':  { id: 'AMZN',  symbol: 'AMZN',  name: 'Amazon',    type: 'stock', price: stockData.AMZN?.price  ?? null, change24h: stockData.AMZN?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/amazon.com'    },
-    'GOOGL': { id: 'GOOGL', symbol: 'GOOGL', name: 'Alphabet',  type: 'stock', price: stockData.GOOGL?.price ?? null, change24h: stockData.GOOGL?.change ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/google.com'    },
-    'META':  { id: 'META',  symbol: 'META',  name: 'Meta',      type: 'stock', price: stockData.META?.price  ?? null, change24h: stockData.META?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/meta.com'      },
-    'NFLX':  { id: 'NFLX',  symbol: 'NFLX',  name: 'Netflix',   type: 'stock', price: stockData.NFLX?.price  ?? null, change24h: stockData.NFLX?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/netflix.com'   },
-    'JPM':   { id: 'JPM',   symbol: 'JPM',   name: 'JPMorgan',  type: 'stock', price: stockData.JPM?.price   ?? null, change24h: stockData.JPM?.change   ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/jpmorganchase.com' },
-    'V':     { id: 'V',     symbol: 'V',     name: 'Visa',      type: 'stock', price: stockData.V?.price     ?? null, change24h: stockData.V?.change     ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now(), image: 'https://logo.clearbit.com/visa.com'      },
-    'AMD':  { id: 'AMD',  symbol: 'AMD',  name: 'AMD',                 type: 'stock', price: stockData.AMD?.price  ?? null, change24h: stockData.AMD?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'INTC': { id: 'INTC', symbol: 'INTC', name: 'Intel',               type: 'stock', price: stockData.INTC?.price ?? null, change24h: stockData.INTC?.change ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'ORCL': { id: 'ORCL', symbol: 'ORCL', name: 'Oracle',              type: 'stock', price: stockData.ORCL?.price ?? null, change24h: stockData.ORCL?.change ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'CRM':  { id: 'CRM',  symbol: 'CRM',  name: 'Salesforce',          type: 'stock', price: stockData.CRM?.price  ?? null, change24h: stockData.CRM?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'ADBE': { id: 'ADBE', symbol: 'ADBE', name: 'Adobe',               type: 'stock', price: stockData.ADBE?.price ?? null, change24h: stockData.ADBE?.change ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'PYPL': { id: 'PYPL', symbol: 'PYPL', name: 'PayPal',              type: 'stock', price: stockData.PYPL?.price ?? null, change24h: stockData.PYPL?.change ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'UBER': { id: 'UBER', symbol: 'UBER', name: 'Uber',                type: 'stock', price: stockData.UBER?.price ?? null, change24h: stockData.UBER?.change ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'SHOP': { id: 'SHOP', symbol: 'SHOP', name: 'Shopify',             type: 'stock', price: stockData.SHOP?.price ?? null, change24h: stockData.SHOP?.change ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'DIS':  { id: 'DIS',  symbol: 'DIS',  name: 'Disney',              type: 'stock', price: stockData.DIS?.price  ?? null, change24h: stockData.DIS?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'BA':   { id: 'BA',   symbol: 'BA',   name: 'Boeing',              type: 'stock', price: stockData.BA?.price   ?? null, change24h: stockData.BA?.change   ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'GS':   { id: 'GS',   symbol: 'GS',   name: 'Goldman Sachs',       type: 'stock', price: stockData.GS?.price   ?? null, change24h: stockData.GS?.change   ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'MS':   { id: 'MS',   symbol: 'MS',   name: 'Morgan Stanley',      type: 'stock', price: stockData.MS?.price   ?? null, change24h: stockData.MS?.change   ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'WMT':  { id: 'WMT',  symbol: 'WMT',  name: 'Walmart',             type: 'stock', price: stockData.WMT?.price  ?? null, change24h: stockData.WMT?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'KO':   { id: 'KO',   symbol: 'KO',   name: 'Coca-Cola',           type: 'stock', price: stockData.KO?.price   ?? null, change24h: stockData.KO?.change   ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'PEP':  { id: 'PEP',  symbol: 'PEP',  name: 'PepsiCo',             type: 'stock', price: stockData.PEP?.price  ?? null, change24h: stockData.PEP?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'MCD':  { id: 'MCD',  symbol: 'MCD',  name: "McDonald's",          type: 'stock', price: stockData.MCD?.price  ?? null, change24h: stockData.MCD?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'NKE':  { id: 'NKE',  symbol: 'NKE',  name: 'Nike',                type: 'stock', price: stockData.NKE?.price  ?? null, change24h: stockData.NKE?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'PFE':  { id: 'PFE',  symbol: 'PFE',  name: 'Pfizer',              type: 'stock', price: stockData.PFE?.price  ?? null, change24h: stockData.PFE?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'JNJ':  { id: 'JNJ',  symbol: 'JNJ',  name: 'Johnson & Johnson',   type: 'stock', price: stockData.JNJ?.price  ?? null, change24h: stockData.JNJ?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-    'XOM':  { id: 'XOM',  symbol: 'XOM',  name: 'ExxonMobil',          type: 'stock', price: stockData.XOM?.price  ?? null, change24h: stockData.XOM?.change  ?? 0, volume24h: 0, marketCap: 0, updatedAt: Date.now() },
-  };
-
-  toCache(key, result, CACHE_TTL.price);
-  return result;
+    toCache(key, result, CACHE_TTL.price);
+    return result;
+  } catch (err) {
+    // Stale cache fallback — igual que en crypto
+    console.warn('[PriceService] Traditional prices fetch failed — trying stale cache');
+    const stale = fromCacheStale(key);
+    if (stale) {
+      const staleEntry = cache.get(key);
+      const ageMin = staleEntry ? Math.round((Date.now() - staleEntry.ts) / 60000) : '?';
+      console.warn(`[PriceService] Returning stale traditional prices (${ageMin}min old)`);
+      return { ...stale, _isStale: true, _staleTs: staleEntry?.ts ?? Date.now() };
+    }
+    throw err;
+  }
 }
+
+// ─── Traditional OHLCV — Yahoo Finance + Stooq fallback ──────────────────────
 
 export async function getTraditionalOHLCV(symbol) {
   const key = `trad_ohlcv_${symbol}`;
   const cached = fromCache(key);
   if (cached) return cached;
 
-  // Yahoo Finance v8 chart API — funciona sin API key server-side
-  // Acepta los mismos símbolos: SPY, URTH, EEM, GC=F, SI=F
+  // Yahoo Finance v8 chart — acepta stocks, ETFs, forex, índices, bonos y commodities
   try {
     const { data } = await axios.get(
       `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`,
@@ -345,11 +356,10 @@ export async function getTraditionalOHLCV(symbol) {
     toCache(key, candles, CACHE_TTL.ohlcv);
     return candles;
   } catch {
-    // Fallback a Stooq si Yahoo falla
+    // Fallback a Stooq (funciona para algunos activos tradicionales)
     try {
-      const stooqSym = symbol.replace('=F', '.f').replace('=', '').toLowerCase();
+      const stooqSym = symbol.replace('=F', '.f').replace(/[^a-zA-Z0-9.]/g, '').toLowerCase();
       const suffix = /^\w+\.f$/.test(stooqSym) ? '' : '.us';
-      // Stooq: d1 y d2 para rango de 1 año exacto
       const now  = new Date();
       const past = new Date(now); past.setFullYear(past.getFullYear() - 1);
       const fmt  = d => d.toISOString().slice(0, 10).replace(/-/g, '');

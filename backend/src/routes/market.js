@@ -229,10 +229,9 @@ marketRouter.get('/whale-alerts', async (_req, res) => {
   if (cached) return res.json(cached);
 
   try {
-    const btcPrice = await fetch('https://mempool.space/api/v1/prices')
-      .then(r => r.json())
-      .then(d => d.USD ?? 70000)
-      .catch(() => 70000);
+    const btcPrice = await axios.get('https://mempool.space/api/v1/prices', { timeout: 5000 })
+      .then(r => r.data?.USD ?? 85000)
+      .catch(() => 85000); // fallback actualizado — precio aproximado actual
 
     const BTC_THRESHOLD = 5;
     const SATOSHI = 100_000_000;
@@ -280,47 +279,76 @@ marketRouter.get('/whale-alerts', async (_req, res) => {
   }
 });
 
+// ── Helper: fetch Yahoo Finance con timeout usando axios ──────────────────────
+async function fetchYahooMeta(symbol) {
+  const { data } = await axios.get(
+    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`,
+    {
+      params: { interval: '1d', range: '5d' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WaStake/1.0)' },
+      timeout: 8000,
+    }
+  );
+  return data.chart?.result?.[0]?.meta ?? null;
+}
+
 // GET /api/market/vix — CBOE Volatility Index via Yahoo Finance
-marketRouter.get('/vix', async (req, res) => {
+marketRouter.get('/vix', async (_req, res) => {
+  const TTL = 5 * 60 * 1000; // 5 min — VIX cambia rápido en días volátiles
+  const cached = fromCache('vix', TTL);
+  if (cached) return res.json(cached);
+
   try {
-    const response = await fetch(
-      'https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=5d',
-      { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WaStake/1.0)' } }
-    );
-    const data = await response.json();
-    const meta = data.chart?.result?.[0]?.meta;
+    const meta = await fetchYahooMeta('^VIX');
     if (!meta) return res.status(404).json({ error: 'No VIX data' });
     const value = parseFloat(meta.regularMarketPrice);
     if (isNaN(value)) return res.status(404).json({ error: 'Invalid VIX data' });
+
+    const prev  = meta.chartPreviousClose;
+    const change = prev > 0 ? ((value - prev) / prev) * 100 : 0;
     const level = value < 15 ? 'low' : value < 25 ? 'moderate' : value < 35 ? 'high' : 'extreme';
     const label = value < 15 ? 'Baja volatilidad — mercado tranquilo' :
                   value < 25 ? 'Volatilidad moderada — condiciones normales' :
                   value < 35 ? 'Alta volatilidad — mercado nervioso' :
                                'Volatilidad extrema — pánico en el mercado';
-    res.json({ value, level, label });
+
+    const result = { value: parseFloat(value.toFixed(2)), change: parseFloat(change.toFixed(2)), level, label };
+    toCache('vix', result);
+    res.json(result);
   } catch (err) {
+    // Devolver caché vencida antes de retornar error
+    const stale = cache.get('vix')?.data;
+    if (stale) return res.json({ ...stale, stale: true });
     res.status(502).json({ error: err.message });
   }
 });
 
 // GET /api/market/dxy — US Dollar Index via Yahoo Finance
-marketRouter.get('/dxy', async (req, res) => {
+marketRouter.get('/dxy', async (_req, res) => {
+  const TTL = 5 * 60 * 1000; // 5 min
+  const cached = fromCache('dxy', TTL);
+  if (cached) return res.json(cached);
+
   try {
-    const response = await fetch(
-      'https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB?interval=1d&range=5d',
-      { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WaStake/1.0)' } }
-    );
-    const data = await response.json();
-    const meta = data.chart?.result?.[0]?.meta;
+    const meta = await fetchYahooMeta('DX-Y.NYB');
     if (!meta) return res.status(404).json({ error: 'No DXY data' });
     const value = parseFloat(meta.regularMarketPrice);
     if (isNaN(value)) return res.status(404).json({ error: 'Invalid DXY data' });
+
+    const prev  = meta.chartPreviousClose;
+    const change = prev > 0 ? ((value - prev) / prev) * 100 : 0;
     const trend = value > 104 ? 'strong' : value > 100 ? 'neutral' : 'weak';
     const label = value > 104 ? 'Dólar fuerte — presión bajista para el oro' :
                   value > 100 ? 'Dólar neutro — sin efecto claro en commodities' :
                                 'Dólar débil — favorable para oro y plata';
-    res.json({ value, trend, label });
+
+    const result = { value: parseFloat(value.toFixed(2)), change: parseFloat(change.toFixed(2)), trend, label };
+    toCache('dxy', result);
+    res.json(result);
   } catch (err) {
+    // Devolver caché vencida antes de retornar error
+    const stale = cache.get('dxy')?.data;
+    if (stale) return res.json({ ...stale, stale: true });
     res.status(502).json({ error: err.message });
   }
 });
