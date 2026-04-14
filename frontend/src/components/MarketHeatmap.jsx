@@ -91,7 +91,7 @@ export function MarketHeatmap({ assets: assetsProp }) {
     if (!containerRef.current) return;
     const ro = new ResizeObserver(entries => {
       const { width } = entries[0].contentRect;
-      setDims({ width, height: Math.max(500, width * 0.5) });
+      setDims({ width: Math.floor(width), height: Math.max(600, Math.floor(width * 0.55)) });
     });
     ro.observe(containerRef.current);
     return () => ro.disconnect();
@@ -166,7 +166,7 @@ export function MarketHeatmap({ assets: assetsProp }) {
 
       {/* Treemap */}
       <div ref={containerRef} style={{ position: 'relative', width: '100%', height: treeHeight }}>
-        <svg width={dims.width} height={treeHeight} style={{ position: 'absolute', top: 0, left: 0 }}>
+        <svg width="100%" height={treeHeight} viewBox={`0 0 ${dims.width} ${treeHeight}`} style={{ position: 'absolute', top: 0, left: 0 }}>
           {root.children?.map(sector => (
             <g key={sector.data.id}>
               {/* Sector background border */}
