@@ -88,13 +88,15 @@ export function MarketHeatmap({ assets: assetsProp }) {
   }, [assetsProp]);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-    const ro = new ResizeObserver(entries => {
-      const { width } = entries[0].contentRect;
-      setDims({ width: Math.floor(width), height: Math.max(600, Math.floor(width * 0.55)) });
-    });
-    ro.observe(containerRef.current);
-    return () => ro.disconnect();
+    function updateDims() {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const w = Math.max(600, Math.floor(rect.width));
+      setDims({ width: w, height: Math.max(600, Math.floor(w * 0.55)) });
+    }
+    updateDims();
+    window.addEventListener('resize', updateDims);
+    return () => window.removeEventListener('resize', updateDims);
   }, []);
 
   // When focused, expand height 1.8×
@@ -165,7 +167,8 @@ export function MarketHeatmap({ assets: assetsProp }) {
       )}
 
       {/* Treemap */}
-      <div ref={containerRef} style={{ position: 'relative', width: '100%', height: treeHeight }}>
+      <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
+      <div ref={containerRef} style={{ position: 'relative', minWidth: '600px', width: '100%', height: treeHeight, overflow: 'hidden' }}>
         <svg width="100%" height={treeHeight} viewBox={`0 0 ${dims.width} ${treeHeight}`} style={{ position: 'absolute', top: 0, left: 0 }}>
           {root.children?.map(sector => (
             <g key={sector.data.id}>
@@ -318,6 +321,7 @@ export function MarketHeatmap({ assets: assetsProp }) {
             </p>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
