@@ -120,7 +120,7 @@ export function EconomicCalendar() {
   const todayCount  = events.filter(e => isToday(e.date)).length;
 
   return (
-    <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl overflow-hidden">
+    <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 border-b border-slate-700/40">
         <div className="flex items-center justify-between mb-3">

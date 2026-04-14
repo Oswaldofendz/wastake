@@ -54,7 +54,7 @@ export function Navbar({
 
   return (
     <>
-      <header className="h-20 border-b border-slate-700/50 flex items-center justify-between px-4 backdrop-blur-sm sticky top-0 z-40 gap-3" style={{ background: 'linear-gradient(180deg, rgba(10,15,28,0.95) 0%, rgba(15,23,42,0.90) 100%)' }}>
+      <header className="h-20 flex items-center justify-between px-4 backdrop-blur-sm sticky top-0 z-40 gap-3" style={{ background: 'linear-gradient(180deg, rgba(6,7,11,0.98) 0%, rgba(8,10,15,0.95) 100%)', borderBottom: '1px solid rgba(192,192,192,0.08)' }}>
 
         {/* Logo + Desktop Nav */}
         <div className="flex items-center gap-4 min-w-0">
@@ -85,8 +85,8 @@ export function Navbar({
                 className={[
                   'px-3 py-1.5 text-sm rounded-lg transition-colors font-medium whitespace-nowrap',
                   currentPage === item.id
-                    ? 'bg-slate-700/60 text-white relative nav-active'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60',
+                    ? 'text-white relative nav-active bg-white/5'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5',
                 ].join(' ')}
               >
                 {item.label}

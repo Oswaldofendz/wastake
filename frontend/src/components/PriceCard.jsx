@@ -61,8 +61,8 @@ export function PriceCard({ asset, isSelected, onClick }) {
         'w-full text-left px-3 py-2.5 rounded-xl border transition-all duration-150',
         'hover:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-400',
         isSelected
-          ? 'border-brand-400 bg-brand-900/40'
-          : 'border-slate-700/50 bg-slate-800/50',
+          ? 'bg-white/[8%] border-l-2 border-l-[#c0c0c0] border-white/[8%]'
+          : 'border-white/[8%] hover:bg-white/[4%]',
       ].join(' ')}
     >
       <div className="flex items-center gap-2.5">

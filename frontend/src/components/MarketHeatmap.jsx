@@ -134,7 +134,7 @@ export function MarketHeatmap({ assets: assetsProp }) {
     .round(true)(root);
 
   if (loading) return (
-    <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-6 animate-pulse" style={{ height: 600 }}>
+    <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl p-6 animate-pulse" style={{ height: 600 }}>
       <div className="h-3 bg-slate-700 rounded w-40 mb-4" />
       <div className="h-full bg-slate-700/30 rounded" />
     </div>

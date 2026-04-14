@@ -24,7 +24,7 @@ export function BTCDominance() {
   }, []);
 
   if (loading) return (
-    <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 animate-pulse">
+    <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl p-4 animate-pulse">
       <div className="h-3 bg-slate-700 rounded w-1/2 mb-3" />
       <div className="h-8 bg-slate-700/50 rounded mb-2" />
       <div className="h-2 bg-slate-700/30 rounded-full" />
@@ -39,7 +39,7 @@ export function BTCDominance() {
   const change = data.marketCapChange24h;
 
   return (
-    <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4">
+    <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Dominancia BTC</h3>

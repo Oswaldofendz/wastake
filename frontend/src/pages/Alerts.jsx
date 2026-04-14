@@ -116,7 +116,7 @@ function ActiveAlertsSection({ alerts, onDelete }) {
           <p className="text-slate-600 text-xs mt-1">Crea una alerta para monitorear precios e indicadores</p>
         </div>
       ) : (
-        <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl overflow-hidden">
+        <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl overflow-hidden">
           {/* Column headers */}
           <div className="flex items-center gap-3 px-4 py-2.5 text-xs text-slate-500 border-b border-slate-700/40 bg-slate-800/60">
             <span className="flex-1">Activo</span>
@@ -190,7 +190,7 @@ function TriggeredAlertsSection({ alerts, onMarkRead }) {
           <p className="text-slate-600 text-xs mt-1">Las alertas que se activen aparecerán aquí</p>
         </div>
       ) : (
-        <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl overflow-hidden">
+        <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl overflow-hidden">
           {/* Column headers */}
           <div className="flex items-center gap-3 px-4 py-2.5 text-xs text-slate-500 border-b border-slate-700/40 bg-slate-800/60">
             <span className="w-2 flex-shrink-0" />

@@ -122,14 +122,14 @@ export function FearGreedGauge() {
   }, []);
 
   if (loading) return (
-    <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4 animate-pulse">
+    <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl p-4 animate-pulse">
       <div className="h-3 bg-slate-700 rounded w-2/3 mb-4" />
       <div className="h-24 bg-slate-700/50 rounded-lg" />
     </div>
   );
 
   if (error || !data) return (
-    <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4">
+    <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl p-4">
       <p className="text-xs text-slate-500 text-center">Fear & Greed no disponible</p>
     </div>
   );

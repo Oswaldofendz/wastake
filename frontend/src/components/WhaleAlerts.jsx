@@ -50,7 +50,7 @@ export function WhaleAlerts() {
   const whales = data?.whales ?? [];
 
   return (
-    <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl overflow-hidden">
+    <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 border-b border-slate-700/40 flex items-center justify-between">
         <div>
