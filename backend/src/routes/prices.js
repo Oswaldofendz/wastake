@@ -11,11 +11,16 @@ export const priceRouter = Router();
 // GET /api/prices/all — todos los activos de una vez
 priceRouter.get('/all', async (req, res) => {
   try {
-    const [crypto, traditional] = await Promise.all([
+    const [cryptoRaw, traditional] = await Promise.all([
       getCryptoPrices(),
       getTraditionalPrices(),
     ]);
-    res.json({ crypto, traditional, ts: Date.now() });
+
+    // Strip internal stale markers before sending to client
+    const { _isStale, _staleTs, ...crypto } = cryptoRaw;
+    const isStale = _isStale ?? false;
+
+    res.json({ crypto, traditional, ts: Date.now(), isStale, staleTs: _staleTs ?? null });
   } catch (err) {
     console.error('Error fetching all prices:', err.message);
     res.status(502).json({ error: 'Failed to fetch prices', detail: err.message });
@@ -26,8 +31,8 @@ priceRouter.get('/all', async (req, res) => {
 priceRouter.get('/crypto', async (req, res) => {
   try {
     const ids = req.query.ids ? req.query.ids.split(',') : undefined;
-    const data = await getCryptoPrices(ids);
-    res.json(data);
+    const { _isStale, _staleTs, ...data } = await getCryptoPrices(ids);
+    res.json({ ...data, isStale: _isStale ?? false });
   } catch (err) {
     res.status(502).json({ error: err.message });
   }

@@ -83,38 +83,52 @@ export async function getCryptoPrices(ids = Object.keys(CRYPTO_ASSETS)) {
   const cached = fromCache(key);
   if (cached) return cached;
 
-  const { data } = await axios.get(
-    `${process.env.COINGECKO_BASE}/simple/price`,
-    {
-      params: {
-        ids: ids.join(','),
-        vs_currencies: 'usd',
-        include_24hr_change: true,
-        include_24hr_vol: true,
-        include_market_cap: true,
-      },
-      headers: CG_HEADERS,
-      timeout: 8000,
-    }
-  );
+  try {
+    const { data } = await axios.get(
+      `${process.env.COINGECKO_BASE}/simple/price`,
+      {
+        params: {
+          ids: ids.join(','),
+          vs_currencies: 'usd',
+          include_24hr_change: true,
+          include_24hr_vol: true,
+          include_market_cap: true,
+        },
+        headers: CG_HEADERS,
+        timeout: 8000,
+      }
+    );
 
-  const result = {};
-  for (const [id, raw] of Object.entries(data)) {
-    result[id] = {
-      id,
-      name:      CRYPTO_ASSETS[id]?.name  ?? id,
-      symbol:    CRYPTO_ASSETS[id]?.symbol ?? id.toUpperCase(),
-      image:     CRYPTO_ASSETS[id]?.image  ?? null,
-      price:     raw.usd,
-      change24h: raw.usd_24h_change ?? 0,
-      volume24h: raw.usd_24h_vol    ?? 0,
-      marketCap: raw.usd_market_cap ?? 0,
-      type:      'crypto',
-      updatedAt: Date.now(),
-    };
+    const result = {};
+    for (const [id, raw] of Object.entries(data)) {
+      result[id] = {
+        id,
+        name:      CRYPTO_ASSETS[id]?.name  ?? id,
+        symbol:    CRYPTO_ASSETS[id]?.symbol ?? id.toUpperCase(),
+        image:     CRYPTO_ASSETS[id]?.image  ?? null,
+        price:     raw.usd,
+        change24h: raw.usd_24h_change ?? 0,
+        volume24h: raw.usd_24h_vol    ?? 0,
+        marketCap: raw.usd_market_cap ?? 0,
+        type:      'crypto',
+        updatedAt: Date.now(),
+      };
+    }
+    toCache(key, result, CACHE_TTL.price);
+    return result;
+  } catch (err) {
+    const status = err.response?.status;
+    console.warn(`[PriceService] CoinGecko ${status ?? 'network error'} — trying stale cache`);
+    const stale = fromCacheStale(key);
+    if (stale) {
+      const staleEntry = cache.get(key);
+      const ageMin = staleEntry ? Math.round((Date.now() - staleEntry.ts) / 60000) : '?';
+      console.warn(`[PriceService] Returning stale crypto prices (${ageMin}min old)`);
+      // _isStale and _staleTs are internal markers stripped by the route handler
+      return { ...stale, _isStale: true, _staleTs: staleEntry?.ts ?? Date.now() };
+    }
+    throw err;
   }
-  toCache(key, result, CACHE_TTL.price);
-  return result;
 }
 
 export async function getCryptoOHLCV(id, days = 90) {

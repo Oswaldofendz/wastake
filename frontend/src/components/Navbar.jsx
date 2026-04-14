@@ -42,6 +42,7 @@ export function Navbar({
   onMarkAllRead,
   darkMode,
   onToggleDark,
+  isStale,
 }) {
   const { t, i18n } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -97,9 +98,21 @@ export function Navbar({
         {/* Right side */}
         <div className="flex items-center gap-2 flex-shrink-0">
           {lastUpdated && (
-            <span className="text-xs text-slate-500 hidden xl:block whitespace-nowrap">
-              {t('last_updated')}: {lastUpdated.toLocaleTimeString()}
-            </span>
+            <div className="hidden xl:flex items-center gap-1.5 text-xs whitespace-nowrap">
+              {isStale ? (
+                <span
+                  className="flex items-center gap-1 text-amber-400"
+                  title="Precios retrasados — CoinGecko no disponible, reintentando cada 30s"
+                >
+                  <svg viewBox="0 0 16 16" className="w-3 h-3 fill-current flex-shrink-0">
+                    <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm7.5-3.5a.5.5 0 0 1 1 0v3.25l2.25 1.3a.5.5 0 0 1-.5.866L7.5 8.5V4.5Z"/>
+                  </svg>
+                  <span>retrasado</span>
+                </span>
+              ) : (
+                <span className="text-slate-500">{t('last_updated')}: {lastUpdated.toLocaleTimeString()}</span>
+              )}
+            </div>
           )}
 
           <NotificationBell

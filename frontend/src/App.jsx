@@ -10,7 +10,7 @@ import { useAuth }   from './hooks/useAuth.js';
 import { useAlerts } from './hooks/useAlerts.js';
 
 export default function App() {
-  const { lastUpdated, allAssets } = usePrices(60_000);
+  const { lastUpdated, allAssets, isStale } = usePrices(60_000);
   const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
   const { triggered, unreadCount, markRead, markAllRead } = useAlerts(user);
   const [currentPage, setCurrentPage] = useState(() => {
@@ -53,6 +53,7 @@ export default function App() {
         onMarkAllRead={markAllRead}
         darkMode={darkMode}
         onToggleDark={() => setDarkMode(d => !d)}
+        isStale={isStale}
       />
 
       <div className="flex-1 flex flex-col min-h-0">
