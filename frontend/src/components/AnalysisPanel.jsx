@@ -78,7 +78,7 @@ function useAnalysis(asset) {
       setError(null);
       try {
         const type   = getAnalysisType(asset);
-        const days   = 365;
+        const days   = 90;
         const result = await fetchAnalysis(asset.id, type, days);
         if (!cancelled) setData(result.analysis);
       } catch (err) {
