@@ -167,8 +167,8 @@ export function MarketHeatmap({ assets: assetsProp }) {
       )}
 
       {/* Treemap */}
-      <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
-      <div ref={containerRef} style={{ position: 'relative', minWidth: '600px', width: '100%', height: treeHeight, overflow: 'hidden' }}>
+      <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', padding: 0, margin: 0 }}>
+      <div ref={containerRef} style={{ position: 'relative', minWidth: '600px', width: '100%', height: treeHeight, padding: 0, margin: 0 }}>
         <svg width="100%" height={treeHeight} viewBox={`0 0 ${dims.width} ${treeHeight}`} style={{ position: 'absolute', top: 0, left: 0 }}>
           {root.children?.map(sector => (
             <g key={sector.data.id}>
