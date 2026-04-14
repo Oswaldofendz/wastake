@@ -54,7 +54,7 @@ export function Navbar({
 
   return (
     <>
-      <header className="h-20 flex items-center justify-between px-4 backdrop-blur-sm sticky top-0 z-40 gap-3" style={{ background: 'linear-gradient(180deg, rgba(6,7,11,0.98) 0%, rgba(8,10,15,0.95) 100%)', borderBottom: '1px solid rgba(192,192,192,0.08)' }}>
+      <header className="h-[72px] flex items-center justify-between px-4 backdrop-blur-sm sticky top-0 z-40 gap-3" style={{ background: 'linear-gradient(180deg, rgba(6,7,11,0.98) 0%, rgba(8,10,15,0.95) 100%)', borderBottom: '1px solid rgba(192,192,192,0.08)' }}>
 
         {/* Logo + Desktop Nav */}
         <div className="flex items-center gap-4 min-w-0">
@@ -68,10 +68,10 @@ export function Navbar({
               src="/logo-completo.png"
               alt="WaStake"
               style={{
-                height: '52px',
+                height: '68px',
                 width: 'auto',
                 mixBlendMode: 'lighten',
-                filter: 'brightness(1.4) contrast(1.1)',
+                filter: 'brightness(1.5) contrast(1.1)',
               }}
             />
           </button>
@@ -85,8 +85,8 @@ export function Navbar({
                 className={[
                   'px-3 py-1.5 text-sm rounded-lg transition-colors font-medium whitespace-nowrap',
                   currentPage === item.id
-                    ? 'text-white relative nav-active bg-white/5'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5',
+                    ? 'text-white relative nav-active'
+                    : 'text-slate-300 hover:text-white hover:bg-white/5',
                 ].join(' ')}
               >
                 {item.label}
