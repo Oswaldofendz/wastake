@@ -8,14 +8,10 @@ import { usePrices } from '../hooks/usePrices.js';
 const DEFAULT_ASSET = ANALYZABLE_CATEGORIES[0].assets[0];
 
 // ─── Score helpers ────────────────────────────────────────────────────────────
-// Backend summary.score: -100 to +100 → convert to 0-100
-function toPanoramaScore(summary) {
-  if (!summary) return 50;
-  return Math.max(0, Math.min(100, Math.round((summary.score + 100) / 2)));
-}
+// Backend summary.score: -100 to +100 (used directly, no conversion)
 function scoreToSignal(score) {
-  if (score >= 60) return 'buy';
-  if (score <= 40) return 'sell';
+  if (score >= 25)  return 'buy';
+  if (score <= -25) return 'sell';
   return 'hold';
 }
 const SIGNAL = {
@@ -103,10 +99,10 @@ function TrafficLight({ signal, size = 'lg' }) {
 
 // ─── Confluence Gauge (semicircle) ────────────────────────────────────────────
 function ConfluenceGauge({ score }) {
-  const pct = Math.max(0, Math.min(1, (score + 100) / 200));
-  const rotation = -90 + pct * 180;
-  const signal = scoreToSignal(score);
-  const color = SIGNAL[signal].hex;
+  const clampedScore = Math.max(-100, Math.min(100, score ?? 0));
+  const rotation = (clampedScore / 100) * 90; // -90deg (sell) to +90deg (buy)
+  const signal = scoreToSignal(clampedScore);
+  const color = signal === 'buy' ? '#4ade80' : signal === 'sell' ? '#f87171' : '#fbbf24';
   const label = signal === 'buy' ? 'Compra' : signal === 'sell' ? 'Venta' : 'Neutral';
 
   return (
@@ -409,7 +405,7 @@ export function Panorama() {
 
     if (main.status === 'fulfilled') {
       setMainData(main.value);
-      const s = toPanoramaScore(main.value?.analysis?.summary);
+      const s = main.value?.analysis?.summary?.score ?? 0;
       saveHistory(a.id, s);
     } else {
       setError(main.reason?.message ?? 'Error al cargar el análisis');
@@ -456,7 +452,7 @@ export function Panorama() {
   // Live price from usePrices (refreshes every 60s), falls back to analysis cache
   const liveAsset    = allAssets.find(a => a.id === asset.id);
   const currentPrice = liveAsset?.price ?? analysis?.meta?.lastPrice ?? null;
-  const score        = analysis ? toPanoramaScore(analysis.summary) : 50;
+  const score        = analysis?.summary?.score ?? 0;
   const signal       = scoreToSignal(score);
   const cfg          = SIGNAL[signal];
   const strongSignal = score >= 75 || score <= 25;
