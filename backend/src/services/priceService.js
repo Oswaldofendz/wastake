@@ -106,8 +106,12 @@ export const TRADITIONAL_ASSETS = {
   '^GDAXI': { name: 'DAX 40',     symbol: 'DAX', type: 'index', image: null },
 
   // ── Materias Primas ──────────────────────────────────────────────────────────
-  'GC=F': { name: 'Oro (Gold)',    symbol: 'XAU', type: 'commodity', image: null },
-  'SI=F': { name: 'Plata (Silver)', symbol: 'XAG', type: 'commodity', image: null },
+  'GC=F': { name: 'Oro (Gold)',       symbol: 'XAU', type: 'commodity', image: null },
+  'SI=F': { name: 'Plata (Silver)',   symbol: 'XAG', type: 'commodity', image: null },
+  'CL=F': { name: 'Petróleo WTI',    symbol: 'WTI', type: 'commodity', image: null },
+  'NG=F': { name: 'Gas Natural',      symbol: 'NG',  type: 'commodity', image: null },
+  'HG=F': { name: 'Cobre (Copper)',   symbol: 'HG',  type: 'commodity', image: null },
+  'GLD':  { name: 'Oro ETF (GLD)',    symbol: 'GLD', type: 'etf',       image: null },
 
   // ── Bonos ETFs ───────────────────────────────────────────────────────────────
   'TLT': { name: 'Bonos T 20+',   symbol: 'TLT', type: 'bond', image: null },

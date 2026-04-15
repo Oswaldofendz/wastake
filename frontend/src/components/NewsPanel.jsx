@@ -201,8 +201,7 @@ function Skeleton() {
 export function NewsPanel({ asset }) {
   const { data, loading, error } = useNews(asset);
   const { i18n } = useTranslation();
-  const [filter, setFilter]   = useState('all'); // 'all' | 'high' | 'medium' | 'low'
-  const translatedTitles      = useTranslations(data, i18n.language);
+  const translatedTitles = useTranslations(data, i18n.language);
 
   if (loading) return (
     <div className="mt-3 bg-slate-800/50 border border-slate-700/30 rounded-xl overflow-hidden">
@@ -222,19 +221,12 @@ export function NewsPanel({ asset }) {
     </div>
   );
 
-  // Enrich each article with keyword-based impact and original index for translation lookup
+  // Enriquecer artículos con impacto por keywords e índice original para traducciones
   const enriched = data.map((a, i) => ({
     ...a,
     _origIdx: i,
     computedImpact: detectImpact(a.title, a.impact),
   }));
-
-  const filtered = filter === 'all'
-    ? enriched
-    : enriched.filter(a => a.computedImpact === filter);
-
-  const highCount   = enriched.filter(a => a.computedImpact === 'high').length;
-  const mediumCount = enriched.filter(a => a.computedImpact === 'medium').length;
 
   return (
     <div className="mt-3">

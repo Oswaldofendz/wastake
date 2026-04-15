@@ -303,7 +303,8 @@ function MarketComparisonWidget({ asset, currentPrice, analysis }) {
   const scoreDiff = assetScore - compareScore;
 
   const assetChange = allAssets.find(a => a.id === asset.id)?.change24h ?? 0;
-  const compareChange = allAssets.find(a => a.id === compareId.toLowerCase())?.change24h ?? 0;
+  // IDs son case-sensitive: 'SPY' ≠ 'spy', 'bitcoin' = 'bitcoin'
+  const compareChange = allAssets.find(a => a.id === compareId)?.change24h ?? 0;
   const relativePerf = assetChange - compareChange;
 
   const signal = scoreDiff > 15 ? 'outperform' : scoreDiff < -15 ? 'underperform' : 'inline';
