@@ -8,6 +8,7 @@ import { assetsRouter }   from './routes/assets.js';
 import { analysisRouter } from './routes/analysis.js';
 import { newsRouter }     from './routes/news.js';
 import { marketRouter }   from './routes/market.js';
+import { wapulseRouter }  from './routes/wapulse.js';
 import { startAlertEngine } from './services/alertService.js';
 
 const app  = express();
@@ -51,6 +52,7 @@ app.use('/api/assets',   apiLimiter, assetsRouter);
 app.use('/api/analysis', apiLimiter, analysisRouter);
 app.use('/api/news',     apiLimiter, newsRouter);
 app.use('/api/market',   apiLimiter, marketRouter);
+app.use('/api/wapulse',  apiLimiter, wapulseRouter);
 
 app.listen(PORT, () => {
   console.log(`WaStake backend running on port ${PORT}`);
