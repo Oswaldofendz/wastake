@@ -43,7 +43,7 @@ export default function App() {
   }, [darkMode]);
 
   return (
-    <div className="min-h-screen text-white flex flex-col" style={{ background: 'linear-gradient(160deg, #08090e 0%, #0a0c12 40%, #080a0f 100%)' }}>
+    <div className="min-h-screen text-white flex flex-col" style={{ background: 'linear-gradient(160deg, #090909 0%, #0c0c0d 40%, #09090a 100%)' }}>
       <Navbar
         lastUpdated={lastUpdated}
         currentPage={currentPage}
@@ -84,6 +84,7 @@ export default function App() {
               signUp={signUp}
               signOut={signOut}
               allAssets={allAssets}
+              onNavigate={setCurrentPage}
             />
           )
         )}

@@ -55,7 +55,7 @@ export function Navbar({
 
   return (
     <>
-      <header className="h-[72px] flex items-center justify-between px-4 backdrop-blur-sm sticky top-0 z-40 gap-3" style={{ background: 'linear-gradient(180deg, rgba(6,7,11,0.98) 0%, rgba(8,10,15,0.95) 100%)', borderBottom: '1px solid rgba(192,192,192,0.08)' }}>
+      <header className="h-[72px] flex items-center justify-between px-4 backdrop-blur-sm sticky top-0 z-40 gap-3" style={{ background: 'linear-gradient(180deg, rgba(9,9,10,0.98) 0%, rgba(13,14,15,0.95) 100%)', borderBottom: '1px solid rgba(192,192,192,0.08)' }}>
 
         {/* Logo + Desktop Nav */}
         <div className="flex items-center gap-4 min-w-0">
@@ -69,7 +69,7 @@ export function Navbar({
               src="/logo-completo.png"
               alt="WaStake"
               style={{
-                height: '68px',
+                height: '88px',
                 width: 'auto',
                 mixBlendMode: 'lighten',
                 filter: 'brightness(1.5) contrast(1.1)',
@@ -86,7 +86,7 @@ export function Navbar({
                 className={[
                   'px-3 py-1.5 text-sm rounded-lg transition-colors font-medium whitespace-nowrap',
                   currentPage === item.id
-                    ? 'text-white relative nav-active'
+                    ? 'relative nav-active nav-active-text'
                     : 'text-slate-300 hover:text-white hover:bg-white/5',
                 ].join(' ')}
               >
@@ -146,7 +146,7 @@ export function Navbar({
                 className={[
                   'px-2 py-1 text-xs rounded-md transition-colors font-medium min-h-[36px]',
                   i18n.language.startsWith(l.code)
-                    ? 'bg-slate-700 text-white'
+                    ? 'bg-slate-800 text-white'
                     : 'text-slate-400 hover:text-white',
                 ].join(' ')}
               >
@@ -182,7 +182,7 @@ export function Navbar({
                   className={[
                     'w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-medium transition-colors min-h-[52px]',
                     currentPage === item.id
-                      ? 'bg-slate-700/80 text-white'
+                      ? 'bg-slate-800 border border-white/10 text-white'
                       : 'text-slate-300 hover:bg-slate-800 hover:text-white',
                   ].join(' ')}
                 >

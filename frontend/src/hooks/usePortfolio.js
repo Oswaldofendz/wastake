@@ -44,15 +44,18 @@ export function usePortfolio(user, allAssets = []) {
   const totalPnl   = totalValue - totalCost;
   const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
 
-  async function addPosition({ assetId, assetName, assetType, quantity, entryPrice, isPaper }) {
+  async function addPosition({ assetId, assetName, assetType, quantity, entryPrice, isPaper, notes, tags, targetPrice }) {
     const { error: err } = await supabase.from('portfolio').insert({
-      user_id:     user.id,
-      asset_id:    assetId,
-      asset_name:  assetName,
-      asset_type:  assetType,
-      quantity:    parseFloat(quantity),
-      entry_price: parseFloat(entryPrice),
-      is_simulation:    isPaper,
+      user_id:      user.id,
+      asset_id:     assetId,
+      asset_name:   assetName,
+      asset_type:   assetType,
+      quantity:     parseFloat(quantity),
+      entry_price:  parseFloat(entryPrice),
+      is_simulation: isPaper,
+      notes:        notes || null,
+      tags:         tags?.length ? tags : [],
+      target_price: targetPrice ? parseFloat(targetPrice) : null,
     });
     if (err) throw err;
     await load();

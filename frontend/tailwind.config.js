@@ -5,17 +5,25 @@ export default {
   theme: {
     extend: {
       colors: {
+        // ── Brand palette extraída del logo ──────────────────────
         brand: {
-          50:  '#ffffff',
-          100: '#e8e8e8',
-          200: '#c8c8c8',
-          300: '#a8a8a8',
-          400: '#c0c0c0',
-          500: '#a0a0a0',
-          600: '#787878',
-          700: '#505050',
-          800: '#282828',
-          900: '#101010',
+          teal:        '#2ec4c8',
+          'teal-light':'#5dd5d8',
+          'teal-dark': '#1a9ea2',
+          'teal-glow': 'rgba(46,196,200,0.15)',
+          copper:        '#c4874a',
+          'copper-light':'#d9a070',
+          'copper-dark': '#9e6634',
+          'copper-glow': 'rgba(196,135,74,0.15)',
+          silver:        '#c0c0c0',
+        },
+        // ── Slate reemplazado por neutros cálidos (sin tinte azul) ─
+        slate: {
+          600: '#5a5e65',
+          700: '#3a3d42',
+          800: '#252729',
+          900: '#161718',
+          950: '#0d0e0f',
         },
       },
       fontFamily: {
