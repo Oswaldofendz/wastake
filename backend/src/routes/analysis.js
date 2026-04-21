@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import crypto from 'crypto';
 import { getCryptoOHLCV, getTraditionalOHLCV } from '../services/priceService.js';
 import { computeIndicators } from '../services/technicalAnalysisService.js';
 
@@ -15,6 +16,18 @@ function getCache(key) {
   return entry.data;
 }
 function setCache(key, data) { analysisCache.set(key, { data, ts: Date.now() }); }
+
+// 1-hour cache for news-angle (content no cambia, prompts son caros)
+const newsAngleCache = new Map();
+const NEWS_ANGLE_TTL = 60 * 60 * 1000;
+
+function getAngleCache(key) {
+  const entry = newsAngleCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > NEWS_ANGLE_TTL) { newsAngleCache.delete(key); return null; }
+  return entry.data;
+}
+function setAngleCache(key, data) { newsAngleCache.set(key, { data, ts: Date.now() }); }
 
 // GET /api/analysis/:id?type=crypto&days=90
 // GET /api/analysis/:id?type=stock
@@ -127,4 +140,124 @@ Write only the analysis paragraph, no titles, no bullet points, no markdown.`;
     console.error('[narrative] error:', err.message);
     res.status(502).json({ error: err.message });
   }
+});
+
+// POST /api/analysis/news-angle
+// body: { title, summary?, link?, tickers?, lang? }
+// returns: { angle, hook, headlines[], tweets[], instagram_caption, strength, reasoning }
+//
+// Objetivo: dado un artículo de noticia, producir un ángulo editorial reusable
+// por WaPulse (Twitter/IG) y por el pipeline de posts automatizados.
+analysisRouter.post('/news-angle', async (req, res) => {
+  const { title, summary = '', link = '', tickers = [], lang = 'es' } = req.body ?? {};
+
+  if (!title || typeof title !== 'string' || title.trim().length < 5) {
+    return res.status(400).json({ error: 'Field "title" is required (min 5 chars)' });
+  }
+
+  // Cache key: hash estable de title+summary+lang (link puede variar por tracking params)
+  const hash = crypto
+    .createHash('sha1')
+    .update(`${title}||${summary}||${lang}`)
+    .digest('hex')
+    .slice(0, 16);
+  const cacheKey = `angle_${hash}`;
+
+  const cached = getAngleCache(cacheKey);
+  if (cached) return res.json({ ...cached, cached: true });
+
+  const langNames = { es: 'Spanish', pt: 'Portuguese', en: 'English' };
+  const langName  = langNames[lang] || 'Spanish';
+
+  const tickersLine = Array.isArray(tickers) && tickers.length
+    ? `Tickers/assets involved: ${tickers.join(', ')}`
+    : 'Tickers/assets involved: (none identified)';
+
+  const prompt = `You are the senior editor of WaPulse, a financial news account. Your job: extract the sharpest editorial angle from a news item so our team can post fast and well.
+
+Article:
+- Title: ${title}
+- Summary: ${summary || '(none)'}
+- ${tickersLine}
+
+Return STRICT JSON with this exact shape (no prose around it):
+{
+  "angle": "1-2 sentence editorial angle in ${langName} (what's the story worth telling)",
+  "hook": "one punchy opener in ${langName}, max 15 words, no hashtags",
+  "headlines": ["3 short headline variants in ${langName}, each max 70 chars"],
+  "tweets": ["2 tweet variants in ${langName}, each max 260 chars, at most 1 hashtag"],
+  "instagram_caption": "caption in ${langName}, 2-4 lines, up to 3 relevant hashtags at end",
+  "strength": 1-5 integer rating of editorial strength (1 = filler, 5 = must-post),
+  "reasoning": "1 sentence in ${langName} explaining the strength rating"
+}
+
+Rules:
+- Do not invent facts not in the article. If summary is empty, stay close to the title.
+- No markdown, no code fences, no trailing commentary — JSON only.`;
+
+  const controller  = new AbortController();
+  const groqTimeout = setTimeout(() => controller.abort(), 15_000);
+
+  let groqData;
+  try {
+    const groqRes = await fetch(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' },
+          max_tokens: 600,
+          temperature: 0.6,
+        }),
+      }
+    );
+    groqData = await groqRes.json();
+    console.log('[news-angle] groq status:', groqRes.status);
+  } catch (err) {
+    clearTimeout(groqTimeout);
+    console.error('[news-angle] groq error:', err.message);
+    return res.status(502).json({ error: `Groq request failed: ${err.message}` });
+  } finally {
+    clearTimeout(groqTimeout);
+  }
+
+  const raw = groqData?.choices?.[0]?.message?.content?.trim();
+  if (!raw) {
+    return res.status(502).json({ error: 'Empty response from Groq', groq: groqData });
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    console.error('[news-angle] JSON parse failed:', err.message, 'raw=', raw.slice(0, 300));
+    return res.status(502).json({ error: 'Invalid JSON from Groq', raw });
+  }
+
+  // Normalización defensiva — el modelo a veces devuelve strings en vez de arrays
+  const asArray = (v) => Array.isArray(v) ? v : (typeof v === 'string' && v.trim() ? [v] : []);
+  const strength = Number.isFinite(parsed.strength) ? Math.min(5, Math.max(1, Math.round(parsed.strength))) : 3;
+
+  const result = {
+    lang,
+    source: { title, link, tickers },
+    angle:             typeof parsed.angle === 'string' ? parsed.angle.trim() : '',
+    hook:              typeof parsed.hook  === 'string' ? parsed.hook.trim()  : '',
+    headlines:         asArray(parsed.headlines).slice(0, 3).map(String),
+    tweets:            asArray(parsed.tweets).slice(0, 2).map(String),
+    instagram_caption: typeof parsed.instagram_caption === 'string' ? parsed.instagram_caption.trim() : '',
+    strength,
+    reasoning:         typeof parsed.reasoning === 'string' ? parsed.reasoning.trim() : '',
+    cached: false,
+  };
+
+  setAngleCache(cacheKey, result);
+  res.json(result);
 });
