@@ -36,10 +36,13 @@ const TYPE_LABELS = {
 
 const CHANGE_FILTERS = [
   { id: 'all',       label: 'Cualquier variación' },
+  { id: 'up_3',      label: '▲ +3% o más'         },
   { id: 'up5',       label: '▲ +5% o más'         },
   { id: 'up2',       label: '▲ +2% o más'         },
   { id: 'down2',     label: '▼ -2% o más'         },
   { id: 'down5',     label: '▼ -5% o más'         },
+  { id: 'vol_5',     label: '⚡ ±5% (volátil)'     },
+  { id: 'flat',      label: '➡ ±1% (plano)'       },
 ];
 
 const SORT_OPTIONS = [
@@ -139,6 +142,45 @@ function AssetRow({ asset, rank }) {
   );
 }
 
+// ─── Presets de búsqueda rápida ───────────────────────────────────────────────
+const PRESETS = [
+  {
+    id: 'momentum',
+    label: '🚀 Momentum',
+    apply: () => ({ typeFilter: 'all', changeFilter: 'up_3', sortBy: 'change_desc', showOnlyPositive: true,  showOnlyNegative: false }),
+  },
+  {
+    id: 'gainers',
+    label: '▲ Gainers',
+    apply: () => ({ typeFilter: 'all', changeFilter: 'up2',  sortBy: 'change_desc', showOnlyPositive: true,  showOnlyNegative: false }),
+  },
+  {
+    id: 'losers',
+    label: '▼ Losers',
+    apply: () => ({ typeFilter: 'all', changeFilter: 'down2', sortBy: 'change_asc', showOnlyPositive: false, showOnlyNegative: true  }),
+  },
+  {
+    id: 'volatile',
+    label: '⚡ Alta Volatilidad',
+    apply: () => ({ typeFilter: 'all', changeFilter: 'vol_5', sortBy: 'change_desc', showOnlyPositive: false, showOnlyNegative: false }),
+  },
+  {
+    id: 'flat',
+    label: '➡ Plano',
+    apply: () => ({ typeFilter: 'all', changeFilter: 'flat',  sortBy: 'name_asc',   showOnlyPositive: false, showOnlyNegative: false }),
+  },
+  {
+    id: 'crypto_only',
+    label: '₿ Solo Crypto',
+    apply: () => ({ typeFilter: 'crypto', changeFilter: 'all', sortBy: 'mktcap_desc', showOnlyPositive: false, showOnlyNegative: false }),
+  },
+  {
+    id: 'stocks_only',
+    label: '📈 Solo Acciones',
+    apply: () => ({ typeFilter: 'stock', changeFilter: 'all', sortBy: 'mktcap_desc', showOnlyPositive: false, showOnlyNegative: false }),
+  },
+];
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 export function Screener() {
   const { allAssets, loading, isStale } = usePrices(60_000);
@@ -149,6 +191,29 @@ export function Screener() {
   const [sortBy, setSortBy]           = useState('change_desc');
   const [showOnlyPositive, setShowOnlyPositive] = useState(false);
   const [showOnlyNegative, setShowOnlyNegative] = useState(false);
+  const [activePreset, setActivePreset] = useState(null);
+
+  function applyPreset(preset) {
+    if (activePreset === preset.id) {
+      // Segundo click: desactivar preset
+      setActivePreset(null);
+      setSearch('');
+      setTypeFilter('all');
+      setChangeFilter('all');
+      setSortBy('change_desc');
+      setShowOnlyPositive(false);
+      setShowOnlyNegative(false);
+      return;
+    }
+    const s = preset.apply();
+    setSearch('');
+    setTypeFilter(s.typeFilter);
+    setChangeFilter(s.changeFilter);
+    setSortBy(s.sortBy);
+    setShowOnlyPositive(s.showOnlyPositive);
+    setShowOnlyNegative(s.showOnlyNegative);
+    setActivePreset(preset.id);
+  }
 
   // ── Filtrado + ordenación ────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -170,10 +235,13 @@ export function Screener() {
     }
 
     // Filtro por variación
+    if (changeFilter === 'up_3')  assets = assets.filter(a => (a.change24h ?? 0) >= 3);
     if (changeFilter === 'up5')   assets = assets.filter(a => (a.change24h ?? 0) >= 5);
     if (changeFilter === 'up2')   assets = assets.filter(a => (a.change24h ?? 0) >= 2);
     if (changeFilter === 'down2') assets = assets.filter(a => (a.change24h ?? 0) <= -2);
     if (changeFilter === 'down5') assets = assets.filter(a => (a.change24h ?? 0) <= -5);
+    if (changeFilter === 'vol_5') assets = assets.filter(a => Math.abs(a.change24h ?? 0) >= 5);
+    if (changeFilter === 'flat')  assets = assets.filter(a => Math.abs(a.change24h ?? 0) <= 1);
 
     // Solo positivos / negativos
     if (showOnlyPositive) assets = assets.filter(a => (a.change24h ?? 0) > 0);
@@ -239,6 +307,31 @@ export function Screener() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* ── Presets ── */}
+      <div className="flex flex-wrap gap-2 mb-3">
+        {PRESETS.map(preset => (
+          <button
+            key={preset.id}
+            onClick={() => applyPreset(preset)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+              activePreset === preset.id
+                ? 'bg-[#c0c0c0] text-black border-[#c0c0c0]'
+                : 'bg-slate-800/60 border-slate-700/40 text-slate-400 hover:text-white hover:border-slate-500'
+            }`}
+          >
+            {preset.label}
+          </button>
+        ))}
+        {activePreset && (
+          <button
+            onClick={() => applyPreset({ id: activePreset, apply: () => ({}) })}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-600/40 text-slate-500 hover:text-white transition-colors"
+          >
+            ✕ Limpiar
+          </button>
+        )}
       </div>
 
       {/* ── Filtros ── */}

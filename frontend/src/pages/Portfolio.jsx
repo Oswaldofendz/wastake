@@ -1,9 +1,11 @@
-import { useState, useMemo, useEffect } from 'react';
-import { usePortfolio } from '../hooks/usePortfolio.js';
-import { AuthModal }    from '../components/AuthModal.jsx';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { usePortfolio }   from '../hooks/usePortfolio.js';
+import { usePortfolios }  from '../hooks/usePortfolios.js';
+import { AuthModal }      from '../components/AuthModal.jsx';
 import { AddPositionModal } from '../components/AddPositionModal.jsx';
-import { DonutChart }   from '../components/DonutChart.jsx';
-import { useToast }     from '../components/Toast.jsx';
+import { DonutChart }     from '../components/DonutChart.jsx';
+import { PortfolioChart } from '../components/PortfolioChart.jsx';
+import { useToast }       from '../components/Toast.jsx';
 
 // ─── Helpers numéricos ────────────────────────────────────────────────────────
 
@@ -399,16 +401,115 @@ function PositionsSection({ title, positions, compact, currency, rates, onRemove
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
+// ─── Selector de portfolios ───────────────────────────────────────────────────
+function PortfolioSelector({ portfolios, selected, setSelected, onCreate, onRename, onDelete }) {
+  const [open, setOpen]       = useState(false);
+  const [renaming, setRenaming] = useState(null);  // id del que se está renombrando
+  const [newName, setNewName]   = useState('');
+  const [creating, setCreating] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handler(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
+        style={{ background: 'var(--bg-card)', borderColor: 'var(--border-subtle)', color: 'var(--accent-silver)' }}
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v8.25m19.5 0A2.25 2.25 0 0 1 19.5 16.5h-15a2.25 2.25 0 0 1-2.25-2.25m19.5 0v-7.5A2.25 2.25 0 0 0 19.5 4.5h-15" />
+        </svg>
+        {selected?.name ?? 'Cartera'}
+        <span className="text-xs">▾</span>
+      </button>
+
+      {open && (
+        <div
+          className="absolute top-full mt-1 left-0 rounded-xl border shadow-2xl z-50 min-w-[220px] py-1"
+          style={{ background: 'var(--bg-card)', borderColor: 'var(--border-subtle)' }}
+        >
+          {portfolios.map(p => (
+            <div key={p.id} className="flex items-center gap-1 px-2 py-1 hover:bg-white/5 rounded-lg mx-1 group">
+              {renaming === p.id ? (
+                <input
+                  autoFocus
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { onRename(p.id, newName); setRenaming(null); }
+                    if (e.key === 'Escape') setRenaming(null);
+                  }}
+                  className="flex-1 bg-transparent text-sm text-white outline-none border-b border-[#c0c0c0]/50"
+                />
+              ) : (
+                <button
+                  className={`flex-1 text-left text-sm py-0.5 ${selected?.id === p.id ? 'text-[#c0c0c0] font-medium' : 'text-slate-300'}`}
+                  onClick={() => { setSelected(p); setOpen(false); }}
+                >
+                  {selected?.id === p.id ? '✓ ' : '  '}{p.name}
+                </button>
+              )}
+              <button
+                className="opacity-0 group-hover:opacity-70 hover:!opacity-100 text-slate-400 text-xs px-1 transition-opacity"
+                onClick={() => { setRenaming(p.id); setNewName(p.name); }}
+                title="Renombrar"
+              >✎</button>
+              {portfolios.length > 1 && (
+                <button
+                  className="opacity-0 group-hover:opacity-70 hover:!opacity-100 text-red-400 text-xs px-1 transition-opacity"
+                  onClick={() => { if (confirm(`¿Eliminar "${p.name}"?`)) onDelete(p.id); }}
+                  title="Eliminar"
+                >✕</button>
+              )}
+            </div>
+          ))}
+
+          <div className="border-t mx-2 my-1" style={{ borderColor: 'var(--border-subtle)' }} />
+
+          {creating ? (
+            <div className="px-3 py-1">
+              <input
+                autoFocus
+                placeholder="Nombre de la cartera..."
+                className="w-full bg-transparent text-sm text-white outline-none border-b border-[#c0c0c0]/50 pb-1"
+                onKeyDown={e => {
+                  if (e.key === 'Enter') { onCreate(e.target.value); setCreating(false); setOpen(false); }
+                  if (e.key === 'Escape') setCreating(false);
+                }}
+              />
+            </div>
+          ) : (
+            <button
+              className="w-full text-left px-3 py-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+              onClick={() => setCreating(true)}
+            >
+              + Nueva cartera
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate }) {
   const toast = useToast();
   const rates = useCurrencyRates(allAssets);
+
+  const { portfolios, selected: activePortfolio, setSelected, createPortfolio, renamePortfolio, deletePortfolio } = usePortfolios(user);
 
   const {
     positions, real, paper,
     loading, error,
     addPosition, removePosition,
     totalValue, totalCost, totalPnl, totalPnlPct,
-  } = usePortfolio(user, allAssets);
+  } = usePortfolio(user, allAssets, activePortfolio?.id ?? null);
 
   const [showAdd,    setShowAdd]    = useState(false);
   const [compact,    setCompact]    = useState(false);
@@ -503,9 +604,21 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-        <div>
-          <h1 className="text-lg font-semibold text-white">Mi Cartera</h1>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{user.email}</p>
+        <div className="flex items-center gap-3">
+          {portfolios.length > 0 && (
+            <PortfolioSelector
+              portfolios={portfolios}
+              selected={activePortfolio}
+              setSelected={setSelected}
+              onCreate={async name => { try { await createPortfolio(name); } catch(e) { toast.error('Error', e.message); }}}
+              onRename={async (id, name) => { try { await renamePortfolio(id, name); } catch(e) { toast.error('Error', e.message); }}}
+              onDelete={async id => { try { await deletePortfolio(id); } catch(e) { toast.error('Error', e.message); }}}
+            />
+          )}
+          <div>
+            <h1 className="text-lg font-semibold text-white">{activePortfolio?.name ?? 'Mi Cartera'}</h1>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{user.email}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <CurrencyToggle currency={currency} onChange={setCurrency} />
@@ -632,6 +745,17 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate
           {availableTypes.length > 1 && (
             <div className="mb-3">
               <FilterPills filterType={filterType} availableTypes={availableTypes} onChange={setFilterType} />
+            </div>
+          )}
+
+          {/* ── Gráfico de evolución ── */}
+          {real.length >= 2 && (
+            <div
+              className="rounded-xl border p-4 mb-4"
+              style={{ background: 'var(--bg-card)', borderColor: 'var(--border-subtle)' }}
+            >
+              <p className="text-xs font-medium mb-3" style={{ color: 'var(--text-muted)' }}>Evolución del portfolio</p>
+              <PortfolioChart positions={real} />
             </div>
           )}
 
