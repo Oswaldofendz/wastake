@@ -93,12 +93,23 @@ Description: ${article.snippet}`;
   return JSON.parse(clean);
 }
 
+// Cuota diaria agotada — no tiene sentido reintentar hasta mañana
+let geminiQuotaExhausted = false;
+let geminiQuotaResetAt   = 0;
+
 async function analyzeSentiment(articles) {
   if (articles.length === 0) return [];
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     console.warn('[news] GEMINI_API_KEY not set — skipping sentiment analysis');
+    return articles.map(a => ({ ...a, sentiment: 'neutral', impact: 'low', aiSummary: '' }));
+  }
+
+  // Si la cuota diaria está agotada, esperar hasta el reset (medianoche UTC aprox)
+  if (geminiQuotaExhausted && Date.now() < geminiQuotaResetAt) {
+    const minLeft = Math.ceil((geminiQuotaResetAt - Date.now()) / 60000);
+    console.warn(`[news] Gemini daily quota exhausted — skipping (resets in ~${minLeft}min)`);
     return articles.map(a => ({ ...a, sentiment: 'neutral', impact: 'low', aiSummary: '' }));
   }
 
@@ -113,9 +124,33 @@ async function analyzeSentiment(articles) {
         impact:    parsed.impact    ?? 'low',
         aiSummary: parsed.aiSummary ?? '',
       });
+      // Reset flag si vuelve a funcionar
+      geminiQuotaExhausted = false;
       console.log(`[news] Gemini [${i + 1}/${articles.length}] "${articles[i].title.slice(0, 50)}..." → ${parsed.sentiment} / ${parsed.impact}`);
     } catch (err) {
-      const body = err.response?.data ? JSON.stringify(err.response.data) : '';
+      const status = err.response?.status;
+      const errData = err.response?.data;
+
+      // 429 con cuota diaria en 0 → abortar todo el batch hasta mañana
+      if (status === 429) {
+        const violations = errData?.error?.details?.find(d => d['@type']?.includes('QuotaFailure'))?.violations ?? [];
+        const dailyExhausted = violations.some(v => v.quotaId?.includes('PerDay') || v.quotaId?.includes('PerDayPer'));
+        if (dailyExhausted) {
+          geminiQuotaExhausted = true;
+          // Reset a las 00:05 UTC del día siguiente
+          const tomorrow = new Date();
+          tomorrow.setUTCHours(24, 5, 0, 0);
+          geminiQuotaResetAt = tomorrow.getTime();
+          console.warn(`[news] Gemini daily quota exhausted — aborting batch, will retry after ${tomorrow.toUTCString()}`);
+          // Rellenar el resto como neutral y salir
+          for (let j = i; j < articles.length; j++) {
+            results.push({ ...articles[j], sentiment: 'neutral', impact: 'low', aiSummary: '' });
+          }
+          return results;
+        }
+      }
+
+      const body = errData ? JSON.stringify(errData).slice(0, 120) : '';
       console.warn(`[news] Gemini [${i + 1}/${articles.length}] failed: ${err.message}${body ? ` — ${body}` : ''}`);
       results.push({ ...articles[i], sentiment: 'neutral', impact: 'low', aiSummary: '' });
     }

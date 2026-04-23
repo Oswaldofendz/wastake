@@ -6,64 +6,69 @@ const CG_HEADERS = process.env.COINGECKO_API_KEY
   : {};
 const CACHE_TTL = { price: 5 * 60 * 1000, ohlcv: 60 * 60 * 1000 };
 
-// ── Binance fallback ─────────────────────────────────────────────────────────
-const BINANCE_MAP = {
-  bitcoin:             'BTCUSDT',
-  ethereum:            'ETHUSDT',
-  solana:              'SOLUSDT',
-  ripple:              'XRPUSDT',
-  binancecoin:         'BNBUSDT',
-  cardano:             'ADAUSDT',
-  dogecoin:            'DOGEUSDT',
-  'avalanche-2':       'AVAXUSDT',
-  chainlink:           'LINKUSDT',
-  polkadot:            'DOTUSDT',
-  'shiba-inu':         'SHIBUSDT',
-  litecoin:            'LTCUSDT',
-  uniswap:             'UNIUSDT',
-  cosmos:              'ATOMUSDT',
-  near:                'NEARUSDT',
-  'bitcoin-cash':      'BCHUSDT',
-  stellar:             'XLMUSDT',
-  'internet-computer': 'ICPUSDT',
+// ── CoinCap fallback (sin restricciones geográficas, free tier sin auth) ─────
+const COINCAP_MAP = {
+  bitcoin:             'bitcoin',
+  ethereum:            'ethereum',
+  solana:              'solana',
+  ripple:              'ripple',
+  binancecoin:         'binance-coin',
+  cardano:             'cardano',
+  dogecoin:            'dogecoin',
+  'avalanche-2':       'avalanche',
+  chainlink:           'chainlink',
+  polkadot:            'polkadot',
+  'shiba-inu':         'shiba-inu',
+  litecoin:            'litecoin',
+  uniswap:             'uniswap',
+  cosmos:              'cosmos',
+  near:                'near-protocol',
+  'bitcoin-cash':      'bitcoin-cash',
+  stellar:             'stellar',
+  'internet-computer': 'internet-computer',
 };
 
-async function fetchBinancePrices(ids) {
+async function fetchCoinCapPrices(ids) {
   try {
-    const { data } = await axios.get('https://api.binance.com/api/v3/ticker/24hr', {
+    const coincapIds = ids.map(id => COINCAP_MAP[id]).filter(Boolean).join(',');
+    const { data } = await axios.get('https://api.coincap.io/v2/assets', {
+      params: { ids: coincapIds, limit: 50 },
       timeout: 8000,
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WaStake/1.0)' },
     });
-    const bySymbol = {};
-    for (const t of data) bySymbol[t.symbol] = t;
+
+    // Indexar por id de CoinCap para lookup rápido
+    const byCapId = {};
+    for (const asset of (data.data ?? [])) byCapId[asset.id] = asset;
 
     const result = {};
     for (const id of ids) {
-      const sym    = BINANCE_MAP[id];
+      const capId  = COINCAP_MAP[id];
+      const asset  = capId ? byCapId[capId] : null;
       const meta   = CRYPTO_ASSETS[id];
-      const ticker = sym ? bySymbol[sym] : null;
-      if (!ticker) continue;
-      const price     = parseFloat(ticker.lastPrice);
-      const change24h = parseFloat(ticker.priceChangePercent);
-      const volume24h = parseFloat(ticker.quoteVolume);
+      if (!asset) continue;
+      const price     = parseFloat(asset.priceUsd);
+      const change24h = parseFloat(asset.changePercent24Hr);
+      const volume24h = parseFloat(asset.volumeUsd24Hr);
+      const marketCap = parseFloat(asset.marketCapUsd);
       if (!price || isNaN(price)) continue;
       result[id] = {
         id,
-        name:      meta?.name   ?? id,
-        symbol:    meta?.symbol ?? id.toUpperCase(),
+        name:      meta?.name   ?? asset.name ?? id,
+        symbol:    meta?.symbol ?? asset.symbol ?? id.toUpperCase(),
         image:     meta?.image  ?? null,
         price,
         change24h: isNaN(change24h) ? 0 : change24h,
         volume24h: isNaN(volume24h) ? 0 : volume24h,
-        marketCap: 0,
+        marketCap: isNaN(marketCap) ? 0 : marketCap,
         type:      'crypto',
         updatedAt: Date.now(),
-        source:    'binance',
+        source:    'coincap',
       };
     }
     return result;
   } catch (err) {
-    console.warn('[PriceService] Binance fallback failed:', err.message?.slice(0, 80));
+    console.warn('[PriceService] CoinCap fallback failed:', err.message?.slice(0, 80));
     return null;
   }
 }
@@ -276,12 +281,12 @@ export async function getCryptoPrices(ids = Object.keys(CRYPTO_ASSETS)) {
       return { ...stale, _isStale: true, _staleTs: staleEntry?.ts ?? Date.now() };
     }
 
-    // 2. Sin caché (reinicio del servidor + 429): usar Binance
-    console.warn('[PriceService] No stale cache — trying Binance fallback');
-    const binance = await fetchBinancePrices(ids);
-    if (binance && Object.keys(binance).length > 0) {
-      toCache(key, binance, CACHE_TTL.price);
-      return { ...binance, _isStale: true, _staleTs: Date.now() };
+    // 2. Sin caché (reinicio del servidor + 429): usar CoinCap
+    console.warn('[PriceService] No stale cache — trying CoinCap fallback');
+    const coincap = await fetchCoinCapPrices(ids);
+    if (coincap && Object.keys(coincap).length > 0) {
+      toCache(key, coincap, CACHE_TTL.price);
+      return { ...coincap, _isStale: true, _staleTs: Date.now() };
     }
 
     throw err;
