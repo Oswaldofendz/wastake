@@ -6,69 +6,65 @@ const CG_HEADERS = process.env.COINGECKO_API_KEY
   : {};
 const CACHE_TTL = { price: 5 * 60 * 1000, ohlcv: 60 * 60 * 1000 };
 
-// ── CoinCap fallback (sin restricciones geográficas, free tier sin auth) ─────
-const COINCAP_MAP = {
-  bitcoin:             'bitcoin',
-  ethereum:            'ethereum',
-  solana:              'solana',
-  ripple:              'ripple',
-  binancecoin:         'binance-coin',
-  cardano:             'cardano',
-  dogecoin:            'dogecoin',
-  'avalanche-2':       'avalanche',
-  chainlink:           'chainlink',
-  polkadot:            'polkadot',
-  'shiba-inu':         'shiba-inu',
-  litecoin:            'litecoin',
-  uniswap:             'uniswap',
-  cosmos:              'cosmos',
-  near:                'near-protocol',
-  'bitcoin-cash':      'bitcoin-cash',
-  stellar:             'stellar',
-  'internet-computer': 'internet-computer',
+// ── CryptoCompare fallback (sin auth, sin geo-block, dominio estable) ────────
+// CoinCap (api.coincap.io) fue adquirida por Kraken y apagada en 2024
+// Binance devuelve 451 desde los servidores de Railway (bloqueo legal por región)
+const CC_SYMBOL_MAP = {
+  bitcoin:             'BTC',
+  ethereum:            'ETH',
+  solana:              'SOL',
+  ripple:              'XRP',
+  binancecoin:         'BNB',
+  cardano:             'ADA',
+  dogecoin:            'DOGE',
+  'avalanche-2':       'AVAX',
+  chainlink:           'LINK',
+  polkadot:            'DOT',
+  'shiba-inu':         'SHIB',
+  litecoin:            'LTC',
+  uniswap:             'UNI',
+  cosmos:              'ATOM',
+  near:                'NEAR',
+  'bitcoin-cash':      'BCH',
+  stellar:             'XLM',
+  'internet-computer': 'ICP',
 };
 
-async function fetchCoinCapPrices(ids) {
+async function fetchCryptoComparePrices(ids) {
   try {
-    const coincapIds = ids.map(id => COINCAP_MAP[id]).filter(Boolean).join(',');
-    const { data } = await axios.get('https://api.coincap.io/v2/assets', {
-      params: { ids: coincapIds, limit: 50 },
+    const fsyms = ids.map(id => CC_SYMBOL_MAP[id]).filter(Boolean).join(',');
+    const { data } = await axios.get('https://min-api.cryptocompare.com/data/pricemultifull', {
+      params: { fsyms, tsyms: 'USD' },
       timeout: 8000,
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WaStake/1.0)' },
     });
 
-    // Indexar por id de CoinCap para lookup rápido
-    const byCapId = {};
-    for (const asset of (data.data ?? [])) byCapId[asset.id] = asset;
-
+    const raw = data.RAW ?? {};
     const result = {};
     for (const id of ids) {
-      const capId  = COINCAP_MAP[id];
-      const asset  = capId ? byCapId[capId] : null;
-      const meta   = CRYPTO_ASSETS[id];
-      if (!asset) continue;
-      const price     = parseFloat(asset.priceUsd);
-      const change24h = parseFloat(asset.changePercent24Hr);
-      const volume24h = parseFloat(asset.volumeUsd24Hr);
-      const marketCap = parseFloat(asset.marketCapUsd);
+      const sym  = CC_SYMBOL_MAP[id];
+      const meta = CRYPTO_ASSETS[id];
+      const d    = sym ? raw[sym]?.USD : null;
+      if (!d) continue;
+      const price = d.PRICE;
       if (!price || isNaN(price)) continue;
       result[id] = {
         id,
-        name:      meta?.name   ?? asset.name ?? id,
-        symbol:    meta?.symbol ?? asset.symbol ?? id.toUpperCase(),
+        name:      meta?.name   ?? id,
+        symbol:    meta?.symbol ?? sym,
         image:     meta?.image  ?? null,
         price,
-        change24h: isNaN(change24h) ? 0 : change24h,
-        volume24h: isNaN(volume24h) ? 0 : volume24h,
-        marketCap: isNaN(marketCap) ? 0 : marketCap,
+        change24h: d.CHANGEPCT24HOUR  ?? 0,
+        volume24h: d.VOLUME24HOURTO   ?? 0,
+        marketCap: d.MKTCAP           ?? 0,
         type:      'crypto',
         updatedAt: Date.now(),
-        source:    'coincap',
+        source:    'cryptocompare',
       };
     }
     return result;
   } catch (err) {
-    console.warn('[PriceService] CoinCap fallback failed:', err.message?.slice(0, 80));
+    console.warn('[PriceService] CryptoCompare fallback failed:', err.message?.slice(0, 80));
     return null;
   }
 }
@@ -281,12 +277,12 @@ export async function getCryptoPrices(ids = Object.keys(CRYPTO_ASSETS)) {
       return { ...stale, _isStale: true, _staleTs: staleEntry?.ts ?? Date.now() };
     }
 
-    // 2. Sin caché (reinicio del servidor + 429): usar CoinCap
-    console.warn('[PriceService] No stale cache — trying CoinCap fallback');
-    const coincap = await fetchCoinCapPrices(ids);
-    if (coincap && Object.keys(coincap).length > 0) {
-      toCache(key, coincap, CACHE_TTL.price);
-      return { ...coincap, _isStale: true, _staleTs: Date.now() };
+    // 2. Sin caché (reinicio del servidor + 429): usar CryptoCompare
+    console.warn('[PriceService] No stale cache — trying CryptoCompare fallback');
+    const cc = await fetchCryptoComparePrices(ids);
+    if (cc && Object.keys(cc).length > 0) {
+      toCache(key, cc, CACHE_TTL.price);
+      return { ...cc, _isStale: true, _staleTs: Date.now() };
     }
 
     throw err;
