@@ -271,6 +271,4 @@ function fmtPrice(n) {
 function fmtCompact(n) {
   if (n == null || isNaN(n) || n <= 0) return '—';
   if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
-  if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
-  return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-}
+  if (n >= 1e6) return `$${(n / 1e6).toFixed

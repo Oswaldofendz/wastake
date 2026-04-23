@@ -4,7 +4,69 @@ const cache = new Map();
 const CG_HEADERS = process.env.COINGECKO_API_KEY
   ? { 'x-cg-demo-api-key': process.env.COINGECKO_API_KEY }
   : {};
-const CACHE_TTL = { price: 2 * 60 * 1000, ohlcv: 60 * 60 * 1000 };
+const CACHE_TTL = { price: 5 * 60 * 1000, ohlcv: 60 * 60 * 1000 };
+
+// ── Binance fallback ─────────────────────────────────────────────────────────
+const BINANCE_MAP = {
+  bitcoin:             'BTCUSDT',
+  ethereum:            'ETHUSDT',
+  solana:              'SOLUSDT',
+  ripple:              'XRPUSDT',
+  binancecoin:         'BNBUSDT',
+  cardano:             'ADAUSDT',
+  dogecoin:            'DOGEUSDT',
+  'avalanche-2':       'AVAXUSDT',
+  chainlink:           'LINKUSDT',
+  polkadot:            'DOTUSDT',
+  'shiba-inu':         'SHIBUSDT',
+  litecoin:            'LTCUSDT',
+  uniswap:             'UNIUSDT',
+  cosmos:              'ATOMUSDT',
+  near:                'NEARUSDT',
+  'bitcoin-cash':      'BCHUSDT',
+  stellar:             'XLMUSDT',
+  'internet-computer': 'ICPUSDT',
+};
+
+async function fetchBinancePrices(ids) {
+  try {
+    const { data } = await axios.get('https://api.binance.com/api/v3/ticker/24hr', {
+      timeout: 8000,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WaStake/1.0)' },
+    });
+    const bySymbol = {};
+    for (const t of data) bySymbol[t.symbol] = t;
+
+    const result = {};
+    for (const id of ids) {
+      const sym    = BINANCE_MAP[id];
+      const meta   = CRYPTO_ASSETS[id];
+      const ticker = sym ? bySymbol[sym] : null;
+      if (!ticker) continue;
+      const price     = parseFloat(ticker.lastPrice);
+      const change24h = parseFloat(ticker.priceChangePercent);
+      const volume24h = parseFloat(ticker.quoteVolume);
+      if (!price || isNaN(price)) continue;
+      result[id] = {
+        id,
+        name:      meta?.name   ?? id,
+        symbol:    meta?.symbol ?? id.toUpperCase(),
+        image:     meta?.image  ?? null,
+        price,
+        change24h: isNaN(change24h) ? 0 : change24h,
+        volume24h: isNaN(volume24h) ? 0 : volume24h,
+        marketCap: 0,
+        type:      'crypto',
+        updatedAt: Date.now(),
+        source:    'binance',
+      };
+    }
+    return result;
+  } catch (err) {
+    console.warn('[PriceService] Binance fallback failed:', err.message?.slice(0, 80));
+    return null;
+  }
+}
 
 // Returns fresh data if within TTL, null otherwise
 function fromCache(key) {
@@ -204,6 +266,8 @@ export async function getCryptoPrices(ids = Object.keys(CRYPTO_ASSETS)) {
   } catch (err) {
     const status = err.response?.status;
     console.warn(`[PriceService] CoinGecko ${status ?? 'network error'} — trying stale cache`);
+
+    // 1. Caché obsoleta (servidor lleva tiempo corriendo)
     const stale = fromCacheStale(key);
     if (stale) {
       const staleEntry = cache.get(key);
@@ -211,6 +275,15 @@ export async function getCryptoPrices(ids = Object.keys(CRYPTO_ASSETS)) {
       console.warn(`[PriceService] Returning stale crypto prices (${ageMin}min old)`);
       return { ...stale, _isStale: true, _staleTs: staleEntry?.ts ?? Date.now() };
     }
+
+    // 2. Sin caché (reinicio del servidor + 429): usar Binance
+    console.warn('[PriceService] No stale cache — trying Binance fallback');
+    const binance = await fetchBinancePrices(ids);
+    if (binance && Object.keys(binance).length > 0) {
+      toCache(key, binance, CACHE_TTL.price);
+      return { ...binance, _isStale: true, _staleTs: Date.now() };
+    }
+
     throw err;
   }
 }
@@ -392,3 +465,4 @@ export async function getTraditionalOHLCV(symbol) {
     }
   }
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
