@@ -2,6 +2,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import { getCryptoOHLCV, getTraditionalOHLCV } from '../services/priceService.js';
 import { computeIndicators } from '../services/technicalAnalysisService.js';
+import { callLLM } from '../services/llmService.js';
 
 export const analysisRouter = Router();
 
@@ -101,38 +102,23 @@ analysisRouter.get('/:id/narrative', async (req, res) => {
 
 Write only the analysis paragraph, no titles, no bullet points, no markdown.`;
 
-    // Timeout de 15s para no dejar la request colgada si Groq está lento
-    const controller = new AbortController();
-    const groqTimeout = setTimeout(() => controller.abort(), 15_000);
-
-    let groqData;
+    let narrative = null;
+    let provider  = null;
     try {
-      const groqRes = await fetch(
-        'https://api.groq.com/openai/v1/chat/completions',
-        {
-          method: 'POST',
-          signal: controller.signal,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: 'llama-3.1-8b-instant',
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: 200,
-            temperature: 0.7,
-          }),
-        }
-      );
-      groqData = await groqRes.json();
-      console.log('[narrative] groq status:', groqRes.status);
-      console.log('[narrative] groq response:', JSON.stringify(groqData).slice(0, 300));
-    } finally {
-      clearTimeout(groqTimeout);
+      const out = await callLLM(prompt, {
+        jsonMode:    false,
+        maxTokens:   200,
+        temperature: 0.7,
+        tag:         '[narrative]',
+      });
+      narrative = (out.text ?? '').trim() || null;
+      provider  = out.provider;
+    } catch (err) {
+      console.error('[narrative] both providers failed:', err.message);
+      return res.status(502).json({ error: err.message });
     }
 
-    const narrative = groqData?.choices?.[0]?.message?.content?.trim() ?? null;
-    const result = { id, lang, narrative };
+    const result = { id, lang, narrative, provider };
     if (narrative) setCache(cacheKey, result);
     res.json(result);
 
@@ -195,42 +181,23 @@ Rules:
 - Do not invent facts not in the article. If summary is empty, stay close to the title.
 - No markdown, no code fences, no trailing commentary — JSON only.`;
 
-  const controller  = new AbortController();
-  const groqTimeout = setTimeout(() => controller.abort(), 15_000);
-
-  let groqData;
+  let raw, provider;
   try {
-    const groqRes = await fetch(
-      'https://api.groq.com/openai/v1/chat/completions',
-      {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
-          messages: [{ role: 'user', content: prompt }],
-          response_format: { type: 'json_object' },
-          max_tokens: 600,
-          temperature: 0.6,
-        }),
-      }
-    );
-    groqData = await groqRes.json();
-    console.log('[news-angle] groq status:', groqRes.status);
+    const out = await callLLM(prompt, {
+      jsonMode:    true,
+      maxTokens:   600,
+      temperature: 0.6,
+      tag:         '[news-angle]',
+    });
+    raw      = (out.text ?? '').trim();
+    provider = out.provider;
   } catch (err) {
-    clearTimeout(groqTimeout);
-    console.error('[news-angle] groq error:', err.message);
-    return res.status(502).json({ error: `Groq request failed: ${err.message}` });
-  } finally {
-    clearTimeout(groqTimeout);
+    console.error('[news-angle] both providers failed:', err.message);
+    return res.status(502).json({ error: err.message });
   }
 
-  const raw = groqData?.choices?.[0]?.message?.content?.trim();
   if (!raw) {
-    return res.status(502).json({ error: 'Empty response from Groq', groq: groqData });
+    return res.status(502).json({ error: 'Empty response from LLM' });
   }
 
   let parsed;
@@ -238,7 +205,7 @@ Rules:
     parsed = JSON.parse(raw);
   } catch (err) {
     console.error('[news-angle] JSON parse failed:', err.message, 'raw=', raw.slice(0, 300));
-    return res.status(502).json({ error: 'Invalid JSON from Groq', raw });
+    return res.status(502).json({ error: 'Invalid JSON from LLM', raw });
   }
 
   // Normalización defensiva — el modelo a veces devuelve strings en vez de arrays
@@ -255,6 +222,7 @@ Rules:
     instagram_caption: typeof parsed.instagram_caption === 'string' ? parsed.instagram_caption.trim() : '',
     strength,
     reasoning:         typeof parsed.reasoning === 'string' ? parsed.reasoning.trim() : '',
+    provider,
     cached: false,
   };
 
