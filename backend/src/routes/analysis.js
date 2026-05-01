@@ -159,26 +159,36 @@ analysisRouter.post('/news-angle', async (req, res) => {
     ? `Tickers/assets involved: ${tickers.join(', ')}`
     : 'Tickers/assets involved: (none identified)';
 
-  const prompt = `You are the senior editor of WaPulse, a financial news account. Your job: extract the sharpest editorial angle from a news item so our team can post fast and well.
+  const prompt = `You write for WaCapital, a finance account on Twitter, Instagram and TikTok. Style reference: WatcherGuru, Unusual Whales, Stock Talk. Stop-the-scroll energy. Twitter-native, NOT Bloomberg, NOT a press release.
 
 Article:
 - Title: ${title}
 - Summary: ${summary || '(none)'}
 - ${tickersLine}
 
+Tone playbook:
+- Punchy openings. Short sentences. Numbers and percentages up front.
+- Use contrast, surprise, mystery, questions when it fits — but never invent facts.
+- Casual but credible. Drop "BREAKING:" / "JUST IN:" / "ATTENTION:" for high-impact news.
+- Emoji are OK in tweets if they amplify (📉 📈 🚨 💥 ⚠️ 🔥), max 1-2 per tweet.
+- Avoid corporate jargon ("strategic positioning", "value proposition", "synergies").
+- Headlines should be the kind you'd click in a feed at midnight.
+- Each piece in ${langName}.
+
 Return STRICT JSON with this exact shape (no prose around it):
 {
-  "angle": "1-2 sentence editorial angle in ${langName} (what's the story worth telling)",
-  "hook": "one punchy opener in ${langName}, max 15 words, no hashtags",
-  "headlines": ["3 short headline variants in ${langName}, each max 70 chars"],
-  "tweets": ["2 tweet variants in ${langName}, each max 260 chars, at most 1 hashtag"],
-  "instagram_caption": "caption in ${langName}, 2-4 lines, up to 3 relevant hashtags at end",
-  "strength": 1-5 integer rating of editorial strength (1 = filler, 5 = must-post),
-  "reasoning": "1 sentence in ${langName} explaining the strength rating"
+  "angle": "1-2 sentence editorial angle in ${langName} (the story worth telling, what makes it post-worthy)",
+  "hook": "one stop-the-scroll opener in ${langName}, max 15 words, no hashtags. Should make a reader pause.",
+  "headlines": ["3 short clickbait-worthy headline variants in ${langName}, each max 70 chars"],
+  "tweets": ["2 tweet variants in ${langName}, each max 260 chars, at most 1 hashtag, may include 1-2 emoji"],
+  "instagram_caption": "caption in ${langName}, 2-4 lines, hook-first, up to 3 relevant hashtags at end",
+  "strength": 1-5 integer rating of CLICK potential (1 = filler nobody cares about, 3 = decent, 5 = guaranteed engagement),
+  "reasoning": "1 sentence in ${langName} explaining the strength rating from a virality standpoint"
 }
 
 Rules:
-- Do not invent facts not in the article. If summary is empty, stay close to the title.
+- Do NOT invent facts not in the article. If the article is dry, the strength MUST reflect that (rate 1-2).
+- Be honest about strength — better to flag a filler as 1 than over-rate it. We filter the lows.
 - No markdown, no code fences, no trailing commentary — JSON only.`;
 
   let raw, provider;
