@@ -175,6 +175,25 @@ Tone playbook:
 - Headlines should be the kind you'd click in a feed at midnight.
 - Each piece in ${langName}.
 
+CRITICAL — strength rating must be BRUTALLY HONEST. Most news is FILLER (1-2).
+Real-world calibration with concrete examples:
+  1 = Form 13F/144 filings, insider sells, micro-cap moves, EBIT growth on no-name companies
+  2 = Routine analyst reprices ("Goldman raises Apple PT by $5"), boring quarterly beats from mid-caps
+  3 = Notable but expected company news, mid-cap M&A, mainstream macro update
+  4 = Surprising move from a major company (Tesla, Apple, big banks), >5% stock moves with clear catalyst, OR a celebrity finance figure
+  5 = ABSOLUTE TOP TIER — major political figure (Trump, Powell), $1B+ moves, regulatory shock, breaking crypto crash/surge, world-impact economic news. Maybe 1-3 per day.
+
+Examples to anchor your scale:
+- "SanDisk Q3 earnings beat estimates by 5%" → 2 (boring beat)
+- "Tesla cuts 14000 jobs after disappointing Q1" → 4 (major company + dramatic action)
+- "Trump signs executive order banning CBDC" → 5 (top political figure + regulatory shock)
+- "Bitcoin crashes 15% after SEC rejects spot ETF" → 5 (major crypto event)
+- "Boeing reports Q2 loss of $1.4B" → 4 (major company + big number)
+- "Form 144 filing for John Smith at MidcapCorp" → 1 (filler)
+- "MARA accelerates AI shift with $1.5B Ohio deal" → 3 (notable but niche audience)
+
+If you're tempted to give 4, ask: "Would a normal person stop scrolling and care about this?" If no, it's a 3 or lower.
+
 Return STRICT JSON with this exact shape (no prose around it):
 {
   "angle": "1-2 sentence editorial angle in ${langName} (the story worth telling, what makes it post-worthy)",
@@ -182,13 +201,13 @@ Return STRICT JSON with this exact shape (no prose around it):
   "headlines": ["3 short clickbait-worthy headline variants in ${langName}, each max 70 chars"],
   "tweets": ["2 tweet variants in ${langName}, each max 260 chars, at most 1 hashtag, may include 1-2 emoji"],
   "instagram_caption": "caption in ${langName}, 2-4 lines, hook-first, up to 3 relevant hashtags at end",
-  "strength": 1-5 integer rating of CLICK potential (1 = filler nobody cares about, 3 = decent, 5 = guaranteed engagement),
+  "strength": 1-5 integer rating per the calibration above. WHEN IN DOUBT, RATE LOWER. We aggressively filter low scores.,
   "reasoning": "1 sentence in ${langName} explaining the strength rating from a virality standpoint"
 }
 
 Rules:
-- Do NOT invent facts not in the article. If the article is dry, the strength MUST reflect that (rate 1-2).
-- Be honest about strength — better to flag a filler as 1 than over-rate it. We filter the lows.
+- Do NOT invent facts not in the article. If the article is dry, the strength MUST be 1-2.
+- A 5 means EXTRAORDINARY. If it doesn't shock you, it's not a 5.
 - No markdown, no code fences, no trailing commentary — JSON only.`;
 
   let raw, provider;
