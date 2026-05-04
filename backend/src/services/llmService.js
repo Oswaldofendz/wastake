@@ -20,8 +20,11 @@ import axios from 'axios';
 
 let groqQuotaExhausted   = false;
 let groqQuotaResetAt     = 0;
-let geminiQuotaExhausted = false;
-let geminiQuotaResetAt   = 0;
+
+// Per-Gemini-key cooldown state. Map keyLabel → epoch when usable again.
+// Each Gemini API key has its own daily quota; we rotate through all keys
+// configured via GEMINI_API_KEY{,_2,_3,_4,_5} env vars.
+const geminiKeyCooldowns = new Map();
 
 function tomorrowUtc05() {
   // Reset target: 00:05 UTC tomorrow. Same window newsService.js uses.
@@ -79,10 +82,32 @@ async function callGroq(prompt, { jsonMode, maxTokens, temperature }) {
   return text;
 }
 
-async function callGemini(prompt, { jsonMode, maxTokens, temperature }) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('No GEMINI_API_KEY');
+// Reads all GEMINI_API_KEY{,_2,_3,_4,_5} env vars in order.
+// Returns non-empty in declared order.
+function geminiKeys() {
+  const out = [];
+  for (const v of ['GEMINI_API_KEY', 'GEMINI_API_KEY_2', 'GEMINI_API_KEY_3',
+                   'GEMINI_API_KEY_4', 'GEMINI_API_KEY_5']) {
+    const k = (process.env[v] ?? '').trim();
+    if (k) out.push(k);
+  }
+  return out;
+}
 
+function geminiKeyLabel(key) {
+  return key.length > 6 ? `...${key.slice(-6)}` : '?';
+}
+
+function isKeyOnCooldown(key) {
+  const until = geminiKeyCooldowns.get(geminiKeyLabel(key)) ?? 0;
+  return Date.now() < until;
+}
+
+function markKeyExhausted(key) {
+  geminiKeyCooldowns.set(geminiKeyLabel(key), tomorrowUtc05());
+}
+
+async function callGeminiSingleKey(prompt, key, { jsonMode, maxTokens, temperature }) {
   const body = {
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
@@ -93,7 +118,7 @@ async function callGemini(prompt, { jsonMode, maxTokens, temperature }) {
   if (jsonMode) body.generationConfig.response_mime_type = 'application/json';
 
   const res = await axios.post(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${key}`,
     body,
     { timeout: 20000 }
   );
@@ -101,6 +126,39 @@ async function callGemini(prompt, { jsonMode, maxTokens, temperature }) {
   const text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error('Empty Gemini response');
   return text;
+}
+
+// Try each Gemini key in order, skipping keys on cooldown. On per-day quota
+// (429 with PerDay quotaId), mark that key exhausted and try the next.
+// On any other error, log and continue to next key.
+async function callGemini(prompt, opts) {
+  const keys = geminiKeys();
+  if (keys.length === 0) throw new Error('No GEMINI_API_KEY env vars set');
+
+  let lastErr = null;
+  for (const key of keys) {
+    if (isKeyOnCooldown(key)) {
+      console.log(`[gemini] skipping key ${geminiKeyLabel(key)} (on cooldown)`);
+      continue;
+    }
+    try {
+      const text = await callGeminiSingleKey(prompt, key, opts);
+      console.log(`[gemini] OK via key ${geminiKeyLabel(key)}`);
+      return text;
+    } catch (err) {
+      lastErr = err;
+      if (isGeminiDailyQuota(err)) {
+        markKeyExhausted(key);
+        console.warn(`[gemini] key ${geminiKeyLabel(key)} daily quota exhausted → next key`);
+        continue;
+      }
+      const status = err.response?.status ?? '?';
+      console.warn(`[gemini] key ${geminiKeyLabel(key)} failed (${status}) → next key`);
+      continue;
+    }
+  }
+  // All keys exhausted or failed
+  throw lastErr ?? new Error('All Gemini keys exhausted');
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
@@ -125,15 +183,13 @@ export async function callLLM(prompt, opts = {}) {
   } = opts;
   const callOpts = { jsonMode, maxTokens, temperature };
 
-  const groqOnCooldown   = groqQuotaExhausted   && Date.now() < groqQuotaResetAt;
-  const geminiOnCooldown = geminiQuotaExhausted && Date.now() < geminiQuotaResetAt;
+  const groqOnCooldown = groqQuotaExhausted && Date.now() < groqQuotaResetAt;
 
   // ── Primary: Groq ─────────────────────────────────────────────────────────
   if (!groqOnCooldown) {
     try {
       const text = await callGroq(prompt, callOpts);
       if (groqQuotaExhausted) {
-        // The cooldown window passed and Groq is responding again.
         groqQuotaExhausted = false;
         console.log(`${tag} Groq recovered — back as primary`);
       }
@@ -153,28 +209,16 @@ export async function callLLM(prompt, opts = {}) {
     console.log(`${tag} Groq on cooldown — going straight to Gemini`);
   }
 
-  // ── Fallback: Gemini ──────────────────────────────────────────────────────
-  if (!geminiOnCooldown) {
-    try {
-      const text = await callGemini(prompt, callOpts);
-      if (geminiQuotaExhausted) {
-        geminiQuotaExhausted = false;
-        console.log(`${tag} Gemini recovered`);
-      }
-      console.log(`${tag} via Gemini (fallback)`);
-      return { text, provider: 'gemini' };
-    } catch (err) {
-      if (isGeminiDailyQuota(err)) {
-        geminiQuotaExhausted = true;
-        geminiQuotaResetAt   = tomorrowUtc05();
-        console.error(`${tag} Gemini daily quota ALSO exhausted — both providers down until UTC 00:05`);
-      } else {
-        const where = err.response?.status ?? (err.message?.slice(0, 60));
-        console.error(`${tag} Gemini fallback failed (${where})`);
-      }
-      throw new Error(`Both providers failed for ${tag}: ${err.message}`);
-    }
+  // ── Fallback: Gemini (multi-key rotation) ─────────────────────────────────
+  // callGemini internally rotates through GEMINI_API_KEY, _2, _3, _4, _5.
+  // Each key has its own per-day quota; sticky cooldown marks exhausted keys.
+  try {
+    const text = await callGemini(prompt, callOpts);
+    console.log(`${tag} via Gemini (fallback)`);
+    return { text, provider: 'gemini' };
+  } catch (err) {
+    const where = err.response?.status ?? (err.message?.slice(0, 80));
+    console.error(`${tag} Gemini fallback failed (${where})`);
+    throw new Error(`Both providers failed for ${tag}: ${err.message}`);
   }
-
-  throw new Error(`Both Groq and Gemini are on quota cooldown until UTC 00:05`);
 }
