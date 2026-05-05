@@ -199,10 +199,10 @@ Return STRICT JSON with this exact shape (no prose around it):
   "angle": "1-2 sentence editorial angle in ${langName} (the story worth telling, what makes it post-worthy)",
   "hook": "one stop-the-scroll opener in ${langName}, max 15 words, no hashtags. Should make a reader pause.",
   "headlines": ["3 short clickbait-worthy headline variants in ${langName}, each max 70 chars"],
-  "tweets": ["2 tweet variants in ${langName}, each max 260 chars, at most 1 hashtag, may include 1-2 emoji"],
+  "tweets": ["2 tweet variants in ${langName}, each max 260 chars. Lead with the most shocking or counterintuitive element — big number, famous name, dramatic outcome, or paradox. First 5 words are the hook: make it impossible to ignore. Use contrast ('expected X, got Y'), open loops ('and nobody is talking about it'), or direct stakes ('this affects your portfolio'). At most 1 hashtag, 1-2 emoji max. No press-release language."],
   "instagram_caption": "caption in ${langName}, 2-4 lines, hook-first, up to 3 relevant hashtags at end",
   "strength": 1-5 integer rating per the calibration above. WHEN IN DOUBT, RATE LOWER. We aggressively filter low scores.,
-  "reasoning": "1 sentence in ${langName} explaining the strength rating from a virality standpoint"
+  "reasoning": "1 sentence in ${langName}: what SPECIFICALLY makes this story stop-the-scroll or not — name the exact element (surprise factor, famous name, size of the number, dramatic reversal, or why it directly affects the reader's money). Do NOT describe the event. Explain the virality mechanic."
 }
 
 Rules:
@@ -214,8 +214,8 @@ Rules:
   try {
     const out = await callLLM(prompt, {
       jsonMode:    true,
-      maxTokens:   600,
-      temperature: 0.6,
+      maxTokens:   700,
+      temperature: 0.72,
       tag:         '[news-angle]',
     });
     raw      = (out.text ?? '').trim();
