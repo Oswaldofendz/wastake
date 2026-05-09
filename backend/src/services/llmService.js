@@ -53,12 +53,12 @@ function isGeminiDailyQuota(err) {
 
 // ─── Provider calls ──────────────────────────────────────────────────────────
 
-async function callGroq(prompt, { jsonMode, maxTokens, temperature }) {
+async function callGroq(prompt, { jsonMode, maxTokens, temperature, model }) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error('No GROQ_API_KEY');
 
   const body = {
-    model: 'llama-3.1-8b-instant',
+    model: model || 'llama-3.1-8b-instant',
     messages: [{ role: 'user', content: prompt }],
     max_tokens: maxTokens,
     temperature,
@@ -173,6 +173,7 @@ async function callGemini(prompt, opts) {
  * @param {number}  [opts.maxTokens=600]     response length cap
  * @param {number}  [opts.temperature=0.6]
  * @param {string}  [opts.tag='[llm]']       log prefix
+ * @param {string}  [opts.model]             override Groq model (default: llama-3.1-8b-instant)
  */
 export async function callLLM(prompt, opts = {}) {
   const {
@@ -180,8 +181,9 @@ export async function callLLM(prompt, opts = {}) {
     maxTokens   = 600,
     temperature = 0.6,
     tag         = '[llm]',
+    model       = null,
   } = opts;
-  const callOpts = { jsonMode, maxTokens, temperature };
+  const callOpts = { jsonMode, maxTokens, temperature, model };
 
   const groqOnCooldown = groqQuotaExhausted && Date.now() < groqQuotaResetAt;
 
@@ -193,7 +195,7 @@ export async function callLLM(prompt, opts = {}) {
         groqQuotaExhausted = false;
         console.log(`${tag} Groq recovered — back as primary`);
       }
-      console.log(`${tag} via Groq`);
+      console.log(`${tag} via Groq (${model || 'llama-3.1-8b-instant'})`);
       return { text, provider: 'groq' };
     } catch (err) {
       if (isGroqDailyQuota(err)) {

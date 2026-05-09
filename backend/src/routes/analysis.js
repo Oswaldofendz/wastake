@@ -214,8 +214,12 @@ Rules:
   try {
     const out = await callLLM(prompt, {
       jsonMode:    true,
-      maxTokens:   700,
-      temperature: 0.72,
+      maxTokens:   900,
+      temperature: 0.78,
+      // 70B for editorial quality — follows hook/tone instructions far better
+      // than 8b-instant. TPD on free tier: 100K/day; editorial uses ~1.2K/post
+      // so 3-5 posts/day = well under limit. Falls back to Gemini if exhausted.
+      model:       'llama-3.3-70b-versatile',
       tag:         '[news-angle]',
     });
     raw      = (out.text ?? '').trim();
