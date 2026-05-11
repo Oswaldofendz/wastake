@@ -9,6 +9,7 @@ import { analysisRouter } from './routes/analysis.js';
 import { newsRouter }     from './routes/news.js';
 import { marketRouter }   from './routes/market.js';
 import { wapulseRouter }  from './routes/wapulse.js';
+import { carouselImgRouter } from './routes/carouselImg.js';
 import { startAlertEngine } from './services/alertService.js';
 
 const app  = express();
@@ -47,12 +48,29 @@ const apiLimiter = rateLimit({ windowMs: 60 * 1000, max: 120 });
 
 app.get('/health', (_, res) => res.json({ status: 'ok', ts: Date.now() }));
 
-app.use('/api/prices',   apiLimiter, priceRouter);
-app.use('/api/assets',   apiLimiter, assetsRouter);
-app.use('/api/analysis', apiLimiter, analysisRouter);
-app.use('/api/news',     apiLimiter, newsRouter);
-app.use('/api/market',   apiLimiter, marketRouter);
-app.use('/api/wapulse',  apiLimiter, wapulseRouter);
+// TikTok domain verification — sirve un archivo plano a la raíz si las
+// env vars están definidas. TikTok pide algo del estilo:
+//   File:    tiktokXXXXXXXXXXXXXX.txt
+//   Content: tiktok-developers-site-verification=XYZ123...
+// Ambos se configuran como env vars en Railway cuando TikTok Dev Portal
+// nos los entrega durante el flujo "Verify URL ownership".
+const TIKTOK_VERIFY_FILE    = process.env.TIKTOK_VERIFY_FILE;
+const TIKTOK_VERIFY_CONTENT = process.env.TIKTOK_VERIFY_CONTENT;
+if (TIKTOK_VERIFY_FILE && TIKTOK_VERIFY_CONTENT) {
+  app.get(`/${TIKTOK_VERIFY_FILE}`, (_, res) => {
+    res.type('text/plain').send(TIKTOK_VERIFY_CONTENT);
+  });
+}
+
+app.use('/api/prices',       apiLimiter, priceRouter);
+app.use('/api/assets',       apiLimiter, assetsRouter);
+app.use('/api/analysis',     apiLimiter, analysisRouter);
+app.use('/api/news',         apiLimiter, newsRouter);
+app.use('/api/market',       apiLimiter, marketRouter);
+app.use('/api/wapulse',      apiLimiter, wapulseRouter);
+// Carousel image proxy — sin apiLimiter (TikTok pide cada slide y son hits
+// rápidos), pero rate limit global de 500/15min ya cubre abuso.
+app.use('/api/carousel-img', carouselImgRouter);
 
 app.listen(PORT, () => {
   console.log(`WaStake backend running on port ${PORT}`);
