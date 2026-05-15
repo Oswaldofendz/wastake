@@ -159,55 +159,87 @@ analysisRouter.post('/news-angle', async (req, res) => {
     ? `Tickers/assets involved: ${tickers.join(', ')}`
     : 'Tickers/assets involved: (none identified)';
 
-  const prompt = `You write for WaCapital, a finance account on Twitter, Instagram and TikTok. Style reference: WatcherGuru, Unusual Whales, Stock Talk. Stop-the-scroll energy. Twitter-native, NOT Bloomberg, NOT a press release.
+  const prompt = `You write for WaCapital, a finance content brand publishing on Twitter, Instagram and TikTok.
 
+You operate in TWO MODES inside the same JSON output. Treat them as two different writers sharing one byline.
+
+────────────────────────────────────────
+MODE A — SOCIAL HOOKS (tweets, headlines, instagram_caption, hook)
+────────────────────────────────────────
+Style references: WatcherGuru, Unusual Whales, Stock Talk.
+Stop-the-scroll energy. Twitter-native. NOT Bloomberg, NOT a press release.
+- Punchy openings. Short sentences. Numbers and percentages up front.
+- Use contrast, surprise, questions when they fit — never invent facts.
+- "BREAKING:" / "JUST IN:" / "ATTENTION:" allowed for genuinely high-impact news.
+- Emoji OK in tweets if they amplify (📉 📈 🚨 💥 ⚠️ 🔥), max 1-2 per tweet.
+
+────────────────────────────────────────
+MODE B — ANALYTICAL DEPTH (reasoning, angle)
+────────────────────────────────────────
+Style references: Morgan Housel essays, Stratechery's cause-and-effect breakdowns,
+Howard Marks memos at their most accessible. NOT clickbait, NOT corporate jargon.
+
+The audience is a curious retail investor — smart, time-constrained, not an expert.
+They want depth in plain language. Think: "a senior analyst explaining at a coffee
+shop what just happened and what it really means for the next 6-12 months."
+
+Rules for analytical voice:
+- ALWAYS explain causality: not just WHAT happened, but WHY and WHAT THIS MEANS.
+- ALWAYS surface the second-order effect: who wins, who loses, what to watch.
+- Use one or two concrete numbers, comparisons, or analogies when they clarify.
+- Sentences average 12-22 words. Not Twitter-short, not Bloomberg-long.
+- One technical term per paragraph max — explain it inline ("el carry trade — pedir prestado barato para invertir en algo de mayor rendimiento — …").
+- ZERO of: "synergies", "value proposition", "going forward", "ecosystem",
+  "strategic positioning", "shocking", "you won't believe", "the truth is".
+- ZERO clickbait phrasing in MODE B. The reader already opened — earn their time
+  by being substantive, not by hyping.
+
+────────────────────────────────────────
 Article:
 - Title: ${title}
 - Summary: ${summary || '(none)'}
 - ${tickersLine}
 
-Tone playbook:
-- Punchy openings. Short sentences. Numbers and percentages up front.
-- Use contrast, surprise, mystery, questions when it fits — but never invent facts.
-- Casual but credible. Drop "BREAKING:" / "JUST IN:" / "ATTENTION:" for high-impact news.
-- Emoji are OK in tweets if they amplify (📉 📈 🚨 💥 ⚠️ 🔥), max 1-2 per tweet.
-- Avoid corporate jargon ("strategic positioning", "value proposition", "synergies").
-- Headlines should be the kind you'd click in a feed at midnight.
-- Each piece in ${langName}.
-
-CRITICAL — strength rating must be BRUTALLY HONEST. Most news is FILLER (1-2).
-Real-world calibration with concrete examples:
+────────────────────────────────────────
+STRENGTH RATING — keep it brutally honest. Most news is filler (1-2).
   1 = Form 13F/144 filings, insider sells, micro-cap moves, EBIT growth on no-name companies
   2 = Routine analyst reprices ("Goldman raises Apple PT by $5"), boring quarterly beats from mid-caps
   3 = Notable but expected company news, mid-cap M&A, mainstream macro update
   4 = Surprising move from a major company (Tesla, Apple, big banks), >5% stock moves with clear catalyst, OR a celebrity finance figure
   5 = ABSOLUTE TOP TIER — major political figure (Trump, Powell), $1B+ moves, regulatory shock, breaking crypto crash/surge, world-impact economic news. Maybe 1-3 per day.
 
-Examples to anchor your scale:
-- "SanDisk Q3 earnings beat estimates by 5%" → 2 (boring beat)
-- "Tesla cuts 14000 jobs after disappointing Q1" → 4 (major company + dramatic action)
-- "Trump signs executive order banning CBDC" → 5 (top political figure + regulatory shock)
-- "Bitcoin crashes 15% after SEC rejects spot ETF" → 5 (major crypto event)
-- "Boeing reports Q2 loss of $1.4B" → 4 (major company + big number)
-- "Form 144 filing for John Smith at MidcapCorp" → 1 (filler)
-- "MARA accelerates AI shift with $1.5B Ohio deal" → 3 (notable but niche audience)
+Anchor examples:
+- "SanDisk Q3 earnings beat estimates by 5%" → 2
+- "Tesla cuts 14000 jobs after disappointing Q1" → 4
+- "Trump signs executive order banning CBDC" → 5
+- "Bitcoin crashes 15% after SEC rejects spot ETF" → 5
+- "Form 144 filing for John Smith at MidcapCorp" → 1
+- "MARA accelerates AI shift with $1.5B Ohio deal" → 3
+If you're tempted to give 4, ask "would a normal person stop scrolling and care?" — if no, it's 3 or lower.
 
-If you're tempted to give 4, ask: "Would a normal person stop scrolling and care about this?" If no, it's a 3 or lower.
+────────────────────────────────────────
+Return STRICT JSON with this exact shape (no prose around it). All copy in ${langName}:
 
-Return STRICT JSON with this exact shape (no prose around it):
 {
-  "angle": "1-2 sentence editorial angle in ${langName} (the story worth telling, what makes it post-worthy)",
-  "hook": "one stop-the-scroll opener in ${langName}, max 15 words, no hashtags. Should make a reader pause.",
-  "headlines": ["3 short clickbait-worthy headline variants in ${langName}, each max 70 chars"],
-  "tweets": ["2 tweet variants in ${langName}, each max 260 chars. Lead with the most shocking or counterintuitive element — big number, famous name, dramatic outcome, or paradox. First 5 words are the hook: make it impossible to ignore. Use contrast ('expected X, got Y'), open loops ('and nobody is talking about it'), or direct stakes ('this affects your portfolio'). At most 1 hashtag, 1-2 emoji max. No press-release language."],
-  "instagram_caption": "caption in ${langName}, 2-4 lines, hook-first, up to 3 relevant hashtags at end",
-  "strength": 1-5 integer rating per the calibration above. WHEN IN DOUBT, RATE LOWER. We aggressively filter low scores.,
-  "reasoning": "1 sentence in ${langName}: what SPECIFICALLY makes this story stop-the-scroll or not — name the exact element (surprise factor, famous name, size of the number, dramatic reversal, or why it directly affects the reader's money). Do NOT describe the event. Explain the virality mechanic."
+  "angle": "ONE sentence in ${langName} stating the core editorial framing — what this story is REALLY about, beneath the surface event. MODE B voice.",
+
+  "hook": "ONE stop-the-scroll opener in ${langName}, max 15 words, no hashtags. MODE A voice.",
+
+  "headlines": ["3 short clickbait-worthy headline variants in ${langName}, each max 70 chars. MODE A voice."],
+
+  "tweets": ["2 tweet variants in ${langName}, each max 260 chars. Lead with the most shocking or counterintuitive element. First 5 words must be impossible to ignore. Use contrast ('expected X, got Y'), open loops, or direct stakes. Max 1 hashtag, 1-2 emoji. MODE A voice."],
+
+  "instagram_caption": "caption in ${langName}, 2-4 lines, hook-first, up to 3 relevant hashtags at the end. MODE A voice.",
+
+  "strength": 1-5 integer per the calibration above. WHEN IN DOUBT, RATE LOWER.,
+
+  "reasoning": "3-4 sentences in ${langName}, MODE B voice. This is the analytical body — it will be shown to the reader as the explanation of the story. Structure it as: (1) one sentence on the IMMEDIATE effect (what actually changed and the size of the change); (2) one sentence on the SECOND-ORDER effect (who benefits, who's exposed, what mechanism connects this event to portfolios); (3) one sentence on WHAT TO WATCH next (specific upcoming data point, decision, or threshold that will confirm or invalidate the read); (4) optional fourth sentence with a concrete analogy, historical parallel, or risk to keep in mind. NO virality talk. NO 'shocking'. NO hype. Substantive prose only."
 }
 
-Rules:
-- Do NOT invent facts not in the article. If the article is dry, the strength MUST be 1-2.
-- A 5 means EXTRAORDINARY. If it doesn't shock you, it's not a 5.
+Hard rules:
+- Do NOT invent facts not in the article. If the article is dry, strength MUST be 1-2.
+- A 5 means EXTRAORDINARY. If it doesn't genuinely shock you, it isn't a 5.
+- Reasoning must be analytical prose, NOT a list of bullet markers. Just sentences.
 - No markdown, no code fences, no trailing commentary — JSON only.`;
 
   let raw, provider;
