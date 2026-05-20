@@ -65,21 +65,46 @@ async function callGroq(prompt, { jsonMode, maxTokens, temperature, model }) {
   };
   if (jsonMode) body.response_format = { type: 'json_object' };
 
-  const res = await axios.post(
-    'https://api.groq.com/openai/v1/chat/completions',
-    body,
-    {
-      timeout: 15000,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
+  // Retry transient 429s (RPM/TPM hits on free tier) before letting the
+  // caller fall back to Gemini. Daily-quota 429s and non-429 errors are
+  // re-thrown immediately so the Gemini fallback still works as before.
+  const RETRY_DELAYS_MS = [0, 1000, 2500];
+  let lastErr = null;
+  for (let attempt = 0; attempt < RETRY_DELAYS_MS.length; attempt++) {
+    if (RETRY_DELAYS_MS[attempt] > 0) {
+      await new Promise(r => setTimeout(r, RETRY_DELAYS_MS[attempt]));
     }
-  );
-
-  const text = res.data?.choices?.[0]?.message?.content;
-  if (!text) throw new Error('Empty Groq response');
-  return text;
+    try {
+      const res = await axios.post(
+        'https://api.groq.com/openai/v1/chat/completions',
+        body,
+        {
+          timeout: 15000,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+          },
+        }
+      );
+      const text = res.data?.choices?.[0]?.message?.content;
+      if (!text) throw new Error('Empty Groq response');
+      return text;
+    } catch (err) {
+      lastErr = err;
+      // Daily TPD → don't retry, let caller fall back to Gemini.
+      if (isGroqDailyQuota(err)) throw err;
+      // Non-429 (network, 5xx, etc.) → no retry either.
+      if (err.response?.status !== 429) throw err;
+      // Transient 429 (RPM/TPM): retry if we have attempts left.
+      if (attempt < RETRY_DELAYS_MS.length - 1) {
+        const nextMs = RETRY_DELAYS_MS[attempt + 1];
+        console.warn(
+          `[groq] 429 transient — retry ${attempt + 1}/${RETRY_DELAYS_MS.length - 1} in ${nextMs}ms`
+        );
+      }
+    }
+  }
+  throw lastErr;
 }
 
 // Auto-discover all GEMINI_API_KEY{,_<N>} env vars at call time.
