@@ -23,7 +23,7 @@ let groqQuotaResetAt     = 0;
 
 // Per-Gemini-key cooldown state. Map keyLabel → epoch when usable again.
 // Each Gemini API key has its own daily quota; we rotate through all keys
-// configured via GEMINI_API_KEY{,_2,_3,_4,_5} env vars.
+// configured via GEMINI_API_KEY{,_<N>} env vars (auto-discovered at call time).
 const geminiKeyCooldowns = new Map();
 
 function tomorrowUtc05() {
@@ -82,12 +82,21 @@ async function callGroq(prompt, { jsonMode, maxTokens, temperature, model }) {
   return text;
 }
 
-// Reads all GEMINI_API_KEY{,_2,_3,_4,_5} env vars in order.
-// Returns non-empty in declared order.
+// Auto-discover all GEMINI_API_KEY{,_<N>} env vars at call time.
+// Order: GEMINI_API_KEY (default) first, then GEMINI_API_KEY_<N> sorted
+// numerically. Quota is per Google account/key, so adding more numbered
+// keys in Railway env (e.g. _6, _7, _10) extends daily headroom for
+// news-angle / narrative endpoints without touching this code.
 function geminiKeys() {
+  const named = Object.keys(process.env)
+    .filter(k => /^GEMINI_API_KEY(_\d+)?$/.test(k))
+    .sort((a, b) => {
+      const na = a === 'GEMINI_API_KEY' ? 0 : parseInt(a.split('_').pop(), 10);
+      const nb = b === 'GEMINI_API_KEY' ? 0 : parseInt(b.split('_').pop(), 10);
+      return na - nb;
+    });
   const out = [];
-  for (const v of ['GEMINI_API_KEY', 'GEMINI_API_KEY_2', 'GEMINI_API_KEY_3',
-                   'GEMINI_API_KEY_4', 'GEMINI_API_KEY_5']) {
+  for (const v of named) {
     const k = (process.env[v] ?? '').trim();
     if (k) out.push(k);
   }
@@ -212,8 +221,9 @@ export async function callLLM(prompt, opts = {}) {
   }
 
   // ── Fallback: Gemini (multi-key rotation) ─────────────────────────────────
-  // callGemini internally rotates through GEMINI_API_KEY, _2, _3, _4, _5.
-  // Each key has its own per-day quota; sticky cooldown marks exhausted keys.
+  // callGemini internally rotates through all auto-discovered GEMINI_API_KEY*
+  // env vars. Each key has its own per-day quota; sticky cooldown marks
+  // exhausted keys until the 00:05 UTC reset.
   try {
     const text = await callGemini(prompt, callOpts);
     console.log(`${tag} via Gemini (fallback)`);
