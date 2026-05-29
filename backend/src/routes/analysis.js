@@ -1,8 +1,15 @@
 import { Router } from 'express';
 import crypto from 'crypto';
+import { createClient } from '@supabase/supabase-js';
 import { getCryptoOHLCV, getTraditionalOHLCV } from '../services/priceService.js';
 import { computeIndicators } from '../services/technicalAnalysisService.js';
 import { callLLM } from '../services/llmService.js';
+
+// Supabase client for the persistent entity-visual cache.
+// Reused only by the visual-subject endpoint below.
+const _supabase = (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY)
+  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+  : null;
 
 export const analysisRouter = Router();
 
@@ -293,4 +300,137 @@ Hard rules:
 
   setAngleCache(cacheKey, result);
   res.json(result);
+});
+
+
+// POST /api/analysis/visual-subject
+// body: { name, lang? }
+// returns: { name, display, description: {industry, category, visual_description, color_palette}, cached, provider }
+//
+// Purpose: when the pipeline's catalog (_SUBJECTS in ai_image_generator.py)
+// doesn't match anything in a headline, it asks the LLM here how to visualize
+// the unknown entity (e.g. "Concentrix", "Dawn Labs"). Results are cached in
+// the persistent table `pulse_entity_visuals` so each entity only costs one
+// LLM call across the lifetime of the system.
+analysisRouter.post('/visual-subject', async (req, res) => {
+  const { name } = req.body ?? {};
+
+  if (!name || typeof name !== 'string' || name.trim().length < 2) {
+    return res.status(400).json({ error: 'Field "name" is required (min 2 chars)' });
+  }
+
+  const display    = name.trim();
+  const normalized = display.toLowerCase();
+
+  // 1. Cache lookup (persistent in Supabase).
+  if (_supabase) {
+    try {
+      const { data, error } = await _supabase
+        .from('pulse_entity_visuals')
+        .select('display, description')
+        .eq('name', normalized)
+        .limit(1)
+        .maybeSingle();
+      if (!error && data) {
+        // Increment hit counter (best-effort, ignore failures).
+        _supabase
+          .from('pulse_entity_visuals')
+          .update({ hits: undefined, updated_at: new Date().toISOString() })
+          .eq('name', normalized)
+          .then(() => {}, () => {});
+        return res.json({
+          name:        normalized,
+          display:     data.display || display,
+          description: data.description,
+          cached:      true,
+          provider:    'cache',
+        });
+      }
+    } catch (e) {
+      console.warn('[visual-subject] cache lookup failed:', e.message);
+    }
+  }
+
+  // 2. Cache miss → ask the LLM.
+  const prompt = `You are a visual director for an editorial finance publication. Describe how to photograph the following entity for a hero image. The entity may be a company, a cryptocurrency, a person, a place, a commodity, or a market concept.
+
+Entity name: ${display}
+
+Return STRICT JSON with this exact shape (no prose around it, JSON only):
+
+{
+  "industry":           "what sector/industry this entity belongs to (1-3 words, e.g. 'BPO services', 'EV manufacturer', 'crypto exchange'). If unknown, use 'unknown'.",
+  "category":           "one of: company | crypto | person | place | commodity | market | unknown",
+  "visual_description": "ONE clause in English describing how to visualize the entity in a cinematic editorial photograph, ~120 chars max. Concrete, photographable. Examples: 'modern open-plan customer service center, headsets and screens, soft blue light' (for Concentrix) or 'sleek venture studio loft, exposed brick, MacBooks open, late evening' (for Dawn Labs). NO TEXT, NO LOGOS WITH TEXT, NO WATERMARKS.",
+  "color_palette":      "dominant brand colors or visual mood (1 short line, e.g. 'deep blue and silver', 'amber and forest green'). If unknown, suggest a fitting one."
+}
+
+If you do not recognize the entity, do NOT make up specific facts. Choose category="unknown" and produce a tasteful generic editorial visual that fits a finance headline.
+
+NO markdown. NO code fences. NO trailing commentary. JSON only.`;
+
+  let raw, provider;
+  try {
+    const out = await callLLM(prompt, {
+      jsonMode:    true,
+      maxTokens:   300,
+      temperature: 0.5,
+      tag:         '[visual-subject]',
+      // Use the same model as news-angle for consistency; small prompt so cheap.
+      model:       'llama-3.3-70b-versatile',
+    });
+    raw      = (out.text ?? '').trim();
+    provider = out.provider;
+  } catch (err) {
+    console.error('[visual-subject] both providers failed:', err.message);
+    return res.status(502).json({ error: err.message });
+  }
+
+  if (!raw) {
+    return res.status(502).json({ error: 'Empty response from LLM' });
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    console.error('[visual-subject] JSON parse failed:', err.message, 'raw=', raw.slice(0, 200));
+    return res.status(502).json({ error: 'Invalid JSON from LLM' });
+  }
+
+  // Defensive normalization.
+  const description = {
+    industry:           typeof parsed.industry === 'string' ? parsed.industry.trim() : 'unknown',
+    category:           ['company','crypto','person','place','commodity','market','unknown']
+                           .includes(parsed.category) ? parsed.category : 'unknown',
+    visual_description: typeof parsed.visual_description === 'string'
+                           ? parsed.visual_description.trim().slice(0, 240)
+                           : '',
+    color_palette:      typeof parsed.color_palette === 'string' ? parsed.color_palette.trim().slice(0, 80) : '',
+  };
+
+  // 3. Write to cache (best-effort).
+  if (_supabase) {
+    try {
+      await _supabase
+        .from('pulse_entity_visuals')
+        .upsert({
+          name:        normalized,
+          display,
+          description,
+          hits:        1,
+          updated_at:  new Date().toISOString(),
+        }, { onConflict: 'name' });
+    } catch (e) {
+      console.warn('[visual-subject] cache write failed:', e.message);
+    }
+  }
+
+  res.json({
+    name:        normalized,
+    display,
+    description,
+    cached:      false,
+    provider,
+  });
 });
