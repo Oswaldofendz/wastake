@@ -5,6 +5,7 @@ import { ToastProvider } from './components/Toast.jsx';
 import './i18n/index.js';
 import './index.css';
 
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ToastProvider>
@@ -12,3 +13,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </ToastProvider>
   </React.StrictMode>
 );
+
+
