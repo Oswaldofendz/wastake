@@ -42,9 +42,9 @@ export const fetchNews = (id, type = 'crypto') => {
   return get(`/api/news/${encodeURIComponent(id)}?${qs}`);
 };
 
-// RSS headlines scored with deterministic rules; does not call an AI provider.
-export const fetchFundamentalsNews = (asset, type = 'crypto') => {
-  const qs = new URLSearchParams({ type, name: asset.name ?? '', symbol: asset.symbol ?? '' });
+// Public news enriched by the backend with localized, evidence-linked AI analysis.
+export const fetchFundamentalsNews = (asset, type = 'crypto', lang = 'es') => {
+  const qs = new URLSearchParams({ type, name: asset.name ?? '', symbol: asset.symbol ?? '', lang });
   return get(`/api/fundamentals/${encodeURIComponent(asset.id)}?${qs}`);
 };
 

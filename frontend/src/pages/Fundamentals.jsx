@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ALL_ASSETS, getAnalysisType } from '../data/assetCatalog.js';
-import { fetchFundamentalsNews, fetchOHLCV, translateText } from '../services/api.js';
+import { fetchFundamentalsNews, fetchOHLCV } from '../services/api.js';
 
 const WINDOWS = [
   { id: 'day', label: { es: '24 h', pt: '24 h', en: '24h' }, days: 1 },
@@ -18,14 +18,14 @@ const COPY = {
   pt: { eyebrow: 'WaStake · análise de eventos', title: 'Fundamentos', subtitle: 'Entenda o que aconteceu, por que pode importar e o que observar.', update: 'Atualizar', updating: 'Atualizando…', asset: 'Ativo', period: 'Período de análise', bias: 'Tom das notícias', biasHelp: 'Tom detetado nos títulos', intensity: 'Relevância média', newsCount: 'títulos em', reaction: 'Reação média observada', reactionHelp: 'Movimento posterior; não prova que a notícia o causou', guide: 'Como ler esta página', guideText: 'As notícias são ordenadas pela relevância estimada para o mercado. O indicador mostra quanto o tema pode importar, não se o preço vai subir ou descer. O tom resume palavras positivas ou negativas. As duas medidas usam regras simples e podem falhar.', list: 'Notícias ordenadas por relevância', available: 'disponíveis', loading: 'A carregar títulos e histórico de preços…', empty: 'Não há títulos disponíveis para este ativo no período selecionado.', translation: 'Tradução automática', translationUnavailable: 'Tradução indisponível; a mostrar o título original.', impact: 'Relevância estimada', low: 'Limitada', medium: 'Moderada', high: 'Alta', news: '1. O que aconteceu?', why: '2. Porque pode afetar?', projection: '3. O que observar?', positive: 'Positivo', negative: 'Negativo', neutral: 'Misto ou sem direção clara', highExplanation: 'O título menciona um evento que costuma atrair atenção do mercado, como regulação, resultados, taxas ou segurança.', mediumExplanation: 'O título menciona uma mudança ou anúncio que pode influenciar expectativas, adoção ou atividade.', lowExplanation: 'As palavras detetadas não mostram um catalisador claro. O contexto completo pode alterar esta leitura.', projectionPositive: 'Se o mercado confirmar esta leitura, o sentimento pode melhorar; verifique o volume e a reação do preço.', projectionNegative: 'Se o mercado confirmar esta leitura, a pressão de venda pode aumentar; verifique o volume e a reação do preço.', projectionNeutral: 'A direção não está clara. Aguarde mais informações e observe a resposta do preço.', matched: 'Palavras que ativaram a regra', score: 'Pontuação do tom', observed: 'Variação posterior observada', after: 'fecho diário, pelo menos 24 h', noTranslation: 'Não foi possível traduzir; a mostrar o título original.', disclaimer: 'Leitura educativa e experimental, não é previsão nem aconselhamento financeiro. Movimentos posteriores não provam causalidade.', method: 'Método e limitações', methodDetails: 'A relevância é ordenada por categoria de palavras-chave; o tom usa o equilíbrio entre termos positivos e negativos. A variação posterior compara o último fecho anterior com o primeiro fecho pelo menos 24 horas depois. As regras podem ignorar contexto, negações e sarcasmo. As notícias vêm de feeds RSS públicos, com até 10 títulos recentes por ativo; o filtro de 30 dias não é um arquivo completo.' },
 };
 
+const ANALYSIS_LABELS = {
+  es: { aiReady: 'Análisis contextual con IA', aiMissing: 'IA no configurada en el backend', aiUnavailable: 'IA temporalmente no disponible; se muestran reglas base', original: 'Titular original', category: 'Tema', confidence: 'Confianza del análisis', horizon: 'Horizonte', scenario: 'Escenarios condicionales', bull: 'Si aparecen señales favorables', base: 'Escenario central', bear: 'Si aparecen señales adversas', evidence: 'Evidencia textual', limitation: 'Límites y dudas', depthArticle: 'Texto del artículo consultado', depthRss: 'Análisis basado en extracto RSS', depthTitle: 'Solo titular disponible', provider: 'Proveedor', relevanceMeter: 'Indicador de relevancia estimada', factors: 'Componentes de la relevancia', severity: 'Gravedad 25%', assetLink: 'Relación con el activo 25%', surprise: 'Sorpresa 20%', persistence: 'Persistencia 15%', evidenceFactor: 'Evidencia 15%', translationMissing: 'La IA no pudo traducir este titular' },
+  pt: { aiReady: 'Análise contextual com IA', aiMissing: 'IA não configurada no backend', aiUnavailable: 'IA temporariamente indisponível; a mostrar regras base', original: 'Título original', category: 'Tema', confidence: 'Confiança da análise', horizon: 'Horizonte', scenario: 'Cenários condicionais', bull: 'Se surgirem sinais favoráveis', base: 'Cenário central', bear: 'Se surgirem sinais adversos', evidence: 'Evidência textual', limitation: 'Limites e dúvidas', depthArticle: 'Texto do artigo consultado', depthRss: 'Análise baseada no excerto RSS', depthTitle: 'Apenas o título disponível', provider: 'Fornecedor', relevanceMeter: 'Indicador de relevância estimada', factors: 'Componentes da relevância', severity: 'Gravidade 25%', assetLink: 'Relação com o ativo 25%', surprise: 'Surpresa 20%', persistence: 'Persistência 15%', evidenceFactor: 'Evidência 15%', translationMissing: 'A IA não conseguiu traduzir este título' },
+  en: { aiReady: 'Contextual AI analysis', aiMissing: 'AI is not configured on the backend', aiUnavailable: 'AI is temporarily unavailable; showing baseline rules', original: 'Original headline', category: 'Topic', confidence: 'Analysis confidence', horizon: 'Horizon', scenario: 'Conditional scenarios', bull: 'If favorable signals emerge', base: 'Central scenario', bear: 'If adverse signals emerge', evidence: 'Text evidence', limitation: 'Limits and uncertainty', depthArticle: 'Article text retrieved', depthRss: 'Analysis based on RSS excerpt', depthTitle: 'Headline only available', provider: 'Provider', relevanceMeter: 'Estimated relevance meter', factors: 'Relevance components', severity: 'Severity 25%', assetLink: 'Asset link 25%', surprise: 'Surprise 20%', persistence: 'Persistence 15%', evidenceFactor: 'Evidence 15%', translationMissing: 'AI could not translate this headline' },
+};
+
 function impactValue(impact) { return ({ low: 25, medium: 60, high: 90 })[impact] ?? 25; }
 function languageCode(language) { return language?.toLowerCase().startsWith('pt') ? 'pt' : language?.toLowerCase().startsWith('es') ? 'es' : 'en'; }
-function guessHeadlineLanguage(title = '') {
-  if (/[¿¡ñáéíóúü]/i.test(title) || /\b(el|los|las|una|para|según|sube|cae)\b/i.test(title)) return 'es';
-  if (/[ãõç]/i.test(title) || /\b(não|para|com|sobre|mercado|ações)\b/i.test(title)) return 'pt';
-  return 'en';
-}
-
 function scoreArticles(articles) {
   if (!articles.length) return { direction: null, intensity: null };
 
@@ -33,13 +33,14 @@ function scoreArticles(articles) {
   let totalWeight = 0;
   for (const article of articles) {
     const weight = IMPACT_WEIGHT[article.impact] ?? IMPACT_WEIGHT.low;
-    signedWeight += (SENTIMENT_SIGN[article.sentiment] ?? 0) * weight;
+    const direction = Number.isFinite(article.score) ? article.score / 100 : (SENTIMENT_SIGN[article.sentiment] ?? 0);
+    signedWeight += direction * weight;
     totalWeight += weight;
   }
 
   return {
     direction: Math.round((signedWeight / totalWeight) * 100),
-    intensity: Math.round(articles.reduce((sum, article) => sum + impactValue(article.impact), 0) / articles.length),
+    intensity: Math.round(articles.reduce((sum, article) => sum + (article.relevance ?? impactValue(article.impact)), 0) / articles.length),
   };
 }
 
@@ -76,6 +77,7 @@ export function Fundamentals() {
   const { i18n } = useTranslation();
   const lang = languageCode(i18n.resolvedLanguage || i18n.language);
   const t = COPY[lang];
+  const analysisLabels = ANALYSIS_LABELS[lang];
   const assets = useMemo(() => ALL_ASSETS.filter(asset => asset.analysisType), []);
   const [assetId, setAssetId] = useState('bitcoin');
   const [periodId, setPeriodId] = useState('day');
@@ -85,7 +87,7 @@ export function Fundamentals() {
   const [loading, setLoading] = useState(true);
   const [newsError, setNewsError] = useState('');
   const [priceError, setPriceError] = useState('');
-  const [translatedTitles, setTranslatedTitles] = useState({});
+  const [aiStatus, setAiStatus] = useState('');
 
   const asset = assets.find(item => item.id === assetId) ?? assets[0];
   const selectedWindow = WINDOWS.find(window => window.id === periodId) ?? WINDOWS[0];
@@ -99,17 +101,20 @@ export function Fundamentals() {
       setLoading(true);
       setNewsError('');
       setPriceError('');
+      setAiStatus('');
       const type = getAnalysisType(asset);
       const [newsResult, candleResult] = await Promise.allSettled([
-        fetchFundamentalsNews(asset, type),
+        fetchFundamentalsNews(asset, type, lang),
         fetchOHLCV(asset.id, type, { days: 90, interval: '1d', range: '3mo' }),
       ]);
 
       if (cancelled) return;
       if (newsResult.status === 'fulfilled') {
         setArticles(Array.isArray(newsResult.value?.news) ? newsResult.value.news : []);
+        setAiStatus(newsResult.value?.aiStatus ?? '');
       } else {
         setArticles([]);
+        setAiStatus('unavailable');
         setNewsError('No se pudieron cargar las noticias de este activo.');
       }
       if (candleResult.status === 'fulfilled') {
@@ -123,30 +128,7 @@ export function Fundamentals() {
 
     load();
     return () => { cancelled = true; };
-  }, [asset?.id, refreshKey]);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (lang === 'en' || articles.length === 0) { setTranslatedTitles({}); return undefined; }
-    setTranslatedTitles({});
-    async function translateHeadlines() {
-      const results = await Promise.all(articles.map(async article => {
-        const title = article.title ?? '';
-        const from = guessHeadlineLanguage(title);
-        if (!title || from === lang) return [article.link || title, { title, translated: false }];
-        try {
-          const result = await translateText(title, lang, from);
-          const translated = result.translatedText && result.translatedText !== title;
-          return [article.link || title, { title: translated ? result.translatedText : title, translated: Boolean(translated) }];
-        } catch {
-          return [article.link || title, { title, translated: false }];
-        }
-      }));
-      if (!cancelled) setTranslatedTitles(Object.fromEntries(results));
-    }
-    translateHeadlines();
-    return () => { cancelled = true; };
-  }, [articles, lang]);
+  }, [asset?.id, refreshKey, lang]);
 
   const periodArticles = useMemo(() => {
     const cutoff = Date.now() - selectedWindow.days * 86_400_000;
@@ -256,14 +238,17 @@ export function Fundamentals() {
         <summary className="cursor-pointer text-sm font-medium text-slate-200">{t.guide}</summary>
         <div className="mt-3 space-y-2 text-sm leading-6 text-slate-400">
           <p>{t.guideText}</p>
-          <p><strong className="text-amber-300">{t.method}: </strong>{t.methodDetails}</p>
+          <p><strong className="text-amber-300">{t.method}: </strong>{lang === 'es' ? 'La IA lee texto público del artículo o, si no está disponible, el extracto RSS. Estima cinco factores del 0 al 100: gravedad (25%), relación directa con el activo (25%), sorpresa (20%), persistencia probable (15%) y calidad de evidencia (15%). La relevancia es la suma ponderada; el sesgo direccional se muestra por separado. Las estimaciones pueden equivocarse y no son pronósticos.' : lang === 'pt' ? 'A IA lê o texto público do artigo ou, se não estiver disponível, o excerto RSS. Estima cinco fatores de 0 a 100: gravidade (25%), relação direta com o ativo (25%), surpresa (20%), persistência provável (15%) e qualidade da evidência (15%). A relevância é a soma ponderada; a direção é apresentada separadamente. As estimativas podem falhar e não são previsões.' : 'AI reads public article text or, when unavailable, the RSS excerpt. It estimates five factors from 0 to 100: severity (25%), direct asset link (25%), surprise (20%), likely persistence (15%), and evidence quality (15%). Relevance is their weighted sum; directional bias is separate. These estimates can be wrong and are not forecasts.'}</p>
         </div>
       </details>
 
       <section className="rounded-xl border border-slate-700/60 bg-slate-900/50">
         <div className="flex items-center justify-between gap-3 border-b border-slate-700/50 px-4 py-3">
           <h2 className="font-semibold">{t.list} · {asset?.name ?? t.asset}</h2>
-          <span className="text-xs text-slate-500">{periodArticles.length} de {articles.length} {t.available}</span>
+          <div className="flex flex-wrap items-center justify-end gap-3 text-xs">
+            <span className={aiStatus === 'ready' ? 'text-emerald-400' : 'text-amber-400'}>{aiStatus === 'ready' ? analysisLabels.aiReady : aiStatus === 'not_configured' ? analysisLabels.aiMissing : aiStatus === 'unavailable' ? analysisLabels.aiUnavailable : ''}</span>
+            <span className="text-slate-500">{periodArticles.length} de {articles.length} {t.available}</span>
+          </div>
         </div>
         {loading ? (
           <div className="p-8 text-center text-sm text-slate-400">{t.loading}</div>
@@ -274,12 +259,11 @@ export function Fundamentals() {
             {periodArticles.map((article, index) => {
               const articleScore = Number.isFinite(article.score) ? article.score : 0;
               const reaction = reactionAfterArticle(article, candles);
-              const relevance = impactValue(article.impact);
-              const localized = translatedTitles[article.link || article.title];
-              const title = localized?.title ?? article.title;
+              const relevance = article.relevance ?? impactValue(article.impact);
+              const title = article.localizedTitle || article.title;
               const toneLabel = article.sentiment === 'positive' ? t.positive : article.sentiment === 'negative' ? t.negative : t.neutral;
-              const impactCopy = article.impact === 'high' ? t.highExplanation : article.impact === 'medium' ? t.mediumExplanation : t.lowExplanation;
-              const projection = article.sentiment === 'positive' ? t.projectionPositive : article.sentiment === 'negative' ? t.projectionNegative : t.projectionNeutral;
+              const impactCopy = article.mechanism || (article.impact === 'high' ? t.highExplanation : article.impact === 'medium' ? t.mediumExplanation : t.lowExplanation);
+              const projection = article.watch || (article.sentiment === 'positive' ? t.projectionPositive : article.sentiment === 'negative' ? t.projectionNegative : t.projectionNeutral);
               return (
                 <article key={article.link || `${article.pubDate}-${index}`} className="flex w-full min-w-0 flex-col gap-3 px-4 py-4">
                   <div className="w-full min-w-0">
@@ -295,21 +279,27 @@ export function Fundamentals() {
                     ) : (
                       <p className="font-medium leading-6 text-white">{title}</p>
                     )}
-                    {localized?.translated && <p className="mt-1 text-[11px] text-sky-400">{t.translation}</p>}
-                    {localized && !localized.translated && lang !== 'en' && guessHeadlineLanguage(article.title) !== lang && <p className="mt-1 text-[11px] text-amber-400">{t.noTranslation}</p>}
+                    {article.localizedTitle && article.localizedTitle !== article.title && <p className="mt-1 text-xs text-slate-500">{analysisLabels.original}: {article.title}</p>}
+                    {!article.localizedTitle && lang !== 'en' && <p className="mt-1 text-xs text-amber-400">{analysisLabels.translationMissing}</p>}
                     <div className="mt-4 rounded-lg border border-slate-700/60 bg-slate-950/40 p-3">
                       <div className="mb-2 flex items-center justify-between gap-3 text-xs">
                         <span className="font-semibold text-slate-200">{t.impact}: {article.impact === 'high' ? t.high : article.impact === 'medium' ? t.medium : t.low}</span>
                         <span className="text-slate-500">{relevance}/100</span>
                       </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-slate-800" role="meter" aria-label={t.impact} aria-valuemin="0" aria-valuemax="100" aria-valuenow={relevance}>
+                      <div className="h-2 overflow-hidden rounded-full bg-slate-800" role="meter" aria-label={analysisLabels.relevanceMeter} aria-valuemin="0" aria-valuemax="100" aria-valuenow={relevance}>
                         <div className={`h-full rounded-full ${article.impact === 'high' ? 'bg-rose-500' : article.impact === 'medium' ? 'bg-amber-400' : 'bg-sky-500'}`} style={{ width: `${relevance}%` }} />
                       </div>
                       <div className="mt-3 grid gap-2 text-xs leading-5 sm:grid-cols-3">
-                        <p><strong className="block text-slate-200">{t.news}</strong><span className="text-slate-400">{title}</span></p>
+                        <p><strong className="block text-slate-200">{t.news}</strong><span className="text-slate-400">{article.summary || title}</span></p>
                         <p><strong className="block text-slate-200">{t.why}</strong><span className="text-slate-400">{impactCopy}</span></p>
                         <p><strong className="block text-slate-200">{t.projection}</strong><span className="text-slate-400">{projection}</span></p>
                       </div>
+                      {article.category && <p className="mt-3 text-xs text-slate-400"><strong className="text-slate-200">{analysisLabels.category}: </strong>{article.category}{article.horizon ? ` · ${article.horizon}` : ''}{article.confidence != null ? ` · ${analysisLabels.confidence}: ${article.confidence}%` : ''}</p>}
+                      {article.factors && <details className="mt-3 text-xs text-slate-400"><summary className="cursor-pointer text-slate-300">{analysisLabels.factors} · {relevance}/100</summary><div className="mt-2 grid grid-cols-2 gap-1 sm:grid-cols-5"><span>{analysisLabels.severity}: {article.factors.severity}</span><span>{analysisLabels.assetLink}: {article.factors.assetLink}</span><span>{analysisLabels.surprise}: {article.factors.surprise}</span><span>{analysisLabels.persistence}: {article.factors.persistence}</span><span>{analysisLabels.evidenceFactor}: {article.factors.evidence}</span></div></details>}
+                      {article.scenarios && <div className="mt-3 border-t border-slate-800 pt-3"><p className="mb-2 text-xs font-semibold text-slate-200">{analysisLabels.scenario}</p><div className="grid gap-2 text-xs leading-5 sm:grid-cols-3"><p className="text-emerald-300"><strong className="block">{analysisLabels.bull}</strong><span className="text-slate-400">{article.scenarios.positive}</span></p><p className="text-sky-300"><strong className="block">{analysisLabels.base}</strong><span className="text-slate-400">{article.scenarios.base}</span></p><p className="text-rose-300"><strong className="block">{analysisLabels.bear}</strong><span className="text-slate-400">{article.scenarios.negative}</span></p></div></div>}
+                      {article.evidenceQuote && <p className="mt-3 text-xs text-slate-400"><strong className="text-slate-200">{analysisLabels.evidence}: </strong>“{article.evidenceQuote}”</p>}
+                      {article.limitations && <p className="mt-2 text-xs text-amber-300"><strong>{analysisLabels.limitation}: </strong>{article.limitations}</p>}
+                      <p className="mt-2 text-[11px] text-slate-500">{article.analysisDepth === 'article' ? analysisLabels.depthArticle : article.analysisDepth === 'rss' ? analysisLabels.depthRss : analysisLabels.depthTitle}{article.analysisProvider ? ` · ${analysisLabels.provider}: ${article.analysisProvider}` : ` · ${aiStatus === 'not_configured' ? analysisLabels.aiMissing : analysisLabels.aiUnavailable}`}</p>
                     </div>
                     {article.matchedTerms && (
                       <p className="mt-2 text-xs text-slate-500">

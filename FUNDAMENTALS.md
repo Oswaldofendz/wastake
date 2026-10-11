@@ -1,47 +1,58 @@
-# WaStake: arquitectura y primera entrega de Fundamentales
+# WaStake: Fundamentales y análisis de eventos
 
-## Arquitectura de la primera entrega
+## Arquitectura
 
-- **Interfaz:** React/Vite. La pestaña `Fundamentales` permite elegir activos, ventanas de 24 horas, 7 días y 30 días, y revisar los titulares y la reacción observada.
-- **API:** Express, en `GET /api/fundamentals/:id`. Obtiene los RSS públicos que ya consume el backend y devuelve el titular, fecha disponible, fuente, enlace, términos coincidentes y clasificación.
-- **Cálculo:** reglas deterministas versionadas como `keyword-rules-v1`. No llama a Gemini, Groq ni a otro servicio de IA.
-- **Precios:** usa el endpoint OHLCV existente del proyecto. La respuesta posterior compara el último cierre diario anterior al titular con el primer cierre a partir de 24 horas después.
-- **Caché:** titulares y feeds se conservan en memoria durante 30 minutos. Un reinicio del backend borra la caché.
+- **Interfaz:** React/Vite. `Fundamentales` muestra activos, horizontes de 24 horas/7/30 días, relevancia estimada, dirección, escenarios y reacción posterior observada.
+- **API:** Express, `GET /api/fundamentals/:id?type=crypto|stock&name=...&symbol=...&lang=es|pt|en`.
+- **Noticias:** feeds RSS públicos declarados en `backend/src/services/newsService.js`. La respuesta conserva titular original, traducción, fuente, fecha, enlace y nivel de texto consultado.
+- **Análisis:** Gemini/Groq se invocan exclusivamente desde el backend usando `llmService.js`. El proveedor puede resumir en el idioma seleccionado y explicar mecanismo, horizonte, escenarios condicionales, evidencia y límites.
+- **Artículo:** intenta leer solo HTTPS de los dominios de editores RSS ya configurados; hasta cinco artículos recientes, sin seguir redirecciones, sin superar 1 MB y con tiempo limitado. No se sortean muros de pago. Si el cuerpo no se puede leer, se usa el extracto RSS o se informa que solo hay titular.
+- **Respaldo:** el clasificador determinista `keyword-rules-v1` se conserva para cuando no existe clave, la IA falla o su respuesta no se puede validar. La pantalla indica el estado y no presenta el respaldo como análisis IA.
+- **Precios:** usa el endpoint OHLCV existente. El cambio posterior compara el último cierre diario anterior al titular con el primer cierre al menos 24 horas después. Es una observación temporal, no prueba de causalidad.
 
-## Fórmulas visibles y auditables
+## Puntuación transparente
 
-Para cada titular, se normalizan mayúsculas y acentos. Una lista versionada de términos positivos y negativos determina el tono:
+La IA estima cinco factores entre 0 y 100. El backend aplica los pesos fijos:
+
+`relevancia = gravedad × 0,25 + relación_directa_con_activo × 0,25 + sorpresa × 0,20 + persistencia_probable × 0,15 + calidad_de_evidencia × 0,15`
+
+Los cinco valores se muestran para poder reconstruir el resultado. El sesgo direccional de −100 a +100 y la confianza son medidas separadas; ninguno es un retorno esperado ni objetivo de precio. Los escenarios favorable, central y adverso son condicionales, no predicciones.
+
+El respaldo léxico normaliza mayúsculas y acentos y calcula:
 
 `puntaje_titular = 100 × (términos_positivos − términos_negativos) / (términos_positivos + términos_negativos)`
 
-Si no hay términos de tono, el resultado es neutral con puntaje cero. La clasificación de impacto es alto si aparece un término de impacto alto; en su defecto, medio si aparece uno de impacto medio; de lo contrario, bajo. La interfaz presenta los términos detectados para permitir revisar la regla.
+Si no hay términos de tono, el resultado es neutral con puntaje cero. Los términos que activan la regla aparecen en la interfaz.
 
-En el resumen del período, cada noticia recibe peso 1, 2 o 3 (impacto bajo, medio o alto):
+## Proveedores y credenciales
 
-`sesgo = 100 × suma(tono × peso) / suma(pesos)`
+Las claves viven solo como secretos del backend: `GEMINI_API_KEY`, `GROQ_API_KEY` y, de forma opcional, `GEMINI_API_KEY_2`, etc. No deben estar en el frontend, en el repositorio ni en respuestas HTTP. En la inspección actual, el backend activo `wastake` de Render Free tiene configurada `GEMINI_API_KEY`; `GROQ_API_KEY` no aparece allí. Railway muestra la prueba vencida y no es el backend que sirve la web. El código intentará Groq si se configura en el backend y tiene Gemini como alternativa. No se copiaron ni revelaron valores de claves.
 
-El tono se codifica como +1, 0 o −1. La intensidad es `100 × promedio(pesos) / 3`. La reacción es la media simple de los cambios porcentuales posteriores que tienen velas disponibles; no prueba que la noticia causara el movimiento.
+La caché de análisis vive cuatro horas en memoria y se borra al reiniciar la instancia. La caché RSS dura 30 minutos. En un hosting gratuito, una instancia puede dormir, tener límites de cuota, reiniciarse o tardar en responder; la disponibilidad depende también de los planes gratuitos y sus políticas actuales.
 
 ## Fuentes y límites
 
-- Las noticias vienen de los feeds RSS públicos declarados en `backend/src/services/newsService.js` (CoinDesk, Cointelegraph, Yahoo Finance, CNBC, MarketWatch, Investing.com y Reuters). Los feeds pueden cambiar, limitar acceso o no entregar fecha. No se inventa una fecha ausente.
-- El histórico de precios proviene del endpoint de datos que ya tiene WaStake. La primera entrega no agrega una clave de proveedor ni crea credenciales.
-- El límite actual es de 10 titulares recientes por activo y una caché temporal. Por ello, la selección «30 días» solo filtra los titulares que el feed entregó; **no** garantiza 30 días completos de cobertura.
-- Las reglas léxicas pueden fallar con negación, ironía, contexto, noticias duplicadas con titulares distintos y términos ambiguos. La puntuación no es valoración intrínseca ni recomendación de inversión.
-- El archivo persistente en Supabase, el análisis de ventanas de retorno configurable, el benchmark de mercado, el control de duplicados semánticos y métricas de validación fuera de muestra quedan para fases siguientes.
+- RSS público configurado: CoinDesk, Cointelegraph, Yahoo Finance, Reuters, CNBC, MarketWatch e Investing.com. Los feeds cambian, pueden bloquear el acceso y no siempre ofrecen fecha o resumen.
+- Se entregan hasta 10 noticias recientes. Se intenta recuperar el cuerpo de las cinco primeras; las restantes se analizan con el extracto RSS. La selección de 30 días filtra lo que entregó el feed y no garantiza un archivo histórico completo.
+- La IA puede traducir mal, omitir contexto o dar una interpretación discutible. Verifica el enlace de origen, la cita y los factores. Las reglas pueden fallar con negación, ironía, duplicados y palabras ambiguas.
+- Una puntuación de evento no es una valoración intrínseca, una señal probada ni asesoramiento financiero. Un movimiento posterior del activo no demuestra que la noticia lo causó.
+- Persistencia en Supabase, benchmark, deduplicación semántica y evaluación temporal fuera de muestra siguen siendo fases futuras.
 
 ## Plan de validación
 
-1. **Pruebas de reglas:** titulares positivos, negativos, neutrales, con acentos, negación y términos ambiguos; verificar que los términos mostrados explican el resultado.
-2. **Pruebas de API:** activo válido, tipo inválido, proveedor RSS caído, titular sin fecha y consulta repetida dentro de la caché.
-3. **Pruebas de reacción:** velas antes/después, huecos de fin de semana, falta de cierre y timestamps inválidos.
-4. **Revisión manual:** comparar una muestra etiquetada por una persona con el clasificador y reportar precisión, recall y matriz de confusión antes de usar la señal en decisiones.
-5. **Validación temporal:** cuando se archive histórico, evaluar ventanas futuras sin usar información posterior a cada fecha; comparar con una línea base neutral y un índice de referencia.
+1. **Respaldo:** comprobar titulares positivos, negativos, neutros, acentuados, negados y ambiguos; revisar que las palabras mostradas expliquen el cálculo.
+2. **Fórmula:** recalcular manualmente combinaciones de factores 0/50/100 y verificar pesos 25/25/20/15/15; comprobar que sesgo no se interprete como retorno.
+3. **Proveedores:** simular cuota agotada, falta de claves, JSON incompleto y error temporal; comprobar aviso y respaldo transparente.
+4. **Cobertura:** verificar artículo, extracto RSS, titular solamente, redirección, URL fuera de la lista y muro de pago; confirmar que la tarjeta indica el material realmente analizado.
+5. **Idioma:** comprobar traducción de titulares y análisis en ES/PT/EN, conservando la cita de evidencia en el idioma original.
+6. **Precios:** velas antes/después, huecos de fin de semana, falta de cierres y timestamps inválidos; no atribuir causalidad.
+7. **Revisión humana:** etiquetar una muestra y medir acuerdo para tema, dirección y relevancia; documentar desacuerdos antes de usarla como señal.
+8. **Evaluación temporal:** cuando se archive histórico, probar ventanas futuras sin usar datos posteriores a cada fecha y comparar contra una línea base neutral y un índice de referencia.
 
-## Fuentes estructuradas posteriores
+## Fuentes estructuradas futuras
 
-Para noticias regulatorias de empresas puede añadirse SEC EDGAR, que ofrece interfaces de datos públicas: [documentación oficial de SEC EDGAR APIs](https://www.sec.gov/search-filings/edgar-application-programming-interfaces). Para series macroeconómicas, FRED requiere registrar una API key gratuita: [documentación oficial de FRED API keys](https://fred.stlouisfed.org/docs/api/api_key.html). No se han creado credenciales ni conectado estas APIs en esta entrega.
+Para noticias regulatorias de empresas puede añadirse SEC EDGAR: [documentación oficial de APIs](https://www.sec.gov/search-filings/edgar-application-programming-interfaces). Para series macroeconómicas, FRED requiere una API key gratuita: [documentación oficial de FRED API keys](https://fred.stlouisfed.org/docs/api/api_key.html). No se conectan estas fuentes en esta entrega.
 
-## Reutilización de WaGroup / WazPulse
+## WaGroup / WazPulse
 
-La carpeta `C:\Dev\WaGroup\wazpulse-pipeline` ya tiene un recolector RSS persistente en Supabase (`pulse_candidates`), deduplicación por identificador/enlace/titular, filtro de antigüedad y detección de activos e intención editorial. Su propósito actual es preparar publicaciones revisables para redes sociales; no conserva por sí solo un panel completo de eventos con retornos de mercado. En la siguiente fase conviene validar las tablas y sus políticas de expiración y evaluar una integración de solo lectura para ampliar fuentes y cobertura, sin mezclar automáticamente una cola editorial con una señal de inversión.
+La carpeta `C:\Dev\WaGroup\wazpulse-pipeline` contiene un recolector RSS persistente en Supabase para preparar publicaciones revisables. No se conecta automáticamente a esta señal; una fase posterior deberá revisar el esquema, políticas de expiración y licencias antes de integrar datos.

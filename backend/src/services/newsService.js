@@ -50,7 +50,9 @@ async function fetchFeed(feed) {
         link:     item.link ?? '',
         source:   feed.name,
         pubDate:  Number.isFinite(publishedAt) ? new Date(publishedAt).toISOString() : null,
-        snippet:  (item.contentSnippet ?? item.content ?? '').slice(0, 300),
+        // RSS descriptions are public source material. Keep a bounded excerpt for
+        // the explainable fundamentals analysis instead of only the headline.
+        snippet:  (item.contentSnippet ?? item.content ?? '').replace(/\s+/g, ' ').trim().slice(0, 1800),
       };
     });
   } catch (err) {
