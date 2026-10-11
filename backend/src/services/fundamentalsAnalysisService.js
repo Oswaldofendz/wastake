@@ -11,6 +11,13 @@ const ARTICLE_HOSTS = [
 ];
 const LANGUAGES = { es: 'Spanish', pt: 'Portuguese', en: 'English' };
 const FACTOR_WEIGHTS = { severity: 0.25, assetLink: 0.25, surprise: 0.20, persistence: 0.15, evidence: 0.15 };
+const FACTOR_ALIASES = {
+  severity: ['severity', 'eventSeverity'],
+  assetLink: ['assetLink', 'asset_link', 'directness', 'assetDirectness', 'directAssetLink', 'directLink'],
+  surprise: ['surprise', 'unexpectedness'],
+  persistence: ['persistence', 'likelyPersistence', 'duration'],
+  evidence: ['evidence', 'evidenceQuality', 'evidenceStrength'],
+};
 
 function decodeEntities(value) {
   return value
@@ -88,7 +95,24 @@ function safeText(value, max = 700) {
 
 function validateItem(item, index) {
   if (!item || Number(item.index) !== index) return null;
-  const factors = Object.fromEntries(Object.keys(FACTOR_WEIGHTS).map(key => [key, clamp(item.factors?.[key])]));
+  const factors = {};
+  for (const [key, aliases] of Object.entries(FACTOR_ALIASES)) {
+    const raw = aliases.map(alias => item.factors?.[alias]).find(value => value !== undefined && value !== null && value !== '' && Number.isFinite(Number(value)));
+    if (raw === undefined) return null;
+    factors[key] = clamp(raw);
+  }
+  if (!Number.isFinite(Number(item.direction)) || !Number.isFinite(Number(item.confidence))) return null;
+  const localizedTitle = safeText(item.localizedTitle, 300);
+  const summary = safeText(item.summary);
+  const mechanism = safeText(item.mechanism);
+  const watch = safeText(item.watch);
+  if (!localizedTitle || !summary || !mechanism || !watch) return null;
+  const scenarios = {
+    positive: safeText(item.scenarios?.positive, 350),
+    base: safeText(item.scenarios?.base, 350),
+    negative: safeText(item.scenarios?.negative, 350),
+  };
+  if (!scenarios.positive || !scenarios.base || !scenarios.negative) return null;
   const relevance = Math.round(Object.entries(FACTOR_WEIGHTS)
     .reduce((total, [key, weight]) => total + factors[key] * weight, 0));
   const impact = relevance >= 70 ? 'high' : relevance >= 40 ? 'medium' : 'low';
@@ -96,22 +120,18 @@ function validateItem(item, index) {
   const sentiment = direction >= 15 ? 'positive' : direction <= -15 ? 'negative' : 'neutral';
 
   return {
-    localizedTitle: safeText(item.localizedTitle, 300),
+    localizedTitle,
     sentiment,
     impact,
     score: direction,
     relevance,
     confidence: clamp(item.confidence),
     category: safeText(item.category, 80),
-    summary: safeText(item.summary),
-    mechanism: safeText(item.mechanism),
+    summary,
+    mechanism,
     horizon: safeText(item.horizon, 120),
-    scenarios: {
-      positive: safeText(item.scenarios?.positive, 350),
-      base: safeText(item.scenarios?.base, 350),
-      negative: safeText(item.scenarios?.negative, 350),
-    },
-    watch: safeText(item.watch),
+    scenarios,
+    watch,
     evidenceQuote: safeText(item.evidenceQuote, 220),
     limitations: safeText(item.limitations),
     factors,
@@ -128,7 +148,7 @@ function buildPrompt(articles, lang) {
 
 Write all user-facing fields in ${langName}. Preserve evidenceQuote verbatim in the article's original language. Return strict JSON only: {"articles":[...]} with exactly one item per supplied article and its integer index. Keep each field concise: summary ≤180 characters, mechanism ≤220, each scenario ≤130, watch ≤180, evidenceQuote ≤150, limitations ≤160. Use one short sentence per field.
 
-For each article return: index, localizedTitle (faithful translation, no new claims), category (short localized label), sentiment (positive|negative|neutral, direction conditional on the evidence), direction (integer -100 to 100; magnitude is directional confidence, not expected return), confidence (0-100, confidence in interpretation), factors (five estimates 0-100: severity of event, directness of link to this asset, unexpectedness relative to expectations in the supplied text, likely persistence, strength of evidence in supplied text), summary (what happened), mechanism (how the event could affect the asset, or why the link is weak), horizon (near/medium/long term, localized), scenarios (positive/base/negative conditional scenarios, not forecasts), watch (specific confirming/disconfirming data or event), evidenceQuote (one short exact quote from the supplied source text; empty if no usable source text), limitations (missing context, source caveats, or uncertainty).
+For each article return: index, localizedTitle (faithful translation, no new claims), category (short localized label), sentiment (positive|negative|neutral, direction conditional on the evidence), direction (integer -100 to 100; magnitude is directional confidence, not expected return), confidence (0-100, confidence in interpretation), factors (an object with exactly these camelCase numeric keys, each an integer from 0 to 100: severity, assetLink, surprise, persistence, evidence), summary (what happened), mechanism (how the event could affect the asset, or why the link is weak), horizon (near/medium/long term, localized), scenarios (positive/base/negative conditional scenarios, not forecasts), watch (specific confirming/disconfirming data or event), evidenceQuote (one short exact quote from the supplied source text; empty if no usable source text), limitations (missing context, source caveats, or uncertainty).
 
 Scoring calibration: routine commentary and generic market roundups should have low severity and relevance. A company/asset-specific material event can score higher when the text supports it. Never score a story highly only because the headline uses dramatic language. A price move after publication is not proof the story caused it.
 
