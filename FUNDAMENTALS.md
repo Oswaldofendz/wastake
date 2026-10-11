@@ -26,7 +26,7 @@ Si no hay términos de tono, el resultado es neutral con puntaje cero. Los térm
 
 ## Proveedores y credenciales
 
-Las claves viven solo como secretos del backend: `GEMINI_API_KEY`, `GROQ_API_KEY` y, de forma opcional, `GEMINI_API_KEY_2`, etc. No deben estar en el frontend, en el repositorio ni en respuestas HTTP. En la inspección actual, el backend activo `wastake` de Render Free tiene configurada `GEMINI_API_KEY`; `GROQ_API_KEY` no aparece allí. Railway muestra la prueba vencida y no es el backend que sirve la web. El código intentará Groq si se configura en el backend y tiene Gemini como alternativa. No se copiaron ni revelaron valores de claves.
+Las claves viven solo como secretos del backend: `GEMINI_API_KEY`, `GROQ_API_KEY` y, de forma opcional, `GEMINI_API_KEY_2`, etc. No deben estar en el frontend, en el repositorio ni en respuestas HTTP. En la inspección actual, el backend activo `wastake` de Render Free tiene configurada `GEMINI_API_KEY`; `GROQ_API_KEY` no aparece allí. Railway muestra la prueba vencida y no es el backend que sirve la web. El cliente usa el modelo `gemini-3.5-flash-lite` para Gemini. El código intentará Groq si se configura en el backend y tiene Gemini como alternativa. No se copiaron ni revelaron valores de claves.
 
 La caché de análisis vive cuatro horas en memoria y se borra al reiniciar la instancia. La caché RSS dura 30 minutos. En un hosting gratuito, una instancia puede dormir, tener límites de cuota, reiniciarse o tardar en responder; la disponibilidad depende también de los planes gratuitos y sus políticas actuales.
 

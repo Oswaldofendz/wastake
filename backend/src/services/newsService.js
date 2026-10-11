@@ -120,7 +120,7 @@ function parseAIJson(raw) {
 
 async function analyzeOne(article, apiKey) {
   const res = await axios.post(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`,
     { contents: [{ parts: [{ text: SENTIMENT_PROMPT(article) }] }] },
     { timeout: 15000 }
   );
