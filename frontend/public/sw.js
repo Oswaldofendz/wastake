@@ -1,4 +1,4 @@
-const CACHE = 'wastake-v1';
+const CACHE = 'wastake-v2';
 const PRECACHE = ['/', '/index.html'];
 
 // Instalación: pre-cachear el shell de la app
