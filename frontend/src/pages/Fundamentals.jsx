@@ -281,8 +281,8 @@ export function Fundamentals() {
               const impactCopy = article.impact === 'high' ? t.highExplanation : article.impact === 'medium' ? t.mediumExplanation : t.lowExplanation;
               const projection = article.sentiment === 'positive' ? t.projectionPositive : article.sentiment === 'negative' ? t.projectionNegative : t.projectionNeutral;
               return (
-                <article key={article.link || `${article.pubDate}-${index}`} className="flex flex-col gap-3 px-4 py-4 md:flex-row md:items-start md:justify-between">
-                  <div className="min-w-0 flex-1">
+                <article key={article.link || `${article.pubDate}-${index}`} className="flex w-full min-w-0 flex-col gap-3 px-4 py-4">
+                  <div className="w-full min-w-0">
                     <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                       <span className="font-medium text-slate-300">{article.source || 'Fuente RSS'}</span>
                       <span>·</span>
@@ -317,7 +317,7 @@ export function Fundamentals() {
                       </p>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-3 text-sm md:min-w-52">
+                  <div className="grid w-full grid-cols-2 gap-3 text-sm">
                     <div>
                       <p className="text-xs text-slate-500">{t.score}</p>
                       <p className={`font-mono font-semibold ${scoreTone(articleScore)}`}>{articleScore > 0 ? '+' : ''}{articleScore}</p>
