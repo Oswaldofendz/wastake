@@ -196,11 +196,14 @@ marketRouter.get('/calendar', async (_req, res) => {
 // ── MyMemory Translation proxy ─────────────────────────────────
 // Gratuito hasta 5 000 chars/día sin registro
 marketRouter.get('/translate', async (req, res) => {
-  const { q, to = 'es' } = req.query;
+  const { q, to = 'es', from = 'en' } = req.query;
   if (!q) return res.status(400).json({ error: 'Missing q param' });
-  if (to === 'en') return res.json({ translatedText: q });
+  if (!['es', 'pt', 'en'].includes(to) || !['en', 'es', 'pt'].includes(from)) {
+    return res.status(400).json({ error: 'Unsupported language' });
+  }
+  if (to === from) return res.json({ translatedText: q });
 
-  const cacheKey = `translate_${to}_${q}`;
+  const cacheKey = `translate_${from}_${to}_${q}`;
   const TTL = 24 * 60 * 60 * 1000; // 24 h — traducciones son estables
   const cached = fromCache(cacheKey, TTL);
   if (cached) return res.json(cached);
@@ -209,7 +212,7 @@ marketRouter.get('/translate', async (req, res) => {
     const { data } = await axios.get(
       'https://api.mymemory.translated.net/get',
       {
-        params: { q, langpair: `en|${to}`, de: 'wastake@noreply.com' },
+        params: { q: String(q).slice(0, 500), langpair: `${from}|${to}` },
         timeout: 6000,
       }
     );

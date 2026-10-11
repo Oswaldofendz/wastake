@@ -65,7 +65,7 @@ export const fetchVIX = () => get('/api/market/vix');
 export const fetchDXY = () => get('/api/market/dxy');
 
 // MyMemory translation proxy
-export const translateText = (q, to) => {
-  const qs = new URLSearchParams({ q, to }).toString();
+export const translateText = (q, to, from = 'en') => {
+  const qs = new URLSearchParams({ q, to, from }).toString();
   return get(`/api/market/translate?${qs}`);
 };
