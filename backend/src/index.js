@@ -7,6 +7,7 @@ import { priceRouter }    from './routes/prices.js';
 import { assetsRouter }   from './routes/assets.js';
 import { analysisRouter } from './routes/analysis.js';
 import { newsRouter }     from './routes/news.js';
+import { fundamentalsRouter } from './routes/fundamentals.js';
 import { marketRouter }   from './routes/market.js';
 import { wapulseRouter }  from './routes/wapulse.js';
 import { carouselImgRouter } from './routes/carouselImg.js';
@@ -66,6 +67,7 @@ app.use('/api/prices',       apiLimiter, priceRouter);
 app.use('/api/assets',       apiLimiter, assetsRouter);
 app.use('/api/analysis',     apiLimiter, analysisRouter);
 app.use('/api/news',         apiLimiter, newsRouter);
+app.use('/api/fundamentals', apiLimiter, fundamentalsRouter);
 app.use('/api/market',       apiLimiter, marketRouter);
 app.use('/api/wapulse',      apiLimiter, wapulseRouter);
 // Carousel image proxy — sin apiLimiter (TikTok pide cada slide y son hits

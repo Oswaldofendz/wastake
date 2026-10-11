@@ -6,6 +6,7 @@ import { Alerts }    from './pages/Alerts.jsx';
 import { Markets }   from './pages/Markets.jsx';
 import { Panorama }  from './pages/Panorama.jsx';
 import { Screener }  from './pages/Screener.jsx';
+import { Fundamentals } from './pages/Fundamentals.jsx';
 import { usePrices } from './hooks/usePrices.js';
 import { useAuth }   from './hooks/useAuth.js';
 import { useAlerts } from './hooks/useAlerts.js';
@@ -75,7 +76,7 @@ export default function App() {
 
   const [currentPage, setCurrentPage] = useState(() => {
     const hash = window.location.hash.replace('#', '');
-    const valid = ['dashboard', 'panorama', 'markets', 'portfolio', 'alerts', 'screener'];
+    const valid = ['dashboard', 'panorama', 'markets', 'portfolio', 'alerts', 'screener', 'fundamentals'];
     return valid.includes(hash) ? hash : 'dashboard';
   });
 
@@ -150,6 +151,8 @@ export default function App() {
               allAssets={allAssets}
             />
           )
+        ) : currentPage === 'fundamentals' ? (
+          <Fundamentals />
         ) : (
           !authLoading && (
             <Portfolio

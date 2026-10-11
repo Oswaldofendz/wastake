@@ -42,6 +42,12 @@ export const fetchNews = (id, type = 'crypto') => {
   return get(`/api/news/${encodeURIComponent(id)}?${qs}`);
 };
 
+// RSS headlines scored with deterministic rules; does not call an AI provider.
+export const fetchFundamentalsNews = (asset, type = 'crypto') => {
+  const qs = new URLSearchParams({ type, name: asset.name ?? '', symbol: asset.symbol ?? '' });
+  return get(`/api/fundamentals/${encodeURIComponent(asset.id)}?${qs}`);
+};
+
 // Fear & Greed Index (alternative.me)
 export const fetchFearGreed = () => get('/api/market/fear-greed');
 

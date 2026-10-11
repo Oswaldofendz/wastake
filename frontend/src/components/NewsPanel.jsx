@@ -52,7 +52,9 @@ const SENTIMENT_STYLES = {
 const SENTIMENT_LABELS = { positive: 'Positivo', negative: 'Negativo', neutral: 'Neutral' };
 
 function timeAgo(isoDate) {
-  const diff  = Date.now() - new Date(isoDate).getTime();
+  const publishedAt = Date.parse(isoDate);
+  if (!Number.isFinite(publishedAt)) return 'fecha desconocida';
+  const diff  = Date.now() - publishedAt;
   const mins  = Math.floor(diff / 60_000);
   const hours = Math.floor(diff / 3_600_000);
   const days  = Math.floor(diff / 86_400_000);

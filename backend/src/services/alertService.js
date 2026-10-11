@@ -2,10 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import { getCryptoPrices, getTraditionalPrices, getCryptoOHLCV, getTraditionalOHLCV } from './priceService.js';
 import { computeIndicators } from './technicalAnalysisService.js';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY)
+  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+  : null;
 
 const indicatorCache = new Map();
 let isRunning = false;
@@ -119,6 +118,10 @@ async function checkAlerts() {
 
 export function startAlertEngine() {
   if (isRunning) return;
+  if (!supabase) {
+    console.log('[AlertEngine] Disabled: configure Supabase to enable saved alerts.');
+    return;
+  }
   isRunning = true;
   console.log('[AlertEngine] Starting...');
 

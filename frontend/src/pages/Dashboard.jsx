@@ -23,7 +23,7 @@ export function Dashboard() {
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [extraAssets, setExtraAssets]     = useState([]);
   const [sidebarOpen, setSidebarOpen]     = useState(false);
-  const [expandedCats, setExpandedCats]   = useState({ crypto: true });
+  const [expandedCats, setExpandedCats]   = useState({});
   const [activeTf, setActiveTf]           = useState(TIMEFRAMES[2]); // 3M por defecto
 
   // IDs deben coincidir exactamente con las claves de TRADITIONAL_ASSETS en el backend

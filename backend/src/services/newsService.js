@@ -35,6 +35,7 @@ const ASSET_KEYWORDS = {
 // ─── Cache  (30 min) ──────────────────────────────────────────────────────────
 
 const cache = new Map();
+const feedCache = new Map();
 const CACHE_TTL = 30 * 60 * 1000;
 
 // ─── RSS fetch ────────────────────────────────────────────────────────────────
@@ -42,27 +43,55 @@ const CACHE_TTL = 30 * 60 * 1000;
 async function fetchFeed(feed) {
   try {
     const parsed = await rssParser.parseURL(feed.url);
-    return parsed.items.map(item => ({
-      title:    (item.title ?? '').trim(),
-      link:     item.link ?? '',
-      source:   feed.name,
-      pubDate:  item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
-      snippet:  (item.contentSnippet ?? item.content ?? '').slice(0, 300),
-    }));
+    return parsed.items.map(item => {
+      const publishedAt = Date.parse(item.pubDate ?? '');
+      return {
+        title:    (item.title ?? '').trim(),
+        link:     item.link ?? '',
+        source:   feed.name,
+        pubDate:  Number.isFinite(publishedAt) ? new Date(publishedAt).toISOString() : null,
+        snippet:  (item.contentSnippet ?? item.content ?? '').slice(0, 300),
+      };
+    });
   } catch (err) {
     console.warn(`[news] feed "${feed.name}" failed: ${err.message}`);
     return [];
   }
 }
 
+async function fetchFeedCached(feed) {
+  const cached = feedCache.get(feed.url);
+  if (cached && cached.expiresAt > Date.now()) return cached.data;
+  const data = await fetchFeed(feed);
+  feedCache.set(feed.url, { data, expiresAt: Date.now() + CACHE_TTL });
+  return data;
+}
+
 // ─── Filtro por activo ────────────────────────────────────────────────────────
 
-function filterByAsset(articles, assetId) {
-  const keywords = ASSET_KEYWORDS[assetId.toLowerCase()] ?? [assetId.toLowerCase()];
-  return articles.filter(a => {
-    const text = `${a.title} ${a.snippet}`.toLowerCase();
-    return keywords.some(kw => text.includes(kw));
+function filterByAsset(articles, assetId, aliases = []) {
+  const configured = ASSET_KEYWORDS[assetId.toLowerCase()] ?? [assetId.toLowerCase()];
+  const keywords = [...new Set([...configured, ...aliases])]
+    .map(value => String(value ?? '').trim())
+    .filter(value => value.length >= 3);
+
+  return articles.flatMap(article => {
+    const text = normalizeSearchText(`${article.title} ${article.snippet}`);
+    const matchedTerms = keywords.filter(keyword => {
+      const normalizedKeyword = normalizeSearchText(keyword);
+      const pattern = new RegExp(`(^|[^a-z0-9])${escapeRegExp(normalizedKeyword)}([^a-z0-9]|$)`);
+      return pattern.test(text);
+    });
+    return matchedTerms.length ? [{ ...article, matchedTerms }] : [];
   });
+}
+
+function normalizeSearchText(value) {
+  return String(value ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // ─── Sentimiento con Gemini + fallback a Groq ────────────────────────────────
@@ -212,21 +241,37 @@ async function analyzeSentiment(articles) {
 
 // ─── Exportación principal ────────────────────────────────────────────────────
 
+export async function getRawNewsForAsset(assetId, type = 'crypto', aliases = []) {
+  const safeAliases = aliases
+    .map(value => String(value ?? '').trim().slice(0, 80))
+    .filter(Boolean);
+  const cacheKey = `raw:${assetId}:${type}:${safeAliases.join('|')}`;
+  const cached = cache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.data;
+
+  const feeds = type === 'crypto' ? CRYPTO_FEEDS : TRADITIONAL_FEEDS;
+  const allArticles = (await Promise.all(feeds.map(fetchFeedCached))).flat();
+  const seenTitles = new Set();
+  const filtered = filterByAsset(allArticles, assetId, safeAliases)
+    .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
+    .filter(article => {
+      const titleKey = String(article.title ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+      if (!titleKey || seenTitles.has(titleKey)) return false;
+      seenTitles.add(titleKey);
+      return true;
+    })
+    .slice(0, 10);
+
+  cache.set(cacheKey, { data: filtered, expiresAt: Date.now() + CACHE_TTL });
+  return filtered;
+}
+
 export async function getNewsForAsset(assetId, type = 'crypto') {
   const cacheKey = `${assetId}:${type}`;
   const cached = cache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.data;
 
-  // Use crypto feeds for crypto, financial feeds for traditional assets
-  const feeds = type === 'crypto' ? CRYPTO_FEEDS : TRADITIONAL_FEEDS;
-
-  // Fetch todos los feeds en paralelo
-  const allArticles = (await Promise.all(feeds.map(fetchFeed))).flat();
-
-  // Filtrar por activo y tomar las 10 más recientes
-  const filtered = filterByAsset(allArticles, assetId)
-    .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
-    .slice(0, 10);
+  const filtered = await getRawNewsForAsset(assetId, type);
 
   // Enriquecer con sentimiento
   const enriched = await analyzeSentiment(filtered);
