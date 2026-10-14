@@ -456,7 +456,7 @@ export function Panorama() {
   const score        = analysis?.summary?.score ?? 0;
   const signal       = scoreToSignal(score);
   const cfg          = SIGNAL[signal];
-  const strongSignal = score >= 75 || score <= 25;
+  const strongSignal = score >= 75 || score <= -75;
   const bestDay      = computeBestDay(candles);
   const ind          = analysis?.indicators;
   const sigs         = analysis?.signals;

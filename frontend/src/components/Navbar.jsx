@@ -8,14 +8,20 @@ const LANGS = [
   { code: 'en', label: 'EN' },
 ];
 
-const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { id: 'panorama',  label: 'Panorama',  icon: '🚦' },
-  { id: 'markets',   label: 'Mercados',  icon: '🌍' },
-  { id: 'fundamentals', label: 'Fundamentales', icon: '🧭' },
-  { id: 'screener',  label: 'Screener',  icon: '🔍' },
-  { id: 'portfolio', label: 'Cartera',   icon: '💼' },
-  { id: 'alerts',    label: 'Alertas',   icon: '🔔' },
+const NAV_GROUPS = [
+  { id: 'explore', titleKey: 'nav_group_explore', items: [
+    { id: 'dashboard', labelKey: 'dashboard', icon: '📊' },
+    { id: 'markets', labelKey: 'nav_markets', icon: '🌍' },
+    { id: 'screener', labelKey: 'nav_screener', icon: '🔍' },
+  ] },
+  { id: 'analyze', titleKey: 'nav_group_analyze', items: [
+    { id: 'panorama', labelKey: 'nav_panorama', icon: '🚦' },
+    { id: 'fundamentals', labelKey: 'nav_fundamentals', icon: '🧭' },
+  ] },
+  { id: 'track', titleKey: 'nav_group_track', items: [
+    { id: 'portfolio', labelKey: 'portfolio', icon: '💼' },
+    { id: 'alerts', labelKey: 'alerts', icon: '🔔' },
+  ] },
 ];
 
 function SunIcon() {
@@ -79,20 +85,24 @@ export function Navbar({
           </button>
 
           {/* Desktop nav — hidden below lg */}
-          <nav className="hidden lg:flex gap-0.5">
-            {NAV_ITEMS.map(item => (
-              <button
-                key={item.id}
-                onClick={() => navigate(item.id)}
-                className={[
-                  'px-3 py-1.5 text-sm rounded-lg transition-colors font-medium whitespace-nowrap',
-                  currentPage === item.id
-                    ? 'relative nav-active nav-active-text'
-                    : 'text-slate-300 hover:text-white hover:bg-white/5',
-                ].join(' ')}
-              >
-                {item.label}
-              </button>
+          <nav className="hidden lg:flex items-center gap-1">
+            {NAV_GROUPS.map((group, groupIndex) => (
+              <div key={group.id} className={`flex items-center gap-0.5 ${groupIndex ? 'ml-1 border-l border-slate-700/70 pl-1' : ''}`}>
+                {group.items.map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => navigate(item.id)}
+                    className={[
+                      'px-2.5 py-1.5 text-sm rounded-lg transition-colors font-medium whitespace-nowrap',
+                      currentPage === item.id
+                        ? 'relative nav-active nav-active-text'
+                        : 'text-slate-300 hover:text-white hover:bg-white/5',
+                    ].join(' ')}
+                  >
+                    {t(item.labelKey)}
+                  </button>
+                ))}
+              </div>
             ))}
           </nav>
         </div>
@@ -175,21 +185,28 @@ export function Navbar({
         <div className="lg:hidden fixed inset-0 z-30 top-14" onClick={() => setMenuOpen(false)}>
           <div className="absolute inset-0 bg-black/50" />
           <div className="absolute top-0 left-0 right-0 bg-slate-900 border-b border-slate-700/50 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <nav className="px-4 py-3 space-y-1">
-              {NAV_ITEMS.map(item => (
-                <button
-                  key={item.id}
-                  onClick={() => navigate(item.id)}
-                  className={[
-                    'w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-medium transition-colors min-h-[52px]',
-                    currentPage === item.id
-                      ? 'bg-slate-800 border border-white/10 text-white'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white',
-                  ].join(' ')}
-                >
-                  <span className="text-xl">{item.icon}</span>
-                  {item.label}
-                </button>
+            <nav className="px-4 py-3 space-y-3" aria-label={t('nav_label')}>
+              {NAV_GROUPS.map(group => (
+                <div key={group.id}>
+                  <p className="px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{t(group.titleKey)}</p>
+                  <div className="space-y-1">
+                    {group.items.map(item => (
+                      <button
+                        key={item.id}
+                        onClick={() => navigate(item.id)}
+                        className={[
+                          'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-colors min-h-[48px]',
+                          currentPage === item.id
+                            ? 'bg-slate-800 border border-white/10 text-white'
+                            : 'text-slate-300 hover:bg-slate-800 hover:text-white',
+                        ].join(' ')}
+                      >
+                        <span className="text-xl">{item.icon}</span>
+                        {t(item.labelKey)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ))}
             </nav>
             <div className="px-4 pb-4 pt-2 border-t border-slate-700/40 flex gap-2">

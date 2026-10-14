@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FearGreedGauge }    from '../components/FearGreedGauge.jsx';
 import { BTCDominance }      from '../components/BTCDominance.jsx';
 import { MarketHeatmap }     from '../components/MarketHeatmap.jsx';
@@ -8,13 +9,14 @@ import { EconomicCalendar }  from '../components/EconomicCalendar.jsx';
 import { MacroRatesTable }   from '../components/MacroRatesTable.jsx';
 
 const TABS = [
-  { id: 'overview',     label: 'Resumen'            },
-  { id: 'heatmap',      label: 'Heatmap'            },
-  { id: 'correlations', label: 'Correlaciones'      },
-  { id: 'calendar',     label: 'Calendario & Macro' },
+  { id: 'overview', key: 'markets_tab_overview' },
+  { id: 'heatmap', key: 'markets_tab_heatmap' },
+  { id: 'correlations', key: 'markets_tab_correlations' },
+  { id: 'calendar', key: 'markets_tab_calendar' },
 ];
 
 export function Markets({ allAssets }) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState('overview');
 
   return (
@@ -27,19 +29,19 @@ export function Markets({ allAssets }) {
         </div>
 
         {/* Tabs */}
-        <nav className="flex gap-1 overflow-x-auto scrollbar-none -mb-px">
-          {TABS.map(t => (
+        <nav className="grid grid-cols-2 gap-1 -mb-px sm:flex sm:overflow-x-auto sm:scrollbar-none" aria-label={t('markets_section_tabs')}>
+          {TABS.map(item => (
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
+              key={item.id}
+              onClick={() => setTab(item.id)}
               className={[
-                'px-4 py-3 text-base font-medium transition-colors border-b-2 whitespace-nowrap flex-shrink-0 min-h-[44px]',
-                tab === t.id
+                'min-w-0 px-2 sm:px-4 py-3 text-sm sm:text-base text-center font-medium transition-colors border-b-2 whitespace-normal sm:whitespace-nowrap min-h-[44px] sm:flex-shrink-0',
+                tab === item.id
                   ? 'text-white border-brand-400 bg-slate-800/60'
                   : 'text-slate-400 border-transparent hover:text-white hover:bg-slate-800/40',
               ].join(' ')}
             >
-              {t.label}
+              {t(item.key)}
             </button>
           ))}
         </nav>
