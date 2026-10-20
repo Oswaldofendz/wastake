@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { usePrices } from '../hooks/usePrices.js';
+import { useTranslation } from 'react-i18next';
 
 // ─── Helpers de formato ───────────────────────────────────────────────────────
 function fmtPrice(n) {
@@ -183,7 +184,8 @@ const PRESETS = [
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export function Screener() {
-  const { allAssets, loading, isStale } = usePrices(60_000);
+  const { t } = useTranslation();
+  const { allAssets, loading, error, isStale, refresh } = usePrices(60_000);
 
   const [search, setSearch]           = useState('');
   const [typeFilter, setTypeFilter]   = useState('all');
@@ -284,10 +286,18 @@ export function Screener() {
             <h1 className="text-xl font-bold text-white">Screener de Activos</h1>
             <p className="text-xs text-slate-500 mt-0.5">
               {stats.total} activos · {filtered.length} resultado{filtered.length !== 1 ? 's' : ''}
-              {isStale && <span className="ml-2 text-amber-500">⚠ datos desactualizados</span>}
+              {(isStale || error) && <span className="ml-2 text-amber-500">⚠ datos desactualizados</span>}
             </p>
           </div>
         </div>
+        {error && allAssets.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-700/40 bg-amber-950/20 px-3 py-2" role="status">
+            <p className="text-xs text-amber-300">{t('screener_data_unavailable')}</p>
+            <button type="button" onClick={refresh} className="text-xs font-semibold text-white underline underline-offset-2">
+              {t('retry')}
+            </button>
+          </div>
+        )}
 
         {/* ── Stats rápidas ── */}
         <div className="flex gap-3 mt-4 flex-wrap">
@@ -424,17 +434,28 @@ export function Screener() {
             <div className="w-6 h-6 border-2 border-slate-600 border-t-brand-400 rounded-full animate-spin" />
             <p className="text-sm text-slate-500">Cargando activos...</p>
           </div>
+        ) : error && !allAssets.length ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3 text-center px-4" role="alert">
+            <p className="text-sm text-amber-300">{t('screener_data_unavailable')}</p>
+            <button type="button" onClick={refresh} className="text-xs font-semibold text-brand-300 hover:text-white underline underline-offset-2">
+              {t('retry')}
+            </button>
+          </div>
+        ) : !allAssets.length ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-2" role="status">
+            <p className="text-slate-500 text-sm">{t('screener_no_assets')}</p>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-2">
             <svg viewBox="0 0 24 24" className="w-10 h-10 text-slate-700" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
             </svg>
-            <p className="text-slate-500 text-sm">Sin resultados para los filtros aplicados</p>
+            <p className="text-slate-500 text-sm">{t('screener_no_matches')}</p>
             <button
-              onClick={() => { setSearch(''); setTypeFilter('all'); setChangeFilter('all'); setShowOnlyPositive(false); setShowOnlyNegative(false); }}
+              onClick={() => { setSearch(''); setTypeFilter('all'); setChangeFilter('all'); setShowOnlyPositive(false); setShowOnlyNegative(false); setActivePreset(null); }}
               className="text-xs text-brand-400 hover:text-brand-300 transition-colors mt-1"
             >
-              Limpiar filtros
+              {t('screener_clear_filters')}
             </button>
           </div>
         ) : (

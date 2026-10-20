@@ -19,7 +19,7 @@ const TIMEFRAMES = [
 
 export function Dashboard() {
   const { t } = useTranslation();
-  const { allAssets, loading, error } = usePrices(60_000);
+  const { allAssets, loading, error, isStale, refresh } = usePrices(60_000);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [extraAssets, setExtraAssets]     = useState([]);
   const [sidebarOpen, setSidebarOpen]     = useState(false);
@@ -124,7 +124,12 @@ export function Dashboard() {
                 </div>
               </div>
             ) : error ? (
-              <p className="text-base text-red-400 px-2">{t('error_fetch')}: {error}</p>
+              <div className="px-2 py-4 text-center" role="alert">
+                <p className="text-sm text-amber-300">{t('dashboard_data_unavailable')}</p>
+                <button type="button" onClick={refresh} className="mt-3 text-xs font-semibold text-brand-300 underline underline-offset-2">
+                  {t('retry')}
+                </button>
+              </div>
             ) : (
               <div className="flex flex-col gap-1">
                 {CATALOG_CATEGORIES.map(cat => {
@@ -180,6 +185,11 @@ export function Dashboard() {
             overflowY: 'auto',
           }}
         >
+          {isStale && chartAsset && (
+            <p className="mb-3 rounded-lg border border-amber-700/40 bg-amber-950/20 px-3 py-2 text-xs text-amber-300" role="status">
+              {t('market_data_stale')}
+            </p>
+          )}
           {chartAsset ? (
             <>
               {/* Stats */}
@@ -235,8 +245,26 @@ export function Dashboard() {
             </>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '64px' }}
-              className="text-slate-500 text-base">
-              {t('loading')}
+              className="text-slate-400 text-base">
+              {loading ? (
+                <div className="text-center" role="status" aria-live="polite">
+                  <div className="w-6 h-6 border-2 border-slate-600 border-t-brand-400 rounded-full animate-spin mx-auto mb-3" />
+                  <p>{t('loading')}</p>
+                </div>
+              ) : error ? (
+                <div className="max-w-md text-center" role="alert">
+                  <p>{t('dashboard_data_unavailable')}</p>
+                  <button
+                    type="button"
+                    onClick={refresh}
+                    className="mt-4 rounded-lg border border-slate-600 px-4 py-2 text-sm text-white hover:bg-slate-800"
+                  >
+                    {t('retry')}
+                  </button>
+                </div>
+              ) : (
+                <p role="status">{t('dashboard_no_assets')}</p>
+              )}
             </div>
           )}
         </main>
