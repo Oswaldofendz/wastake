@@ -1,7 +1,7 @@
 /**
  * LLM service — Groq primary, Gemini fallback.
  *
- * Strategy: try Groq first (fast, llama-3.1-8b-instant), and on:
+ * Strategy: try Groq first (openai/gpt-oss-20b by default), and on:
  *   • daily token quota exhaustion (TPD)  → flip a sticky flag, skip Groq until UTC 00:05
  *   • any other failure                   → one-off fallback to Gemini for this call only
  *
@@ -15,6 +15,10 @@
  * The caller receives a plain text string; if jsonMode, JSON.parse it yourself.
  */
 import axios from 'axios';
+
+// Keep the model configurable in Render so a provider migration does not
+// require changing source code again. This replacement supports JSON mode.
+const GROQ_DEFAULT_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
 
 // ─── Sticky daily-quota state ────────────────────────────────────────────────
 
@@ -35,7 +39,7 @@ function tomorrowUtc05() {
 
 function isGroqDailyQuota(err) {
   // Groq message when TPD cap hit:
-  //   "Rate limit reached for model `llama-3.1-8b-instant` ...
+  //   "Rate limit reached for model `openai/gpt-oss-20b` ...
   //    on tokens per day (TPD): Limit 500000, Used 499820, Requested 200."
   if (err.response?.status !== 429) return false;
   const msg = err.response?.data?.error?.message ?? '';
@@ -58,7 +62,7 @@ async function callGroq(prompt, { jsonMode, maxTokens, temperature, model }) {
   if (!apiKey) throw new Error('No GROQ_API_KEY');
 
   const body = {
-    model: model || 'llama-3.1-8b-instant',
+    model: model || GROQ_DEFAULT_MODEL,
     messages: [{ role: 'user', content: prompt }],
     max_tokens: maxTokens,
     temperature,
@@ -207,7 +211,7 @@ async function callGemini(prompt, opts) {
  * @param {number}  [opts.maxTokens=600]     response length cap
  * @param {number}  [opts.temperature=0.6]
  * @param {string}  [opts.tag='[llm]']       log prefix
- * @param {string}  [opts.model]             override Groq model (default: llama-3.1-8b-instant)
+ * @param {string}  [opts.model]             override Groq model (default: GROQ_MODEL or openai/gpt-oss-20b)
  */
 export async function callLLM(prompt, opts = {}) {
   const {
@@ -229,7 +233,7 @@ export async function callLLM(prompt, opts = {}) {
         groqQuotaExhausted = false;
         console.log(`${tag} Groq recovered — back as primary`);
       }
-      console.log(`${tag} via Groq (${model || 'llama-3.1-8b-instant'})`);
+      console.log(`${tag} via Groq (${model || GROQ_DEFAULT_MODEL})`);
       return { text, provider: 'groq' };
     } catch (err) {
       if (isGroqDailyQuota(err)) {
