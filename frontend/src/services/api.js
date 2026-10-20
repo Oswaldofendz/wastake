@@ -1,12 +1,31 @@
 const BASE = import.meta.env.VITE_API_URL ?? '';
 
-async function get(path) {
-  const res = await fetch(`${BASE}${path}`);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error ?? `HTTP ${res.status}`);
+function timeoutMessage() {
+  let language = 'en';
+  try {
+    language = (localStorage.getItem('i18nextLng') || navigator.language || 'en').split('-')[0];
+  } catch { /* use English if browser language storage is unavailable */ }
+  if (language === 'es') return 'La solicitud tardó demasiado. Inténtalo de nuevo.';
+  if (language === 'pt') return 'A solicitação demorou demasiado. Tente novamente.';
+  return 'The request timed out. Please try again.';
+}
+
+async function get(path, timeoutMs = 20_000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${BASE}${path}`, { signal: controller.signal });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error ?? `HTTP ${res.status}`);
+    }
+    return await res.json();
+  } catch (err) {
+    if (controller.signal.aborted) throw new Error(timeoutMessage());
+    throw err;
+  } finally {
+    clearTimeout(timeout);
   }
-  return res.json();
 }
 
 // Todos los precios de una vez (crypto + traditional)
@@ -33,19 +52,21 @@ export const fetchAnalysis = (id, type = 'crypto', days = 90) => {
 // Narrative AI analysis (Gemini)
 export const fetchNarrative = (id, type = 'crypto', lang = 'es') => {
   const qs = new URLSearchParams({ type, lang }).toString();
-  return get(`/api/analysis/${encodeURIComponent(id)}/narrative?${qs}`);
+  return get(`/api/analysis/${encodeURIComponent(id)}/narrative?${qs}`, 60_000);
 };
 
 // Noticias con sentimiento (Gemini)
 export const fetchNews = (id, type = 'crypto') => {
   const qs = new URLSearchParams({ type }).toString();
-  return get(`/api/news/${encodeURIComponent(id)}?${qs}`);
+  return get(`/api/news/${encodeURIComponent(id)}?${qs}`, 60_000);
 };
 
 // Public news enriched by the backend with localized, evidence-linked AI analysis.
 export const fetchFundamentalsNews = (asset, type = 'crypto', lang = 'es') => {
   const qs = new URLSearchParams({ type, name: asset.name ?? '', symbol: asset.symbol ?? '', lang });
-  return get(`/api/fundamentals/${encodeURIComponent(asset.id)}?${qs}`);
+  // The backend may read and analyze several public articles; bound the wait
+  // so transient provider delays cannot leave the Fundamentals view loading forever.
+  return get(`/api/fundamentals/${encodeURIComponent(asset.id)}?${qs}`, 90_000);
 };
 
 // Fear & Greed Index (alternative.me)
