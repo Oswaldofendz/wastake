@@ -5,7 +5,8 @@
  *   • daily token quota exhaustion (TPD)  → flip a sticky flag, skip Groq until UTC 00:05
  *   • any other failure                   → one-off fallback to Gemini for this call only
  *
- * Combined daily budget: ~500K Groq + ~1M Gemini tokens on free tiers.
+ * Provider limits and pricing are determined by each provider account; this
+ * code does not switch accounts or upgrade a provider plan.
  * Mirrors the pattern already used in newsService.js (which goes Gemini → Groq).
  *
  * Both providers are coerced to return JSON when jsonMode=true:
@@ -18,14 +19,14 @@ import axios from 'axios';
 
 // Keep the model configurable in Render so a provider migration does not
 // require changing source code again. This replacement supports JSON mode.
-const GROQ_DEFAULT_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
+export const GROQ_DEFAULT_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
 
 // ─── Sticky daily-quota state ────────────────────────────────────────────────
 
 let groqQuotaExhausted   = false;
 let groqQuotaResetAt     = 0;
 
-// Per-Gemini-key cooldown state. Map keyLabel → epoch when usable again.
+// Per-Gemini-variable cooldown state. Map variable name → epoch when usable again.
 // Each Gemini API key has its own daily quota; we rotate through all keys
 // configured via GEMINI_API_KEY{,_<N>} env vars (auto-discovered at call time).
 const geminiKeyCooldowns = new Map();
@@ -38,9 +39,7 @@ function tomorrowUtc05() {
 }
 
 function isGroqDailyQuota(err) {
-  // Groq message when TPD cap hit:
-  //   "Rate limit reached for model `openai/gpt-oss-20b` ...
-  //    on tokens per day (TPD): Limit 500000, Used 499820, Requested 200."
+  // Groq reports daily token exhaustion as a 429 mentioning TPD.
   if (err.response?.status !== 429) return false;
   const msg = err.response?.data?.error?.message ?? '';
   return /tokens per day|TPD/i.test(msg);
@@ -114,8 +113,7 @@ async function callGroq(prompt, { jsonMode, maxTokens, temperature, model }) {
 // Auto-discover all GEMINI_API_KEY{,_<N>} env vars at call time.
 // Order: GEMINI_API_KEY (default) first, then GEMINI_API_KEY_<N> sorted
 // numerically. Quota is per Google account/key, so adding more numbered
-// keys in Railway env (e.g. _6, _7, _10) extends daily headroom for
-// news-angle / narrative endpoints without touching this code.
+// keys in Render env extend free-tier quota capacity without touching code.
 function geminiKeys() {
   const named = Object.keys(process.env)
     .filter(k => /^GEMINI_API_KEY(_\d+)?$/.test(k))
@@ -124,25 +122,18 @@ function geminiKeys() {
       const nb = b === 'GEMINI_API_KEY' ? 0 : parseInt(b.split('_').pop(), 10);
       return na - nb;
     });
-  const out = [];
-  for (const v of named) {
-    const k = (process.env[v] ?? '').trim();
-    if (k) out.push(k);
-  }
-  return out;
+  return named
+    .map(name => ({ name, value: (process.env[name] ?? '').trim() }))
+    .filter(entry => entry.value);
 }
 
-function geminiKeyLabel(key) {
-  return key.length > 6 ? `...${key.slice(-6)}` : '?';
-}
-
-function isKeyOnCooldown(key) {
-  const until = geminiKeyCooldowns.get(geminiKeyLabel(key)) ?? 0;
+function isKeyOnCooldown(name) {
+  const until = geminiKeyCooldowns.get(name) ?? 0;
   return Date.now() < until;
 }
 
-function markKeyExhausted(key) {
-  geminiKeyCooldowns.set(geminiKeyLabel(key), tomorrowUtc05());
+function markKeyExhausted(name) {
+  geminiKeyCooldowns.set(name, tomorrowUtc05());
 }
 
 async function callGeminiSingleKey(prompt, key, { jsonMode, maxTokens, temperature }) {
@@ -174,24 +165,24 @@ async function callGemini(prompt, opts) {
   if (keys.length === 0) throw new Error('No GEMINI_API_KEY env vars set');
 
   let lastErr = null;
-  for (const key of keys) {
-    if (isKeyOnCooldown(key)) {
-      console.log(`[gemini] skipping key ${geminiKeyLabel(key)} (on cooldown)`);
+  for (const { name, value } of keys) {
+    if (isKeyOnCooldown(name)) {
+      console.log(`[gemini] skipping ${name} (on cooldown)`);
       continue;
     }
     try {
-      const text = await callGeminiSingleKey(prompt, key, opts);
-      console.log(`[gemini] OK via key ${geminiKeyLabel(key)}`);
+      const text = await callGeminiSingleKey(prompt, value, opts);
+      console.log(`[gemini] OK via ${name}`);
       return text;
     } catch (err) {
       lastErr = err;
       if (isGeminiDailyQuota(err)) {
-        markKeyExhausted(key);
-        console.warn(`[gemini] key ${geminiKeyLabel(key)} daily quota exhausted → next key`);
+        markKeyExhausted(name);
+        console.warn(`[gemini] ${name} daily quota exhausted → next key`);
         continue;
       }
       const status = err.response?.status ?? '?';
-      console.warn(`[gemini] key ${geminiKeyLabel(key)} failed (${status}) → next key`);
+      console.warn(`[gemini] ${name} failed (${status}) → next key`);
       continue;
     }
   }
@@ -241,7 +232,7 @@ export async function callLLM(prompt, opts = {}) {
         groqQuotaResetAt   = tomorrowUtc05();
         console.warn(`${tag} Groq daily TPD quota exhausted — switching to Gemini until UTC 00:05`);
       } else {
-        const where = err.response?.status ?? (err.message?.slice(0, 60));
+        const where = err.response?.status ?? err.code ?? 'network error';
         console.warn(`${tag} Groq failed (${where}) — trying Gemini`);
       }
     }
@@ -258,8 +249,8 @@ export async function callLLM(prompt, opts = {}) {
     console.log(`${tag} via Gemini (fallback)`);
     return { text, provider: 'gemini' };
   } catch (err) {
-    const where = err.response?.status ?? (err.message?.slice(0, 80));
+    const where = err.response?.status ?? err.code ?? 'network error';
     console.error(`${tag} Gemini fallback failed (${where})`);
-    throw new Error(`Both providers failed for ${tag}: ${err.message}`);
+    throw new Error(`Both AI providers are unavailable for ${tag}`);
   }
 }

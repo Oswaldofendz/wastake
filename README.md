@@ -71,6 +71,8 @@ El repositorio incluye `render.yaml` para crear el backend en Render desde este 
    - `SUPABASE_SERVICE_KEY`
    - `GEMINI_API_KEY`
    - `GROQ_API_KEY` (si ya tienes una clave configurada)
+   - `GEMINI_API_KEY_1` a `GEMINI_API_KEY_7` (opcionales; rotación al agotar cuota)
+   - `GROQ_MODEL` (opcional; por defecto `openai/gpt-oss-20b`, servido por Groq)
    - `FRONTEND_URL` → el dominio público actual del frontend
 4. Cuando Render termine, copia la URL pública del backend y configúrala como `VITE_API_URL` en los ajustes de entorno del frontend en Vercel. Después, vuelve a desplegar el frontend desde Vercel para que use esa URL.
 
@@ -98,7 +100,9 @@ Las alertas guardadas necesitan las credenciales de Supabase y el motor de alert
 | `FRONTEND_URL` | URL del frontend para CORS |
 | `SUPABASE_URL` | URL de tu proyecto Supabase |
 | `SUPABASE_SERVICE_KEY` | Service role key de Supabase |
-| `GEMINI_API_KEY` | API key de Google Gemini |
+| `GEMINI_API_KEY`, `GEMINI_API_KEY_1`…`_7` | Claves de Google Gemini; se prueban en orden cuando una cuota falla |
+| `GROQ_API_KEY` | Clave de Groq; sus límites y costes dependen del nivel de la cuenta. La app no cambia ese plan |
+| `GROQ_MODEL` | Opcional; modelo de Groq (por defecto `openai/gpt-oss-20b`; el prefijo identifica al proveedor del modelo, no la API utilizada) |
 
 ### `frontend/.env`
 | Variable | Descripción |

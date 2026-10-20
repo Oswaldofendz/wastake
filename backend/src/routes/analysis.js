@@ -255,10 +255,6 @@ Hard rules:
       jsonMode:    true,
       maxTokens:   900,
       temperature: 0.78,
-      // 70B for editorial quality — follows hook/tone instructions far better
-      // than 8b-instant. TPD on free tier: 100K/day; editorial uses ~1.2K/post
-      // so 3-5 posts/day = well under limit. Falls back to Gemini if exhausted.
-      model:       'llama-3.3-70b-versatile',
       tag:         '[news-angle]',
     });
     raw      = (out.text ?? '').trim();
@@ -376,8 +372,6 @@ NO markdown. NO code fences. NO trailing commentary. JSON only.`;
       maxTokens:   300,
       temperature: 0.5,
       tag:         '[visual-subject]',
-      // Use the same model as news-angle for consistency; small prompt so cheap.
-      model:       'llama-3.3-70b-versatile',
     });
     raw      = (out.text ?? '').trim();
     provider = out.provider;
