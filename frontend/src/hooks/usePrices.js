@@ -9,14 +9,19 @@ export function usePrices(intervalMs = 60_000) {
   const [isStale, setIsStale]         = useState(false);
 
   const load = useCallback(async () => {
+    setLoading(true);
     try {
       const result = await fetchAllPrices();
+      if (!result?.crypto || !result?.traditional || typeof result.crypto !== 'object' || typeof result.traditional !== 'object') {
+        throw new Error('Incomplete market data response');
+      }
       setData(result);
       setLastUpdated(new Date());
       setIsStale(result.isStale ?? false);
       setError(null);
     } catch (err) {
       setError(err.message);
+      setIsStale(true);
     } finally {
       setLoading(false);
     }
@@ -38,8 +43,8 @@ export function usePrices(intervalMs = 60_000) {
 
   const allAssets = data
     ? [
-        ...Object.values(data.crypto).filter(a => a?.id),
-        ...Object.values(data.traditional).filter(a => a?.id),
+        ...Object.values(data.crypto ?? {}).filter(a => a?.id),
+        ...Object.values(data.traditional ?? {}).filter(a => a?.id),
       ].sort((a, b) => (b.marketCap ?? 0) - (a.marketCap ?? 0))
     : [];
 
