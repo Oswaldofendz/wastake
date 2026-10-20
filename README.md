@@ -58,22 +58,23 @@ Abre http://localhost:5173
 
 ---
 
-## Deploy en producción
+## Alojamiento gratuito para pruebas
 
-### Backend → Render (gratis)
+El repositorio incluye `render.yaml` para crear el backend en Render desde este repositorio. El servicio gratuito puede servir para probar WaStake sin pagar Railway, pero no ofrece disponibilidad continua: Render lo suspende tras 15 minutos sin tráfico y puede tardar alrededor de un minuto en responder cuando vuelve a arrancar. Render indica que sus instancias gratuitas no están destinadas a producción. Consulta sus [límites actuales](https://render.com/docs/free).
 
-1. [render.com](https://render.com) → New → Web Service
-2. Conecta tu repo de GitHub
-3. Configuración:
-   - **Root Directory**: `backend`
-   - **Build Command**: `npm install`
-   - **Start Command**: `node src/index.js`
-   - **Plan**: Free
-4. En **Environment Variables** agrega:
+### Backend → Render
+
+1. En [Render](https://render.com), crea un Web Service conectado al repositorio `wastake` y usa el Blueprint `render.yaml`.
+2. Selecciona el plan gratuito. El servicio expone `/health` como comprobación de disponibilidad.
+3. Configura las variables secretas que ya tengas en tus proveedores. No las guardes en Git ni en el frontend:
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_KEY`
    - `GEMINI_API_KEY`
-   - `FRONTEND_URL` → tu URL de Vercel
+   - `GROQ_API_KEY` (si ya tienes una clave configurada)
+   - `FRONTEND_URL` → el dominio público actual del frontend
+4. Cuando Render termine, copia la URL pública del backend y configúrala como `VITE_API_URL` en los ajustes de entorno del frontend en Vercel. Después, vuelve a desplegar el frontend desde Vercel para que use esa URL.
+
+Las alertas guardadas necesitan las credenciales de Supabase y el motor de alertas solo se ejecuta mientras el backend está despierto. El almacenamiento en memoria de cachés también se reinicia al suspenderse el servicio. No uses esta configuración gratuita como garantía de alertas oportunas o disponibilidad continua.
 
 ### Frontend → Vercel (gratis)
 
@@ -84,7 +85,7 @@ Abre http://localhost:5173
 3. En **Environment Variables** agrega:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
-   - `VITE_API_URL` → tu URL de Render
+   - `VITE_API_URL` → la URL pública de tu backend
 
 ---
 
