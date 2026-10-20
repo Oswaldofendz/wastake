@@ -1,184 +1,50 @@
-// Tasas de interés actuales por banco central — datos actualizados a abril 2026
+import { useTranslation } from 'react-i18next';
 
-const RATES = [
-  {
-    bank:        'Federal Reserve (Fed)',
-    country:     'EE.UU.',
-    flag:        '🇺🇸',
-    rate:        3.75,
-    prev:        4.50,
-    direction:   'down',
-    lastChange:  '2025-12-18',
-    nextMeeting: '2026-05-07',
-    bias:        'neutral',
-    impact:      'USD, S&P500, BTC (correlación inversa con tasas)',
-  },
-  {
-    bank:        'Banco Central Europeo (BCE)',
-    country:     'Eurozona',
-    flag:        '🇪🇺',
-    rate:        2.15,
-    prev:        2.40,
-    direction:   'down',
-    lastChange:  '2026-03-19',
-    nextMeeting: '2026-04-30',
-    bias:        'neutral',
-    impact:      'EUR, acciones europeas, bonos soberanos',
-  },
-  {
-    bank:        'Bank of England (BoE)',
-    country:     'Reino Unido',
-    flag:        '🇬🇧',
-    rate:        3.75,
-    prev:        4.50,
-    direction:   'down',
-    lastChange:  '2026-02-06',
-    nextMeeting: '2026-05-08',
-    bias:        'neutral',
-    impact:      'GBP, FTSE 100, gilts',
-  },
-  {
-    bank:        'Bank of Japan (BoJ)',
-    country:     'Japón',
-    flag:        '🇯🇵',
-    rate:        0.75,
-    prev:        0.50,
-    direction:   'up',
-    lastChange:  '2026-03-19',
-    nextMeeting: '2026-04-30',
-    bias:        'hawkish',
-    impact:      'JPY, Nikkei, carry trade global',
-  },
-  {
-    bank:        'Swiss National Bank (SNB)',
-    country:     'Suiza',
-    flag:        '🇨🇭',
-    rate:        0.25,
-    prev:        0.50,
-    direction:   'down',
-    lastChange:  '2026-03-20',
-    nextMeeting: '2026-06-19',
-    bias:        'dovish',
-    impact:      'CHF, activos refugio',
-  },
-  {
-    bank:        'Banco de México (Banxico)',
-    country:     'México',
-    flag:        '🇲🇽',
-    rate:        8.50,
-    prev:        9.50,
-    direction:   'down',
-    lastChange:  '2026-03-27',
-    nextMeeting: '2026-05-15',
-    bias:        'dovish',
-    impact:      'MXN, BONO M, Bolsa Mexicana',
-  },
+const SOURCES = [
+  { bank: 'Federal Reserve (Fed)', country: 'EE. UU.', flag: '🇺🇸', url: 'https://www.federalreserve.gov/monetarypolicy.htm' },
+  { bank: 'Banco Central Europeo (BCE)', country: 'Eurozona', flag: '🇪🇺', url: 'https://www.ecb.europa.eu/press/govcdec/mopo/html/index.es.html' },
+  { bank: 'Bank of England (BoE)', country: 'Reino Unido', flag: '🇬🇧', url: 'https://www.bankofengland.co.uk/monetary-policy/the-interest-rate-bank-rate' },
+  { bank: 'Bank of Japan (BoJ)', country: 'Japón', flag: '🇯🇵', url: 'https://www.boj.or.jp/en/mopo/mpmdeci/index.htm' },
+  { bank: 'Swiss National Bank (SNB)', country: 'Suiza', flag: '🇨🇭', url: 'https://www.snb.ch/en/the-snb/mandates-goals/monetary-policy/decisions' },
+  { bank: 'Banco de México (Banxico)', country: 'México', flag: '🇲🇽', url: 'https://www.banxico.org.mx/publications-and-press/announcements-of-monetary-policy-decisions/monetary-policy-announcements.html' },
 ];
 
-const BIAS_STYLES = {
-  hawkish: { label: 'Hawkish (sube tasas)', color: 'text-red-400',   bg: 'bg-red-900/30 border-red-700/40'   },
-  dovish:  { label: 'Dovish (baja tasas)', color: 'text-green-400', bg: 'bg-green-900/30 border-green-700/40' },
-  neutral: { label: 'Neutral',             color: 'text-slate-400',  bg: 'bg-slate-700/30 border-slate-600/40' },
-};
-
-function DirectionIcon({ direction }) {
-  if (direction === 'up') return (
-    <svg viewBox="0 0 16 16" className="w-3 h-3 fill-red-400 inline-block ml-0.5">
-      <path d="M8 3 L12 10 L4 10 Z" />
-    </svg>
-  );
-  if (direction === 'down') return (
-    <svg viewBox="0 0 16 16" className="w-3 h-3 fill-green-400 inline-block ml-0.5">
-      <path d="M8 13 L12 6 L4 6 Z" />
-    </svg>
-  );
-  return <span className="text-slate-500 text-xs ml-0.5">—</span>;
-}
-
 export function MacroRatesTable() {
+  const { t } = useTranslation();
+
   return (
-    <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl overflow-hidden">
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-slate-700/40">
-        <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-          Tasas de Interés Globales
+    <section className="bg-[#111318]/90 border border-white/[8%] rounded-xl overflow-hidden" aria-labelledby="macro-rates-title">
+      <header className="px-4 py-3 border-b border-slate-700/40">
+        <h3 id="macro-rates-title" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+          {t('macro_rates_sources')}
         </h3>
-        <p className="text-xs text-slate-500 mt-0.5">Tasas de referencia — Actualizado abril 2025</p>
-      </div>
+        <p className="text-xs text-slate-400 mt-1 max-w-3xl" role="note">
+          {t('macro_rates_sources_note')}
+        </p>
+      </header>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-700/40 text-xs text-slate-500">
-              <th className="px-4 py-2 text-left font-medium">Banco Central</th>
-              <th className="px-3 py-2 text-right font-medium">Tasa</th>
-              <th className="px-3 py-2 text-right font-medium hidden sm:table-cell">Anterior</th>
-              <th className="px-3 py-2 text-center font-medium hidden md:table-cell">Sesgo</th>
-              <th className="px-3 py-2 text-left font-medium hidden lg:table-cell">Impacto</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-700/30">
-            {RATES.map((r, i) => {
-              const bias = BIAS_STYLES[r.bias] ?? BIAS_STYLES.neutral;
-              return (
-                <tr key={i} className="hover:bg-slate-700/20 transition-colors">
-                  {/* Bank */}
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">{r.flag}</span>
-                      <div>
-                        <p className="text-white text-xs font-medium leading-tight">{r.bank}</p>
-                        <p className="text-slate-500 text-xs">{r.country}</p>
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* Current rate */}
-                  <td className="px-3 py-3 text-right">
-                    <span className="font-mono font-bold text-white">{r.rate.toFixed(2)}%</span>
-                    <DirectionIcon direction={r.direction} />
-                  </td>
-
-                  {/* Previous rate */}
-                  <td className="px-3 py-3 text-right text-slate-400 font-mono text-xs hidden sm:table-cell">
-                    {r.prev.toFixed(2)}%
-                  </td>
-
-                  {/* Bias */}
-                  <td className="px-3 py-3 text-center hidden md:table-cell">
-                    <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${bias.color} ${bias.bg}`}>
-                      {r.bias}
-                    </span>
-                  </td>
-
-                  {/* Impact */}
-                  <td className="px-3 py-3 hidden lg:table-cell">
-                    <p className="text-xs text-slate-400 max-w-xs">{r.impact}</p>
-                    <p className="text-xs text-slate-600 mt-0.5">
-                      Próx. reunión: {new Date(r.nextMeeting + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
-                    </p>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Explainer */}
-      <div className="px-4 py-3 border-t border-slate-700/40 grid grid-cols-1 sm:grid-cols-3 gap-2">
-        {Object.entries(BIAS_STYLES).map(([key, val]) => (
-          <div key={key} className={`rounded-lg px-3 py-2 border ${val.bg}`}>
-            <p className={`text-xs font-semibold ${val.color}`}>{val.label}</p>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {key === 'hawkish' ? 'Presiona al alza los bonos, fortalece la moneda' :
-               key === 'dovish'  ? 'Favorece activos de riesgo y cripto' :
-               'Sin señal clara de cambio de política monetaria'}
-            </p>
-          </div>
+      <ul className="divide-y divide-slate-700/30 sm:grid sm:grid-cols-2 sm:divide-y-0 sm:divide-x">
+        {SOURCES.map((source, index) => (
+          <li key={source.bank} className={`flex items-center justify-between gap-3 px-4 py-3 ${index > 1 ? 'sm:border-t sm:border-slate-700/30' : ''} ${index % 2 === 1 ? 'sm:border-l sm:border-slate-700/30' : ''}`}>
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span aria-hidden="true" className="text-base">{source.flag}</span>
+              <div className="min-w-0">
+                <p className="truncate text-xs font-medium text-white">{source.bank}</p>
+                <p className="text-xs text-slate-500">{source.country}</p>
+              </div>
+            </div>
+            <a
+              href={source.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-brand-300 underline underline-offset-2 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-400"
+            >
+              {t('macro_rates_open_source')}
+              <span className="sr-only"> — {source.bank}</span>
+            </a>
+          </li>
         ))}
-      </div>
-    </div>
+      </ul>
+    </section>
   );
 }

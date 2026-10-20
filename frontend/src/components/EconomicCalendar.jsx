@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { fetchCalendar } from '../services/api.js';
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -77,37 +78,39 @@ function Skeleton() {
 
 // ── Main component ─────────────────────────────────────────────
 export function EconomicCalendar() {
+  const { t } = useTranslation();
   const [events, setEvents]       = useState([]);
   const [source, setSource]       = useState(null); // 'live' | 'fallback'
   const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState(false);
   const [filterImpact, setImpact] = useState('all');
   const [showPast, setShowPast]   = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
+  const load = useCallback(async () => {
       setLoading(true);
+      setError(false);
       try {
         const data = await fetchCalendar();
-        if (!cancelled) {
-          // Soporta { events, source } o array directo
-          if (Array.isArray(data)) {
-            setEvents(data);
-            setSource('live');
-          } else {
-            setEvents(Array.isArray(data.events) ? data.events : []);
-            setSource(data.source ?? null);
-          }
+        // Soporta { events, source } o array directo
+        if (Array.isArray(data)) {
+          setEvents(data);
+          setSource('live');
+        } else {
+          setEvents(Array.isArray(data.events) ? data.events : []);
+          setSource(data.source ?? null);
         }
       } catch {
-        if (!cancelled) setEvents([]);
+        setEvents([]);
+        setSource(null);
+        setError(true);
       } finally {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       }
-    }
-    load();
-    return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const filtered = events.filter(ev => {
     if (filterImpact !== 'all' && ev.impact !== filterImpact) return false;
@@ -138,15 +141,20 @@ export function EconomicCalendar() {
               </p>
             )}
           </div>
-          <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={showPast}
-              onChange={e => setShowPast(e.target.checked)}
-              className="rounded"
-            />
-            Ver pasados
-          </label>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showPast}
+                onChange={e => setShowPast(e.target.checked)}
+                className="rounded"
+              />
+              Ver pasados
+            </label>
+            <button type="button" onClick={load} disabled={loading} className="text-xs text-brand-300 hover:text-white disabled:opacity-50">
+              {t('retry')}
+            </button>
+          </div>
         </div>
 
         {/* Impact filters */}
@@ -178,9 +186,11 @@ export function EconomicCalendar() {
         {loading ? (
           <Skeleton />
         ) : Object.keys(grouped).length === 0 ? (
-          <div className="px-4 py-8 text-center space-y-2">
-            <p className="text-slate-500 text-sm">Sin eventos para este período</p>
-            {!showPast && (
+          <div className="px-4 py-8 text-center space-y-2" role={error ? 'alert' : 'status'}>
+            <p className="text-slate-300 text-sm">
+              {error ? t('calendar_unavailable') : events.length === 0 ? t('calendar_no_source_data') : t('calendar_no_filter_results')}
+            </p>
+            {!error && events.length > 0 && !showPast && (
               <button
                 onClick={() => setShowPast(true)}
                 className="text-xs text-brand-400 hover:text-brand-300 underline"

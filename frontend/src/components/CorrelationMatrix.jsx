@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { fetchOHLCV } from '../services/api.js';
 
 const ASSETS = [
@@ -10,12 +11,27 @@ const ASSETS = [
   { id: 'URTH',     symbol: 'URTH', type: 'stock'  },
 ];
 
-// Pearson correlation coefficient
+// Compute returns between shared UTC closing dates. This aligns Friday-to-Monday
+// moves across crypto and exchange-traded assets instead of pairing unlike days.
 function pearson(a, b) {
-  const n = Math.min(a.length, b.length);
+  const sharedDates = [...a.keys()].filter(date => b.has(date)).sort().slice(-90);
+  if (sharedDates.length < 11) return null;
+  const ax = [];
+  const bx = [];
+  for (let i = 1; i < sharedDates.length; i++) {
+    const previous = sharedDates[i - 1];
+    const current = sharedDates[i];
+    const aPrev = a.get(previous);
+    const bPrev = b.get(previous);
+    const aNow = a.get(current);
+    const bNow = b.get(current);
+    if (aPrev > 0 && bPrev > 0) {
+      ax.push((aNow - aPrev) / aPrev);
+      bx.push((bNow - bPrev) / bPrev);
+    }
+  }
+  const n = ax.length;
   if (n < 10) return null;
-  const ax = a.slice(-n);
-  const bx = b.slice(-n);
   const ma = ax.reduce((s, v) => s + v, 0) / n;
   const mb = bx.reduce((s, v) => s + v, 0) / n;
   let num = 0, da = 0, db = 0;
@@ -31,14 +47,27 @@ function pearson(a, b) {
   return isNaN(r) ? null : Math.max(-1, Math.min(1, r));
 }
 
-// Daily returns from OHLCV candles
-function returns(candles) {
-  const closes = candles.map(c => c.close);
-  const r = [];
-  for (let i = 1; i < closes.length; i++) {
-    r.push((closes[i] - closes[i - 1]) / closes[i - 1]);
+// Closing prices keyed by UTC day; pairs use only shared observation dates.
+function closeSeries(candles) {
+  const ordered = [...candles]
+    .filter(c => Number.isFinite(c.time) && Number.isFinite(c.close) && c.close > 0)
+    .sort((a, b) => a.time - b.time);
+  const result = new Map();
+  for (const current of ordered) {
+    const date = new Date(current.time * 1000).toISOString().slice(0, 10);
+    result.set(date, current.close);
   }
-  return r;
+  return result;
+}
+
+function dailyReturns(series) {
+  const closes = [...series.values()];
+  const result = [];
+  for (let i = 1; i < closes.length; i++) {
+    const change = (closes[i] - closes[i - 1]) / closes[i - 1];
+    if (Number.isFinite(change)) result.push(change);
+  }
+  return result;
 }
 
 function corrColor(r) {
@@ -95,13 +124,16 @@ function AssetSparkline({ asset, index, cumulativeData }) {
 }
 
 export function CorrelationMatrix() {
+  const { t } = useTranslation();
   const [matrix, setMatrix]               = useState(null);
   const [cumulativeData, setCumulativeData] = useState(null);
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState(null);
+  const [availableCount, setAvailableCount] = useState(0);
 
-  useEffect(() => {
-    async function load() {
+  const load = useCallback(async () => {
+      setLoading(true);
+      setError(null);
       try {
         const allReturns = await Promise.all(
           ASSETS.map(async a => {
@@ -112,27 +144,31 @@ export function CorrelationMatrix() {
                 a.type === 'crypto' ? { days: 90 } : {}
               );
               const candles = Array.isArray(raw) ? raw : raw?.candles ?? [];
-              if (candles.length < 10) return [];
-              return returns(candles);
+              if (candles.length < 10) return new Map();
+              return closeSeries(candles);
             } catch {
-              return [];
+              return new Map();
             }
           })
         );
 
+        const usableCount = allReturns.filter(series => series.size > 0).length;
+        if (usableCount === 0) throw new Error('No price series available');
+        setAvailableCount(usableCount);
+
         const n = ASSETS.length;
         const mat = Array.from({ length: n }, (_, i) =>
           Array.from({ length: n }, (_, j) => {
-            if (i === j) return 1;
-            if (!allReturns[i].length || !allReturns[j].length) return null;
+            if (i === j) return allReturns[i].size ? 1 : null;
+            if (!allReturns[i].size || !allReturns[j].size) return null;
             return pearson(allReturns[i], allReturns[j]);
           })
         );
         setMatrix(mat);
         const cumulativeReturns = allReturns.map(rets => {
-          if (!rets.length) return [];
+          if (!rets.size) return [];
           const cumulative = [1];
-          for (const r of rets) cumulative.push(cumulative[cumulative.length - 1] * (1 + r));
+          for (const r of dailyReturns(rets)) cumulative.push(cumulative[cumulative.length - 1] * (1 + r));
           return cumulative;
         });
         setCumulativeData(cumulativeReturns);
@@ -141,9 +177,11 @@ export function CorrelationMatrix() {
       } finally {
         setLoading(false);
       }
-    }
-    load();
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   if (loading) return (
     <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl p-6 animate-pulse">
@@ -157,8 +195,12 @@ export function CorrelationMatrix() {
   );
 
   if (error) return (
-    <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl p-4">
-      <p className="text-xs text-red-400 text-center">Error cargando correlaciones</p>
+    <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl p-6 text-center" role="alert">
+      <p className="text-sm text-amber-300">{t('correlation_unavailable')}</p>
+      <p className="mt-2 text-xs text-slate-500">{t('correlation_no_series')}</p>
+      <button type="button" onClick={load} className="mt-4 rounded-lg border border-slate-600 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">
+        {t('retry')}
+      </button>
     </div>
   );
 
@@ -169,7 +211,7 @@ export function CorrelationMatrix() {
           <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
             Correlación de Activos
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">Últimos 90 días · Coeficiente de Pearson</p>
+          <p className="text-xs text-slate-500 mt-0.5">{t('correlation_method')}</p>
         </div>
         <div className="flex items-center gap-2 text-xs">
           <span className="flex items-center gap-1">
@@ -211,10 +253,10 @@ export function CorrelationMatrix() {
                   return (
                     <td key={col.id} className="p-0.5">
                       <div
-                        className={`h-10 rounded flex items-center justify-center font-mono font-bold text-xs ${corrColor(r)} ${isDiag ? 'opacity-40' : ''}`}
+                        className={`h-10 rounded flex items-center justify-center font-mono font-bold text-xs ${corrColor(r)} ${isDiag && r != null ? 'opacity-40' : ''}`}
                         title={`${row.symbol} / ${col.symbol}: ${r != null ? r.toFixed(4) : '—'}`}
                       >
-                        {isDiag ? '1.00' : corrLabel(r)}
+                        {corrLabel(r)}
                       </div>
                     </td>
                   );
@@ -223,6 +265,11 @@ export function CorrelationMatrix() {
             ))}
           </tbody>
         </table>
+
+        <p className="mt-3 text-xs text-slate-500" role="note">{t('correlation_missing')}</p>
+        {availableCount < ASSETS.length && (
+          <p className="mt-3 text-xs text-amber-300" role="status">{t('correlation_partial')}</p>
+        )}
 
         {/* Interpretation guide */}
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
