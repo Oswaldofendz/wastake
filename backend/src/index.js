@@ -74,7 +74,7 @@ app.use('/api/wapulse',      apiLimiter, wapulseRouter);
 // rápidos), pero rate limit global de 500/15min ya cubre abuso.
 app.use('/api/carousel-img', carouselImgRouter);
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`WaStake backend running on port ${PORT}`);
   startAlertEngine();
 });
