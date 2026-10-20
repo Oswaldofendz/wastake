@@ -3,12 +3,11 @@ services:
     name: wastake-backend
     runtime: node
     rootDir: backend
-    buildCommand: npm install
+    buildCommand: npm ci
     startCommand: node src/index.js
     plan: free
+    healthCheckPath: /health
     envVars:
-      - key: PORT
-        value: 3001
       - key: NODE_ENV
         value: production
       - key: FRONTEND_URL
@@ -18,4 +17,6 @@ services:
       - key: SUPABASE_SERVICE_KEY
         sync: false
       - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
         sync: false
