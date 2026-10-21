@@ -147,37 +147,37 @@ function AssetRow({ asset, rank }) {
 const PRESETS = [
   {
     id: 'momentum',
-    label: '🚀 Momentum',
+    icon: '🚀', labelKey: 'screener_preset_momentum',
     apply: () => ({ typeFilter: 'all', changeFilter: 'up_3', sortBy: 'change_desc', showOnlyPositive: true,  showOnlyNegative: false }),
   },
   {
     id: 'gainers',
-    label: '▲ Gainers',
+    icon: '▲', labelKey: 'screener_preset_gainers',
     apply: () => ({ typeFilter: 'all', changeFilter: 'up2',  sortBy: 'change_desc', showOnlyPositive: true,  showOnlyNegative: false }),
   },
   {
     id: 'losers',
-    label: '▼ Losers',
+    icon: '▼', labelKey: 'screener_preset_losers',
     apply: () => ({ typeFilter: 'all', changeFilter: 'down2', sortBy: 'change_asc', showOnlyPositive: false, showOnlyNegative: true  }),
   },
   {
     id: 'volatile',
-    label: '⚡ Alta Volatilidad',
+    icon: '⚡', labelKey: 'screener_preset_volatile',
     apply: () => ({ typeFilter: 'all', changeFilter: 'vol_5', sortBy: 'change_desc', showOnlyPositive: false, showOnlyNegative: false }),
   },
   {
     id: 'flat',
-    label: '➡ Plano',
+    icon: '➡', labelKey: 'screener_preset_flat',
     apply: () => ({ typeFilter: 'all', changeFilter: 'flat',  sortBy: 'name_asc',   showOnlyPositive: false, showOnlyNegative: false }),
   },
   {
     id: 'crypto_only',
-    label: '₿ Solo Crypto',
+    icon: '₿', labelKey: 'screener_preset_crypto',
     apply: () => ({ typeFilter: 'crypto', changeFilter: 'all', sortBy: 'mktcap_desc', showOnlyPositive: false, showOnlyNegative: false }),
   },
   {
     id: 'stocks_only',
-    label: '📈 Solo Acciones',
+    icon: '📈', labelKey: 'screener_preset_stocks',
     apply: () => ({ typeFilter: 'stock', changeFilter: 'all', sortBy: 'mktcap_desc', showOnlyPositive: false, showOnlyNegative: false }),
   },
 ];
@@ -288,6 +288,7 @@ export function Screener() {
               {stats.total} activos · {filtered.length} resultado{filtered.length !== 1 ? 's' : ''}
               {(isStale || error) && <span className="ml-2 text-amber-500">⚠ datos desactualizados</span>}
             </p>
+            <p className="text-sm text-slate-400 mt-2">{t('screener_intro')}</p>
           </div>
         </div>
         {error && allAssets.length > 0 && (
@@ -300,18 +301,18 @@ export function Screener() {
         )}
 
         {/* ── Stats rápidas ── */}
-        <div className="flex gap-3 mt-4 flex-wrap">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4" aria-live="polite">
           {[
-            { label: 'Subiendo', value: stats.gainers, color: 'text-green-400', bg: 'bg-green-900/20 border-green-700/30' },
-            { label: 'Bajando',  value: stats.losers,  color: 'text-red-400',   bg: 'bg-red-900/20 border-red-700/30'     },
+            { label: t('screener_rising'), value: stats.gainers, color: 'text-green-400', bg: 'bg-green-900/20 border-green-700/30' },
+            { label: t('screener_falling'), value: stats.losers, color: 'text-red-400', bg: 'bg-red-900/20 border-red-700/30' },
             {
-              label: 'Cambio promedio',
+              label: t('screener_average_move'),
               value: `${stats.avgChange >= 0 ? '+' : ''}${stats.avgChange}%`,
               color: Number(stats.avgChange) >= 0 ? 'text-green-400' : 'text-red-400',
               bg: 'bg-slate-800/60 border-slate-700/40',
             },
           ].map(s => (
-            <div key={s.label} className={`flex-1 min-w-[100px] px-4 py-3 rounded-xl border ${s.bg}`}>
+            <div key={s.label} className={`min-w-0 px-4 py-3 rounded-xl border ${s.bg}`}>
               <p className="text-xs text-slate-400">{s.label}</p>
               <p className={`text-xl font-bold font-mono mt-0.5 ${s.color}`}>{s.value}</p>
             </div>
@@ -319,102 +320,99 @@ export function Screener() {
         </div>
       </div>
 
-      {/* ── Presets ── */}
-      <div className="flex flex-wrap gap-2 mb-3">
-        {PRESETS.map(preset => (
-          <button
-            key={preset.id}
-            onClick={() => applyPreset(preset)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-              activePreset === preset.id
-                ? 'bg-[#c0c0c0] text-black border-[#c0c0c0]'
-                : 'bg-slate-800/60 border-slate-700/40 text-slate-400 hover:text-white hover:border-slate-500'
-            }`}
-          >
-            {preset.label}
-          </button>
-        ))}
-        {activePreset && (
-          <button
-            onClick={() => applyPreset({ id: activePreset, apply: () => ({}) })}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-600/40 text-slate-500 hover:text-white transition-colors"
-          >
-            ✕ Limpiar
-          </button>
-        )}
-      </div>
-
-      {/* ── Filtros ── */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {/* Búsqueda */}
-        <div className="relative flex-1 min-w-[160px]">
-          <svg viewBox="0 0 20 20" className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 fill-slate-500 pointer-events-none">
-            <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
-          </svg>
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar activo..."
-            className="w-full pl-8 pr-3 py-2 bg-slate-800/60 border border-slate-700/50 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500/60"
-          />
+      {/* ── Panel de búsqueda y filtros ── */}
+      <section className="mb-4 rounded-xl border border-white/[8%] bg-[#111318]/70 p-3 sm:p-4" aria-labelledby="screener-filters-title">
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <div>
+            <h2 id="screener-filters-title" className="text-sm font-semibold text-white">{t('screener_filters_title')}</h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-400">{t('screener_filters_help')}</p>
+          </div>
+          {(search || typeFilter !== 'all' || changeFilter !== 'all' || sortBy !== 'change_desc' || showOnlyPositive || showOnlyNegative) && (
+            <button
+              type="button"
+              onClick={() => applyPreset({ id: activePreset, apply: () => ({}) })}
+              className="min-h-9 rounded-lg border border-slate-600/50 px-3 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-400 hover:text-white"
+            >
+              {t('screener_clear_filters')}
+            </button>
+          )}
         </div>
 
-        {/* Tipo */}
-        <select
-          value={typeFilter}
-          onChange={e => setTypeFilter(e.target.value)}
-          className="px-3 py-2 bg-slate-800/60 border border-slate-700/50 rounded-lg text-sm text-slate-300 focus:outline-none focus:border-brand-500/60"
-        >
-          {Object.entries(TYPE_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
-          ))}
-        </select>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <label className="block min-w-0 sm:col-span-2 xl:col-span-2">
+            <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_search_label')}</span>
+            <span className="relative block">
+              <svg viewBox="0 0 20 20" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 fill-slate-500 pointer-events-none">
+                <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
+              </svg>
+              <input
+                type="search"
+                value={search}
+                onChange={e => { setSearch(e.target.value); setActivePreset(null); }}
+                placeholder={t('search_assets')}
+                className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 py-2 pl-10 pr-3 text-sm text-white placeholder-slate-500 focus:border-brand-500/60 focus:outline-none"
+              />
+            </span>
+          </label>
 
-        {/* Variación */}
-        <select
-          value={changeFilter}
-          onChange={e => setChangeFilter(e.target.value)}
-          className="px-3 py-2 bg-slate-800/60 border border-slate-700/50 rounded-lg text-sm text-slate-300 focus:outline-none focus:border-brand-500/60"
-        >
-          {CHANGE_FILTERS.map(f => (
-            <option key={f.id} value={f.id}>{f.label}</option>
-          ))}
-        </select>
+          <label className="block min-w-0">
+            <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_type_label')}</span>
+            <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setActivePreset(null); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
+              {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </label>
 
-        {/* Ordenar */}
-        <select
-          value={sortBy}
-          onChange={e => setSortBy(e.target.value)}
-          className="px-3 py-2 bg-slate-800/60 border border-slate-700/50 rounded-lg text-sm text-slate-300 focus:outline-none focus:border-brand-500/60"
-        >
-          {SORT_OPTIONS.map(s => (
-            <option key={s.id} value={s.id}>{s.label}</option>
-          ))}
-        </select>
+          <label className="block min-w-0">
+            <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_change_label')}</span>
+            <select value={changeFilter} onChange={e => { setChangeFilter(e.target.value); setActivePreset(null); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
+              {CHANGE_FILTERS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+            </select>
+          </label>
 
-        {/* Toggle positivos / negativos */}
-        <button
-          onClick={() => { setShowOnlyPositive(p => !p); setShowOnlyNegative(false); }}
-          className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${
-            showOnlyPositive
-              ? 'bg-green-900/50 border-green-600/60 text-green-300'
-              : 'bg-slate-800/60 border-slate-700/50 text-slate-400 hover:text-white'
-          }`}
-        >
-          ▲ Solo subiendo
-        </button>
-        <button
-          onClick={() => { setShowOnlyNegative(p => !p); setShowOnlyPositive(false); }}
-          className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${
-            showOnlyNegative
-              ? 'bg-red-900/50 border-red-600/60 text-red-300'
-              : 'bg-slate-800/60 border-slate-700/50 text-slate-400 hover:text-white'
-          }`}
-        >
-          ▼ Solo bajando
-        </button>
-      </div>
+          <label className="block min-w-0 sm:col-span-2 xl:col-span-2">
+            <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_sort_label')}</span>
+            <select value={sortBy} onChange={e => { setSortBy(e.target.value); setActivePreset(null); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
+              {SORT_OPTIONS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+            </select>
+          </label>
+
+          <div className="min-w-0 sm:col-span-2 xl:col-span-2">
+            <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_direction_label')}</span>
+            <div className="grid grid-cols-3 rounded-lg border border-slate-700/50 bg-slate-800/40 p-1" role="group" aria-label={t('screener_direction_label')}>
+              {[
+                { key: 'all', label: t('screener_direction_all'), active: !showOnlyPositive && !showOnlyNegative, onClick: () => { setShowOnlyPositive(false); setShowOnlyNegative(false); setActivePreset(null); } },
+                { key: 'up', label: t('screener_direction_up'), active: showOnlyPositive, onClick: () => { setShowOnlyPositive(true); setShowOnlyNegative(false); setActivePreset(null); } },
+                { key: 'down', label: t('screener_direction_down'), active: showOnlyNegative, onClick: () => { setShowOnlyNegative(true); setShowOnlyPositive(false); setActivePreset(null); } },
+              ].map(option => (
+                <button key={option.key} type="button" aria-pressed={option.active} onClick={option.onClick} className={`min-h-9 rounded-md px-2 text-xs font-semibold transition-colors ${option.active ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-white'}`}>
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 border-t border-slate-700/40 pt-3">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{t('screener_quick_views')}</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7">
+            {PRESETS.map(preset => (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => applyPreset(preset)}
+                aria-pressed={activePreset === preset.id}
+                className={`min-h-10 rounded-lg border px-2.5 py-2 text-xs font-semibold transition-colors ${
+                  activePreset === preset.id
+                    ? 'border-[#c0c0c0] bg-[#c0c0c0] text-black'
+                    : 'border-slate-700/50 bg-slate-800/50 text-slate-300 hover:border-slate-500 hover:text-white'
+                }`}
+              >
+                <span aria-hidden="true">{preset.icon}</span> {t(preset.labelKey)}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* ── Tabla ── */}
       <div className="flex-1 bg-[#111318]/90 border border-white/[8%] rounded-xl overflow-hidden">

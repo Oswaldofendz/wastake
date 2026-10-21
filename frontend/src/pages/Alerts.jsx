@@ -259,7 +259,7 @@ function TriggeredAlertsSection({ alerts, onMarkRead }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function Alerts({ user, signIn, signUp, signOut, allAssets }) {
+export function Alerts({ user, signIn, signUp, signOut, allAssets, onNavigate }) {
   const toast = useToast();
   const {
     active,
@@ -294,7 +294,7 @@ export function Alerts({ user, signIn, signUp, signOut, allAssets }) {
 
   // Not logged in
   if (!user) {
-    return <AuthModal onSignIn={signIn} onSignUp={signUp} />;
+    return <AuthModal onSignIn={signIn} onSignUp={signUp} onBackToAnalysis={() => onNavigate?.('dashboard')} />;
   }
 
   // Loading

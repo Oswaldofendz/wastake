@@ -588,7 +588,7 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate
   }
 
   // ── Sin sesión ─────────────────────────────────────────────────
-  if (!user) return <AuthModal onSignIn={signIn} onSignUp={signUp} />;
+  if (!user) return <AuthModal onSignIn={signIn} onSignUp={signUp} onBackToAnalysis={() => onNavigate?.('dashboard')} />;
 
   // ── Cargando ───────────────────────────────────────────────────
   if (loading) return (

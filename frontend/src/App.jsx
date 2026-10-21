@@ -149,6 +149,7 @@ export default function App() {
               signUp={signUp}
               signOut={signOut}
               allAssets={allAssets}
+              onNavigate={setCurrentPage}
             />
           )
         ) : currentPage === 'fundamentals' ? (

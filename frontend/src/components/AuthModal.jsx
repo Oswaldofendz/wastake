@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // ─── Íconos ───────────────────────────────────────────────────────────────────
 
@@ -107,7 +108,8 @@ function ConfirmScreen({ onBack }) {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-export function AuthModal({ onSignIn, onSignUp }) {
+export function AuthModal({ onSignIn, onSignUp, onBackToAnalysis }) {
+  const { t } = useTranslation();
   const [mode, setMode]           = useState('login'); // 'login' | 'signup'
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
@@ -171,6 +173,22 @@ export function AuthModal({ onSignIn, onSignUp }) {
             Análisis de mercados financieros
           </p>
         </div>
+
+        {onBackToAnalysis && (
+          <div className="mb-4 rounded-xl border border-white/10 bg-white/[3%] px-4 py-3 text-center">
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              {t('auth_required_note')}
+            </p>
+            <button
+              type="button"
+              onClick={onBackToAnalysis}
+              className="mt-2 inline-flex min-h-10 items-center justify-center rounded-lg px-3 text-sm font-semibold transition-colors hover:bg-white/10"
+              style={{ color: 'var(--accent-silver)' }}
+            >
+              {t('auth_back_to_analysis')}
+            </button>
+          </div>
+        )}
 
         {/* Card principal */}
         <div
