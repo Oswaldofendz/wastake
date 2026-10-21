@@ -60,6 +60,26 @@ const INDICATOR_INFO = {
     ],
     tip: 'ATR no indica dirección, solo magnitud. Muy útil para dimensionar posiciones y colocar stop-loss adaptativos.',
   },
+  'ADX / DMI (14)': {
+    fullName: 'Average Directional Index / Directional Movement Index',
+    description: 'El ADX estima la fuerza de una tendencia; +DI y −DI muestran qué dirección domina. ADX por sí solo no indica si el precio subirá o bajará.',
+    levels: [
+      { color: 'text-slate-400', label: 'ADX < 20', desc: 'Tendencia débil o mercado lateral; la dirección del DMI puede ser poco fiable.' },
+      { color: 'text-amber-400', label: 'ADX 20–25', desc: 'La tendencia puede estar desarrollándose; conviene buscar confirmación.' },
+      { color: 'text-green-400', label: 'ADX ≥ 25', desc: 'Tendencia más marcada. +DI frente a −DI aporta el sentido, no una predicción.' },
+    ],
+    tip: 'Método de J. Welles Wilder. Los umbrales son reglas orientativas y pueden variar según activo y marco temporal.',
+  },
+  'Volumen / media 20': {
+    fullName: 'Volumen relativo',
+    description: 'Compara el volumen de la última vela con su media de 20 velas. Ayuda a contextualizar el movimiento, pero no aporta dirección por sí solo.',
+    levels: [
+      { color: 'text-green-400', label: 'Por encima de la media', desc: 'Participación relativa elevada en la última vela.' },
+      { color: 'text-slate-400', label: 'Cerca de la media', desc: 'Volumen parecido al promedio reciente.' },
+      { color: 'text-amber-400', label: 'Por debajo de la media', desc: 'Menor participación relativa en la última vela.' },
+    ],
+    tip: 'El volumen depende de la calidad de la fuente y de la sesión. No se incorpora al índice direccional para evitar tratarlo como señal de compra o venta.',
+  },
 };
 
 // ── Data fetching hook ────────────────────────────────────────
@@ -102,31 +122,11 @@ const SIGNAL_STYLES = {
   sell:    'bg-red-900/60   text-red-300   border border-red-700/50',
   neutral: 'bg-slate-700/60 text-slate-400 border border-slate-600/50',
 };
-const SIGNAL_LABELS = { buy: 'COMPRA', sell: 'VENTA', neutral: 'NEUTRAL' };
-
-const VOLATILITY_STYLES = {
-  high:    'text-red-400',
-  medium:  'text-amber-400',
-  low:     'text-green-400',
-  unknown: 'text-slate-500',
-};
 const VOLATILITY_LABELS = { high: 'Alta', medium: 'Moderada', low: 'Baja' };
 
 function fmtValue(v) {
   if (v == null) return '—';
   return typeof v === 'number' ? v.toFixed(2) : v;
-}
-
-function scoreColor(score) {
-  if (score > 15)   return { text: 'text-green-400', ring: 'stroke-green-500' };
-  if (score < -15)  return { text: 'text-red-400',   ring: 'stroke-red-500'   };
-  return             { text: 'text-amber-400',        ring: 'stroke-amber-500' };
-}
-
-function scoreToSignal(score) {
-  if (score > 15)   return 'buy';
-  if (score < -15)  return 'sell';
-  return 'hold';
 }
 
 // ── Fear & Greed inline ───────────────────────────────────────
@@ -157,73 +157,48 @@ function FearGreedInline() {
   );
 }
 
-// ── Traffic light ─────────────────────────────────────────────
-const TRAFFIC = {
-  buy:  { label: 'COMPRAR',  textColor: 'text-green-400', glow: 'rgba(34,197,94,0.7)',   red: false, amber: false, green: true  },
-  hold: { label: 'MANTENER', textColor: 'text-amber-400', glow: 'rgba(251,191,36,0.7)',  red: false, amber: true,  green: false },
-  sell: { label: 'VENDER',   textColor: 'text-red-400',   glow: 'rgba(239,68,68,0.7)',   red: true,  amber: false, green: false },
-};
-
-function TrafficLight({ signal }) {
-  const cfg = TRAFFIC[signal] ?? TRAFFIC.hold;
-  const dot = (active, activeClass, darkClass, glowColor) => (
-    <div
-      className={`w-10 h-10 rounded-full border-2 transition-all duration-500 ${active ? activeClass : darkClass}`}
-      style={active ? { boxShadow: `0 0 20px 6px ${glowColor}` } : {}}
-    />
-  );
-  return (
-    <div className="flex flex-col gap-2.5 p-4 bg-slate-900 rounded-2xl border border-slate-700/50">
-      {dot(cfg.red,   'bg-red-500 border-red-400',     'bg-red-950/40 border-red-900/20',     cfg.glow)}
-      {dot(cfg.amber, 'bg-amber-400 border-amber-300', 'bg-amber-950/30 border-amber-900/10', cfg.glow)}
-      {dot(cfg.green, 'bg-green-500 border-green-400', 'bg-green-950/30 border-green-900/10', cfg.glow)}
-    </div>
-  );
-}
-
-// ── Mini traffic light (inline, small) ───────────────────────
-function MiniTrafficLight({ signal }) {
-  const cfg = TRAFFIC[signal] ?? TRAFFIC.hold;
-  const dot = (active, activeClass, darkClass, glowColor) => (
-    <div
-      className={`w-4 h-4 rounded-full border transition-all duration-500 ${active ? activeClass : darkClass}`}
-      style={active ? { boxShadow: `0 0 8px 2px ${glowColor}` } : {}}
-    />
-  );
-  return (
-    <div className="flex flex-col gap-1.5 p-2 bg-slate-900 rounded-xl border border-slate-700/50">
-      {dot(cfg.red,   'bg-red-500 border-red-400',     'bg-red-950/40 border-red-900/20',     cfg.glow)}
-      {dot(cfg.amber, 'bg-amber-400 border-amber-300', 'bg-amber-950/30 border-amber-900/10', cfg.glow)}
-      {dot(cfg.green, 'bg-green-500 border-green-400', 'bg-green-950/30 border-green-900/10', cfg.glow)}
-    </div>
-  );
-}
-
 // ── Gauge SVG (arc) ───────────────────────────────────────────
-function Gauge({ score }) {
-  const pct = Math.max(0, Math.min(1, (score + 100) / 200));
-  const rotation = -90 + pct * 180;
-  const colors = scoreColor(score);
-  const label = score > 15 ? 'Compra' : score < -15 ? 'Venta' : 'Neutral';
-
+function ScoreGauge({ score, bias, t }) {
+  const pct = Math.max(0, Math.min(100, score * 10));
   return (
-    <div className="flex flex-col items-center">
-      <svg viewBox="0 0 100 56" style={{ width: '110px', height: 'auto' }}>
-        <path d="M 12 48 A 38 38 0 0 1 88 48" fill="none" stroke="#1e293b" strokeWidth="7" strokeLinecap="round"/>
-        <path d="M 12 48 A 38 38 0 0 1 37 15" fill="none" stroke="#7f1d1d" strokeWidth="7" strokeLinecap="round"/>
-        <path d="M 37 15 A 38 38 0 0 1 63 15" fill="none" stroke="#78350f" strokeWidth="7" strokeLinecap="round"/>
-        <path d="M 63 15 A 38 38 0 0 1 88 48" fill="none" stroke="#14532d" strokeWidth="7" strokeLinecap="round"/>
-        <g transform={`rotate(${rotation}, 50, 48)`}>
-          <line x1="50" y1="48" x2="50" y2="16" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-          <circle cx="50" cy="48" r="3" fill="white"/>
-        </g>
-        <text x="8"  y="54" fill="#ef4444" style={{ fontSize: 5, fontFamily: 'monospace' }}>VENTA</text>
-        <text x="64" y="54" fill="#22c55e" style={{ fontSize: 5, fontFamily: 'monospace' }}>COMPRA</text>
-      </svg>
-      <p className={`text-xl font-bold font-mono leading-none ${colors.text}`}>
-        {score > 0 ? '+' : ''}{score}
+    <div className="w-full">
+      <div className="flex items-end justify-between gap-3">
+        <p className="text-4xl font-bold font-mono leading-none text-white" aria-label={`${t('technical_score_title')}: ${score} ${t('technical_score_out_of_10')}`}>
+          {Number(score).toFixed(1)}<span className="text-lg text-slate-500"> / 10</span>
+        </p>
+        <p className={`text-sm font-semibold ${bias === 'bullish' ? 'text-green-400' : bias === 'bearish' ? 'text-red-400' : 'text-amber-300'}`}>
+          {t(`technical_score_${bias}`)}
+        </p>
+      </div>
+      <div className="relative mt-4 h-3 rounded-full bg-gradient-to-r from-red-600 via-amber-400 to-green-500" role="img" aria-label={`${t('technical_score_scale')}: ${score} / 10`}>
+        <span className="absolute -top-1.5 h-6 w-1 rounded-full border border-white bg-slate-950 shadow" style={{ left: `calc(${pct}% - 2px)` }} />
+      </div>
+      <div className="mt-2 flex justify-between text-[11px] text-slate-400">
+        <span>0 · {t('technical_score_negative')}</span>
+        <span>5 · {t('technical_score_middle')}</span>
+        <span>10 · {t('technical_score_positive')}</span>
+      </div>
+      <p className="mt-3 text-xs leading-5 text-slate-400">{t('technical_score_explainer')}</p>
+    </div>
+  );
+}
+
+function ComponentScore({ name, item, t }) {
+  const score = item?.score ?? null;
+  const pct = score == null ? 0 : Math.max(0, Math.min(100, score * 10));
+  const barColor = score == null ? 'bg-slate-600' : score <= 4 ? 'bg-red-500' : score >= 6 ? 'bg-green-500' : 'bg-amber-400';
+  return (
+    <div className="rounded-lg border border-slate-700/40 bg-slate-950/30 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-medium text-slate-300">{t(`technical_component_${name}`)}</span>
+        <span className="text-xs font-mono text-white">{score == null ? '—' : `${score.toFixed(1)} / 10`}</span>
+      </div>
+      <div className="mt-2 h-1.5 rounded-full bg-slate-700">
+        {score != null && <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />}
+      </div>
+      <p className="mt-1.5 text-[11px] text-slate-500">
+        {item ? `${t('technical_component_weight')}: ${item.weight}%` : t('technical_component_unavailable')}
       </p>
-      <p className={`text-xs font-semibold mt-0.5 ${colors.text}`}>{label}</p>
     </div>
   );
 }
@@ -300,19 +275,20 @@ function InfoModal({ info, onClose }) {
 // ── Indicator row ─────────────────────────────────────────────
 
 function IndicatorRow({ name, value, signal, label, onClick }) {
+  const { t } = useTranslation();
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 py-2.5 px-2 rounded-lg border-b border-slate-700/30 last:border-0 hover:bg-slate-700/30 transition-colors group text-left"
+      className="w-full grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto_auto] sm:grid-cols-[7rem_minmax(5rem,auto)_auto_minmax(0,1fr)_1rem] items-center gap-2 sm:gap-3 py-2.5 px-2 rounded-lg border-b border-slate-700/30 last:border-0 hover:bg-slate-700/30 transition-colors group text-left"
     >
-      <span className="w-28 text-xs font-medium text-slate-300 flex-shrink-0 group-hover:text-white transition-colors">
+      <span className="min-w-0 text-xs font-medium text-slate-300 group-hover:text-white transition-colors">
         {name}
       </span>
-      <span className="w-20 text-xs font-mono text-white flex-shrink-0">{value}</span>
-      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${SIGNAL_STYLES[signal] ?? SIGNAL_STYLES.neutral}`}>
-        {SIGNAL_LABELS[signal] ?? signal}
+      <span className="min-w-0 break-words text-[11px] sm:text-xs font-mono text-white">{value}</span>
+      <span className={`text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${SIGNAL_STYLES[signal] ?? SIGNAL_STYLES.neutral}`}>
+        {signal === 'neutral' ? t('technical_context') : signal === 'buy' ? t('technical_score_positive') : signal === 'sell' ? t('technical_score_negative') : signal}
       </span>
-      <span className="text-xs text-slate-500 truncate hidden sm:block flex-1">{label}</span>
+      <span className="text-xs text-slate-500 truncate hidden sm:block">{label}</span>
       {/* Info icon */}
       <svg viewBox="0 0 20 20" className="w-3.5 h-3.5 fill-slate-600 group-hover:fill-brand-400 flex-shrink-0 transition-colors ml-auto">
         <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clipRule="evenodd" />
@@ -357,11 +333,13 @@ export function AnalysisPanel({ asset, days = 90 }) {
 
   const { indicators, signals, volatility, summary, meta } = data;
 
+  const volumeRatio = indicators.volume?.ratio;
+  const volumeSignal = 'neutral';
   const rows = [
     {
       name:   'RSI (14)',
       value:  fmtValue(indicators.rsi.current),
-      signal: signals.rsi.signal,
+      signal: 'neutral',
       label:  signals.rsi.label,
     },
     {
@@ -383,8 +361,22 @@ export function AnalysisPanel({ asset, days = 90 }) {
       value:  indicators.bollingerBands.current
         ? fmtValue(indicators.bollingerBands.current.middle)
         : '—',
-      signal: signals.bb.signal,
+      signal: 'neutral',
       label:  signals.bb.label,
+    },
+    {
+      name: 'ADX / DMI (14)',
+      value: indicators.adx?.current
+        ? `${fmtValue(indicators.adx.current.adx)} · +DI ${fmtValue(indicators.adx.current.pdi)} / −DI ${fmtValue(indicators.adx.current.mdi)}`
+        : '—',
+      signal: signals.adx?.signal ?? 'neutral',
+      label: signals.adx?.label ?? 'ADX no disponible',
+    },
+    {
+      name: 'Volumen / media 20',
+      value: volumeRatio == null ? '—' : `${volumeRatio.toFixed(2)}×`,
+      signal: volumeSignal,
+      label: volumeRatio == null ? 'Volumen no disponible' : `Última vela: ${fmtValue(indicators.volume?.current)} · media: ${fmtValue(indicators.volume?.average)}`,
     },
   ];
 
@@ -399,7 +391,7 @@ export function AnalysisPanel({ asset, days = 90 }) {
         {/* Header */}
         <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-slate-700/40">
           <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-            Análisis Técnico
+            {t('technical_analysis_title')}
           </h3>
           <span className="text-xs text-slate-500">
             {meta.candleCount} velas · {asset.name}
@@ -407,7 +399,7 @@ export function AnalysisPanel({ asset, days = 90 }) {
         </div>
 
         <div className="p-4">
-          <div className="grid grid-cols-3 gap-3 mb-4 items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 items-stretch">
 
             {/* Card 1: Fear & Greed */}
             <div className="flex flex-col items-center justify-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-3 py-4 gap-2">
@@ -421,58 +413,44 @@ export function AnalysisPanel({ asset, days = 90 }) {
               )}
             </div>
 
-            {/* Card 2: Traffic Light + signal */}
-            <div className="flex flex-col items-center justify-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-3 py-4 gap-2">
-              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Señal</p>
-              <TrafficLight signal={scoreToSignal(summary?.score ?? 0)} />
-              <p className={`text-lg font-extrabold tracking-tight leading-none ${TRAFFIC[scoreToSignal(summary?.score ?? 0)]?.textColor}`}>
-                {TRAFFIC[scoreToSignal(summary?.score ?? 0)]?.label}
-              </p>
-            </div>
-
-            {/* Card 3: Confluence gauge */}
-            <div className="flex flex-col items-center justify-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-4 py-4 flex-1">
-              <p className="text-xs text-slate-400 uppercase tracking-wider mb-2 font-semibold">Confluencia</p>
-              <Gauge score={summary?.score ?? 0} />
-              <div className="flex gap-1.5 mt-3">
-                <span className="flex items-center gap-1 text-xs bg-green-900/40 text-green-400 border border-green-700/40 rounded-full px-2 py-0.5 font-semibold">
-                  {summary.counts.buy ?? 0}
-                  <svg viewBox="0 0 10 10" className="w-2 h-2 fill-current"><path d="M5 2 L8 7 L2 7 Z"/></svg>
-                </span>
-                <span className="flex items-center gap-1 text-xs bg-slate-700/40 text-slate-400 border border-slate-600/40 rounded-full px-2 py-0.5 font-semibold">
-                  {summary.counts.neutral ?? 0} —
-                </span>
-                <span className="flex items-center gap-1 text-xs bg-red-900/40 text-red-400 border border-red-700/40 rounded-full px-2 py-0.5 font-semibold">
-                  {summary.counts.sell ?? 0}
-                  <svg viewBox="0 0 10 10" className="w-2 h-2 fill-current"><path d="M5 8 L8 3 L2 3 Z"/></svg>
-                </span>
-              </div>
+            {/* Composite technical score and its directional scale */}
+            <div className="bg-slate-900/60 border border-slate-700/40 rounded-xl px-4 py-4">
+              <p className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-semibold">{t('technical_score_title')}</p>
+              <ScoreGauge score={summary?.score10 ?? 5} bias={summary?.bias ?? 'mixed'} t={t} />
             </div>
 
           </div>
 
+          <section className="mb-4 rounded-xl border border-slate-700/40 bg-slate-900/30 p-3" aria-labelledby="technical-components-title">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h4 id="technical-components-title" className="text-xs font-semibold uppercase tracking-wider text-slate-300">{t('technical_weighted_components')}</h4>
+              <span className="text-[11px] text-slate-500">{t('technical_score_coverage')}: {summary?.coverage ?? 0}%</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
+              {['trend', 'momentum', 'structure', 'participation'].map(name => (
+                <ComponentScore key={name} name={name} item={summary?.components?.[name]} t={t} />
+              ))}
+            </div>
+          </section>
+
           <details className="mb-3 rounded-lg border border-slate-700/50 bg-slate-900/40 px-3 py-2 text-xs text-slate-400">
             <summary className="cursor-pointer font-medium text-slate-300">{t('technical_signal_method')}</summary>
             <p className="mt-2 leading-5">{t('technical_signal_method_details')}</p>
+            <p className="mt-2 leading-5">{t('technical_score_context_indicators')}</p>
           </details>
 
           {/* Indicators list below */}
-          <p className="text-xs text-slate-500 mb-2 px-2">Haz clic en un indicador para ver su explicación</p>
+          <p className="text-xs text-slate-500 mb-2 px-2">{t('technical_indicators_guide')}</p>
           {rows.map(row => (
             <IndicatorRow key={row.name} {...row} onClick={() => openInfo(row.name)} />
           ))}
-          <button
+          <IndicatorRow
+            name="ATR (14)"
+            value={fmtValue(indicators.atr.current)}
+            signal="neutral"
+            label={`${VOLATILITY_LABELS[volatility.volatility] ?? '—'} · ${volatility.label}`}
             onClick={() => openInfo('ATR (14)')}
-            className="w-full flex items-center gap-3 pt-2.5 px-2 rounded-lg hover:bg-slate-700/30 transition-colors group text-left"
-          >
-            <span className="w-28 text-xs font-medium text-slate-300 flex-shrink-0 group-hover:text-white transition-colors">ATR (14)</span>
-            <span className="w-20 text-xs font-mono text-white flex-shrink-0">{fmtValue(indicators.atr.current)}</span>
-            <span className={`text-xs font-semibold ${VOLATILITY_STYLES[volatility.volatility]}`}>{VOLATILITY_LABELS[volatility.volatility] ?? '—'}</span>
-            <span className="text-xs text-slate-500 truncate hidden sm:block flex-1">{volatility.label}</span>
-            <svg viewBox="0 0 20 20" className="w-3.5 h-3.5 fill-slate-600 group-hover:fill-brand-400 flex-shrink-0 ml-auto transition-colors">
-              <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clipRule="evenodd" />
-            </svg>
-          </button>
+          />
         </div>
       </div>
 
