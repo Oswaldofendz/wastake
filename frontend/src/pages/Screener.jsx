@@ -25,34 +25,34 @@ function fmtMktCap(n) {
 
 // ─── Configuración de filtros ─────────────────────────────────────────────────
 const TYPE_LABELS = {
-  all:       'Todos',
-  crypto:    'Crypto',
-  stock:     'Acciones',
-  etf:       'ETFs',
-  forex:     'Forex',
-  commodity: 'Materias Primas',
-  index:     'Índices',
-  bond:      'Bonos',
+  all:       'screener_type_all',
+  crypto:    'screener_type_crypto',
+  stock:     'screener_type_stock',
+  etf:       'screener_type_etf',
+  forex:     'screener_type_forex',
+  commodity: 'screener_type_commodity',
+  index:     'screener_type_index',
+  bond:      'screener_type_bond',
 };
 
 const CHANGE_FILTERS = [
-  { id: 'all',       label: 'Cualquier variación' },
-  { id: 'up_3',      label: '▲ +3% o más'         },
-  { id: 'up5',       label: '▲ +5% o más'         },
-  { id: 'up2',       label: '▲ +2% o más'         },
-  { id: 'down2',     label: '▼ -2% o más'         },
-  { id: 'down5',     label: '▼ -5% o más'         },
-  { id: 'vol_5',     label: '⚡ ±5% (volátil)'     },
-  { id: 'flat',      label: '➡ ±1% (plano)'       },
+  { id: 'all',       labelKey: 'screener_change_any' },
+  { id: 'up_3',      labelKey: 'screener_change_up_3' },
+  { id: 'up5',       labelKey: 'screener_change_up_5' },
+  { id: 'up2',       labelKey: 'screener_change_up_2' },
+  { id: 'down2',     labelKey: 'screener_change_down_2' },
+  { id: 'down5',     labelKey: 'screener_change_down_5' },
+  { id: 'vol_5',     labelKey: 'screener_change_volatile' },
+  { id: 'flat',      labelKey: 'screener_change_flat' },
 ];
 
 const SORT_OPTIONS = [
-  { id: 'change_desc',   label: '% Cambio ↓' },
-  { id: 'change_asc',    label: '% Cambio ↑' },
-  { id: 'price_desc',    label: 'Precio ↓'   },
-  { id: 'price_asc',     label: 'Precio ↑'   },
-  { id: 'mktcap_desc',   label: 'Mkt Cap ↓'  },
-  { id: 'name_asc',      label: 'Nombre A-Z'  },
+  { id: 'change_desc',   labelKey: 'screener_sort_change_desc' },
+  { id: 'change_asc',    labelKey: 'screener_sort_change_asc' },
+  { id: 'price_desc',    labelKey: 'screener_sort_price_desc' },
+  { id: 'price_asc',     labelKey: 'screener_sort_price_asc' },
+  { id: 'mktcap_desc',   labelKey: 'screener_sort_mktcap_desc' },
+  { id: 'name_asc',      labelKey: 'screener_sort_name_asc' },
 ];
 
 // ─── Logos e íconos ───────────────────────────────────────────────────────────
@@ -87,7 +87,7 @@ function AssetAvatar({ asset }) {
 }
 
 // ─── Fila de la tabla ─────────────────────────────────────────────────────────
-function AssetRow({ asset, rank }) {
+function AssetRow({ asset, rank, t }) {
   const positive = (asset.change24h ?? 0) >= 0;
   const typeColors = TYPE_COLORS[asset.type] ?? TYPE_COLORS.etf;
 
@@ -107,7 +107,7 @@ function AssetRow({ asset, rank }) {
 
       {/* Tipo */}
       <span className={`hidden sm:inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border flex-shrink-0 ${typeColors}`}>
-        {TYPE_LABELS[asset.type] ?? asset.type}
+        {TYPE_LABELS[asset.type] ? t(TYPE_LABELS[asset.type]) : asset.type}
       </span>
 
       {/* Precio */}
@@ -283,10 +283,10 @@ export function Screener() {
       <div className="mb-5">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h1 className="text-xl font-bold text-white">Screener de Activos</h1>
+            <h1 className="text-xl font-bold text-white">{t('screener_title')}</h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              {stats.total} activos · {filtered.length} resultado{filtered.length !== 1 ? 's' : ''}
-              {(isStale || error) && <span className="ml-2 text-amber-500">⚠ datos desactualizados</span>}
+              {t('screener_results_count', { total: stats.total, results: filtered.length })}
+              {(isStale || error) && <span className="ml-2 text-amber-500">⚠ {t('screener_stale_data')}</span>}
             </p>
             <p className="text-sm text-slate-400 mt-2">{t('screener_intro')}</p>
           </div>
@@ -358,21 +358,21 @@ export function Screener() {
           <label className="block min-w-0">
             <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_type_label')}</span>
             <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setActivePreset(null); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
-              {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              {Object.entries(TYPE_LABELS).map(([k, labelKey]) => <option key={k} value={k}>{t(labelKey)}</option>)}
             </select>
           </label>
 
           <label className="block min-w-0">
             <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_change_label')}</span>
             <select value={changeFilter} onChange={e => { setChangeFilter(e.target.value); setActivePreset(null); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
-              {CHANGE_FILTERS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+              {CHANGE_FILTERS.map(f => <option key={f.id} value={f.id}>{t(f.labelKey)}</option>)}
             </select>
           </label>
 
           <label className="block min-w-0 sm:col-span-2 xl:col-span-2">
             <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_sort_label')}</span>
             <select value={sortBy} onChange={e => { setSortBy(e.target.value); setActivePreset(null); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
-              {SORT_OPTIONS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+              {SORT_OPTIONS.map(s => <option key={s.id} value={s.id}>{t(s.labelKey)}</option>)}
             </select>
           </label>
 
@@ -419,18 +419,18 @@ export function Screener() {
         {/* Header de columnas */}
         <div className="flex items-center gap-3 px-4 py-2.5 text-xs text-slate-500 border-b border-slate-700/40 bg-slate-800/60">
           <span className="w-6" />
-          <span className="flex-1">Activo</span>
-          <span className="hidden sm:block w-20">Tipo</span>
-          <span className="w-24 text-right">Precio</span>
-          <span className="w-20 text-right">24h</span>
-          <span className="hidden lg:block w-24 text-right">Mkt Cap</span>
-          <span className="hidden md:block w-20 text-center">Variación</span>
+          <span className="flex-1">{t('screener_column_asset')}</span>
+          <span className="hidden sm:block w-20">{t('screener_column_type')}</span>
+          <span className="w-24 text-right">{t('price')}</span>
+          <span className="w-20 text-right">{t('change_24h')}</span>
+          <span className="hidden lg:block w-24 text-right">{t('market_cap')}</span>
+          <span className="hidden md:block w-20 text-center">{t('screener_column_change')}</span>
         </div>
 
         {loading && !allAssets.length ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <div className="w-6 h-6 border-2 border-slate-600 border-t-brand-400 rounded-full animate-spin" />
-            <p className="text-sm text-slate-500">Cargando activos...</p>
+            <p className="text-sm text-slate-500">{t('screener_loading_assets')}</p>
           </div>
         ) : error && !allAssets.length ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3 text-center px-4" role="alert">
@@ -459,7 +459,7 @@ export function Screener() {
         ) : (
           <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 360px)' }}>
             {filtered.map((asset, i) => (
-              <AssetRow key={asset.id} asset={asset} rank={i + 1} />
+              <AssetRow key={asset.id} asset={asset} rank={i + 1} t={t} />
             ))}
           </div>
         )}
@@ -468,7 +468,7 @@ export function Screener() {
       {/* Footer con total */}
       {filtered.length > 0 && (
         <p className="text-xs text-slate-600 text-center mt-3">
-          Mostrando {filtered.length} de {stats.total} activos · Actualización automática cada 60s
+          {t('screener_showing_count', { results: filtered.length, total: stats.total })}
         </p>
       )}
     </div>
