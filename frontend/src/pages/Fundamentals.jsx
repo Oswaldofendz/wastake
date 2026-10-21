@@ -33,7 +33,11 @@ const FALLBACK_LABELS = {
 function impactValue(impact) { return ({ low: 25, medium: 60, high: 90 })[impact] ?? 25; }
 function languageCode(language) { return language?.toLowerCase().startsWith('pt') ? 'pt' : language?.toLowerCase().startsWith('es') ? 'es' : 'en'; }
 function articleKey(article) { return article.link || `${article.pubDate}-${article.title}`; }
-function hasContextualAnalysis(article) { return Number.isFinite(article.relevance); }
+function hasContextualAnalysis(article) {
+  return Number.isFinite(article.relevance)
+    && Boolean(article.analysisProvider)
+    && Boolean(article.summary && article.mechanism && article.watch);
+}
 function relevanceValue(article) {
   const raw = hasContextualAnalysis(article) ? article.relevance : Math.min(55, impactValue(article.impact));
   return Math.max(0, Math.min(100, Math.round(raw)));
@@ -147,7 +151,8 @@ export function Fundamentals() {
   }, [asset?.id, refreshKey, lang]);
 
   useEffect(() => {
-    const pending = articles.filter(article => !article.localizedTitle && article.title && lang !== 'en');
+    const pending = articles.filter(article => article.title && lang !== 'en'
+      && (!article.localizedTitle || article.localizedTitle.trim() === article.title.trim()));
     if (!pending.length) { setTranslating(false); return undefined; }
     let cancelled = false;
     setTranslating(true);
@@ -174,7 +179,6 @@ export function Fundamentals() {
     return articles
       .filter(article => Number.isFinite(Date.parse(article.pubDate)) && Date.parse(article.pubDate) >= cutoff)
       .sort((a, b) => relevanceValue(b) - relevanceValue(a)
-        || Math.abs(b.score ?? 0) - Math.abs(a.score ?? 0)
         || Date.parse(b.pubDate) - Date.parse(a.pubDate));
   }, [articles, selectedWindow.days]);
 
@@ -302,7 +306,7 @@ export function Fundamentals() {
               const contextual = hasContextualAnalysis(article);
               const relevance = relevanceValue(article);
               const fallbackTitle = translatedTitles[`${lang}:${articleKey(article)}`];
-              const title = article.localizedTitle || fallbackTitle || article.title;
+              const title = fallbackTitle || article.localizedTitle || article.title;
               const toneLabel = article.sentiment === 'positive' ? t.positive : article.sentiment === 'negative' ? t.negative : t.neutral;
               const impactCopy = contextual ? (article.mechanism || (article.impact === 'high' ? t.highExplanation : article.impact === 'medium' ? t.mediumExplanation : t.lowExplanation)) : analysisLabels.preliminaryWhy;
               const projection = contextual ? (article.watch || (article.sentiment === 'positive' ? t.projectionPositive : article.sentiment === 'negative' ? t.projectionNegative : t.projectionNeutral)) : analysisLabels.preliminaryWatch;

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { fetchAnalysis } from '../services/api.js';
 import { getAnalysisType } from '../data/assetCatalog.js';
 import { FearGreedWidget } from './FearGreedWidget.jsx';
@@ -117,14 +118,14 @@ function fmtValue(v) {
 }
 
 function scoreColor(score) {
-  if (score >= 25)  return { text: 'text-green-400', ring: 'stroke-green-500' };
-  if (score <= -25) return { text: 'text-red-400',   ring: 'stroke-red-500'   };
+  if (score > 15)   return { text: 'text-green-400', ring: 'stroke-green-500' };
+  if (score < -15)  return { text: 'text-red-400',   ring: 'stroke-red-500'   };
   return             { text: 'text-amber-400',        ring: 'stroke-amber-500' };
 }
 
 function scoreToSignal(score) {
-  if (score >= 25)  return 'buy';
-  if (score <= -25) return 'sell';
+  if (score > 15)   return 'buy';
+  if (score < -15)  return 'sell';
   return 'hold';
 }
 
@@ -335,6 +336,7 @@ function Skeleton() {
 // ── Main component ────────────────────────────────────────────
 
 export function AnalysisPanel({ asset, days = 90 }) {
+  const { t } = useTranslation();
   const { data, loading, error } = useAnalysis(asset, days);
   const [activeInfo, setActiveInfo]   = useState(null); // { shortName, ...INDICATOR_INFO }
 
@@ -448,6 +450,11 @@ export function AnalysisPanel({ asset, days = 90 }) {
             </div>
 
           </div>
+
+          <details className="mb-3 rounded-lg border border-slate-700/50 bg-slate-900/40 px-3 py-2 text-xs text-slate-400">
+            <summary className="cursor-pointer font-medium text-slate-300">{t('technical_signal_method')}</summary>
+            <p className="mt-2 leading-5">{t('technical_signal_method_details')}</p>
+          </details>
 
           {/* Indicators list below */}
           <p className="text-xs text-slate-500 mb-2 px-2">Haz clic en un indicador para ver su explicación</p>
