@@ -117,13 +117,6 @@ function useAnalysis(asset, days = 90) {
 
 // ── Helpers ───────────────────────────────────────────────────
 
-const SIGNAL_STYLES = {
-  buy:     'bg-green-900/60 text-green-300 border border-green-700/50',
-  sell:    'bg-red-900/60   text-red-300   border border-red-700/50',
-  neutral: 'bg-slate-700/60 text-slate-400 border border-slate-600/50',
-};
-const VOLATILITY_LABELS = { high: 'Alta', medium: 'Moderada', low: 'Baja' };
-
 function fmtValue(v) {
   if (v == null) return '—';
   return typeof v === 'number' ? v.toFixed(2) : v;
@@ -159,26 +152,27 @@ function FearGreedInline() {
 
 // ── Gauge SVG (arc) ───────────────────────────────────────────
 function ScoreGauge({ score, bias, t }) {
-  const pct = Math.max(0, Math.min(100, score * 10));
+  const available = Number.isFinite(score);
+  const pct = available ? Math.max(0, Math.min(100, score * 10)) : 0;
   return (
     <div className="w-full">
       <div className="flex items-end justify-between gap-3">
-        <p className="text-4xl font-bold font-mono leading-none text-white" aria-label={`${t('technical_score_title')}: ${score} ${t('technical_score_out_of_10')}`}>
-          {Number(score).toFixed(1)}<span className="text-lg text-slate-500"> / 10</span>
+        <p className="text-4xl font-bold font-mono leading-none text-white" aria-label={available ? `${t('technical_score_title')}: ${score} ${t('technical_score_out_of_10')}` : t('technical_score_unavailable')}>
+          {available ? Number(score).toFixed(1) : '—'}<span className="text-lg text-slate-500"> / 10</span>
         </p>
         <p className={`text-sm font-semibold ${bias === 'bullish' ? 'text-green-400' : bias === 'bearish' ? 'text-red-400' : 'text-amber-300'}`}>
-          {t(`technical_score_${bias}`)}
+          {t(available ? `technical_score_${bias}` : 'technical_score_unavailable')}
         </p>
       </div>
-      <div className="relative mt-4 h-3 rounded-full bg-gradient-to-r from-red-600 via-amber-400 to-green-500" role="img" aria-label={`${t('technical_score_scale')}: ${score} / 10`}>
-        <span className="absolute -top-1.5 h-6 w-1 rounded-full border border-white bg-slate-950 shadow" style={{ left: `calc(${pct}% - 2px)` }} />
+      <div className="relative mt-4 h-3 rounded-full bg-gradient-to-r from-red-600 via-amber-400 to-green-500" role="img" aria-label={available ? `${t('technical_score_scale')}: ${score} / 10` : t('technical_score_unavailable')}>
+        {available && <span className="absolute -top-1.5 h-6 w-1 rounded-full border border-white bg-slate-950 shadow" style={{ left: `calc(${pct}% - 2px)` }} />}
       </div>
       <div className="mt-2 flex justify-between text-[11px] text-slate-400">
         <span>0 · {t('technical_score_negative')}</span>
         <span>5 · {t('technical_score_middle')}</span>
         <span>10 · {t('technical_score_positive')}</span>
       </div>
-      <p className="mt-3 text-xs leading-5 text-slate-400">{t('technical_score_explainer')}</p>
+      <p className="mt-3 text-xs leading-5 text-slate-400">{t(available ? 'technical_score_explainer' : 'technical_score_missing_data')}</p>
     </div>
   );
 }
@@ -274,7 +268,7 @@ function InfoModal({ info, onClose }) {
 
 // ── Indicator row ─────────────────────────────────────────────
 
-function IndicatorRow({ name, value, signal, label, onClick }) {
+function IndicatorRow({ name, value, included, label, onClick }) {
   const { t } = useTranslation();
   return (
     <button
@@ -285,8 +279,8 @@ function IndicatorRow({ name, value, signal, label, onClick }) {
         {name}
       </span>
       <span className="min-w-0 break-words text-[11px] sm:text-xs font-mono text-white">{value}</span>
-      <span className={`text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${SIGNAL_STYLES[signal] ?? SIGNAL_STYLES.neutral}`}>
-        {signal === 'neutral' ? t('technical_context') : signal === 'buy' ? t('technical_score_positive') : signal === 'sell' ? t('technical_score_negative') : signal}
+      <span className={`text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${included ? 'bg-sky-900/30 text-sky-300 border border-sky-700/30' : 'bg-slate-700/50 text-slate-400 border border-slate-600/30'}`}>
+        {included ? t('technical_in_index') : t('technical_context_only')}
       </span>
       <span className="text-xs text-slate-500 truncate hidden sm:block">{label}</span>
       {/* Info icon */}
@@ -331,52 +325,51 @@ export function AnalysisPanel({ asset, days = 90 }) {
 
   if (!data) return null;
 
-  const { indicators, signals, volatility, summary, meta } = data;
+  const { indicators, volatility, summary, meta } = data;
 
   const volumeRatio = indicators.volume?.ratio;
-  const volumeSignal = 'neutral';
   const rows = [
     {
       name:   'RSI (14)',
       value:  fmtValue(indicators.rsi.current),
-      signal: 'neutral',
-      label:  signals.rsi.label,
+      included: true,
+      label:  t('technical_rsi_row'),
     },
     {
       name:   'MACD (12/26/9)',
       value:  indicators.macd.current ? fmtValue(indicators.macd.current.histogram) : '—',
-      signal: signals.macd.signal,
-      label:  signals.macd.label,
+      included: true,
+      label:  t('technical_macd_row'),
     },
     {
       name:   'EMA 20 / 50',
       value:  indicators.ema20.current != null
         ? `${fmtValue(indicators.ema20.current)} / ${fmtValue(indicators.ema50.current)}`
         : '—',
-      signal: signals.ema.signal,
-      label:  signals.ema.label,
+      included: true,
+      label:  t('technical_ema_row'),
     },
     {
       name:   'Bollinger (20)',
       value:  indicators.bollingerBands.current
         ? fmtValue(indicators.bollingerBands.current.middle)
         : '—',
-      signal: 'neutral',
-      label:  signals.bb.label,
+      included: true,
+      label:  t('technical_bollinger_row'),
     },
     {
       name: 'ADX / DMI (14)',
       value: indicators.adx?.current
         ? `${fmtValue(indicators.adx.current.adx)} · +DI ${fmtValue(indicators.adx.current.pdi)} / −DI ${fmtValue(indicators.adx.current.mdi)}`
         : '—',
-      signal: signals.adx?.signal ?? 'neutral',
-      label: signals.adx?.label ?? 'ADX no disponible',
+      included: true,
+      label: t('technical_adx_row'),
     },
     {
       name: 'Volumen / media 20',
       value: volumeRatio == null ? '—' : `${volumeRatio.toFixed(2)}×`,
-      signal: volumeSignal,
-      label: volumeRatio == null ? 'Volumen no disponible' : `Última vela: ${fmtValue(indicators.volume?.current)} · media: ${fmtValue(indicators.volume?.average)}`,
+      included: false,
+      label: t('technical_volume_row'),
     },
   ];
 
@@ -416,7 +409,7 @@ export function AnalysisPanel({ asset, days = 90 }) {
             {/* Composite technical score and its directional scale */}
             <div className="bg-slate-900/60 border border-slate-700/40 rounded-xl px-4 py-4">
               <p className="text-xs text-slate-400 uppercase tracking-wider mb-3 font-semibold">{t('technical_score_title')}</p>
-              <ScoreGauge score={summary?.score10 ?? 5} bias={summary?.bias ?? 'mixed'} t={t} />
+              <ScoreGauge score={summary?.score10 ?? null} bias={summary?.bias ?? 'unavailable'} t={t} />
             </div>
 
           </div>
@@ -437,6 +430,14 @@ export function AnalysisPanel({ asset, days = 90 }) {
             <summary className="cursor-pointer font-medium text-slate-300">{t('technical_signal_method')}</summary>
             <p className="mt-2 leading-5">{t('technical_signal_method_details')}</p>
             <p className="mt-2 leading-5">{t('technical_score_context_indicators')}</p>
+            <p className="mt-2 leading-5">
+              {t('technical_method_sources')}{' '}
+              <a className="text-sky-300 underline underline-offset-2" href="https://www.tradingview.com/support/solutions/43000502338-relative-strength-index-rsi/" target="_blank" rel="noreferrer">RSI</a>
+              {' · '}
+              <a className="text-sky-300 underline underline-offset-2" href="https://www.tradingview.com/support/solutions/43000502344-moving-average-convergence-divergence-macd-indicator/" target="_blank" rel="noreferrer">MACD</a>
+              {' · '}
+              <a className="text-sky-300 underline underline-offset-2" href="https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-indicators/average-directional-index-adx" target="_blank" rel="noreferrer">ADX/DMI</a>
+            </p>
           </details>
 
           {/* Indicators list below */}
@@ -447,8 +448,8 @@ export function AnalysisPanel({ asset, days = 90 }) {
           <IndicatorRow
             name="ATR (14)"
             value={fmtValue(indicators.atr.current)}
-            signal="neutral"
-            label={`${VOLATILITY_LABELS[volatility.volatility] ?? '—'} · ${volatility.label}`}
+            included={false}
+            label={`${t('technical_atr_row')} · ${volatility.volatility === 'unknown' ? '—' : t(`technical_volatility_${volatility.volatility}`)}`}
             onClick={() => openInfo('ATR (14)')}
           />
         </div>

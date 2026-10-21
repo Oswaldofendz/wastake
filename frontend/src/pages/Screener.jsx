@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { usePrices } from '../hooks/usePrices.js';
 import { useTranslation } from 'react-i18next';
+import { getAssetGroup } from '../data/assetSectors.js';
 
 // ─── Helpers de formato ───────────────────────────────────────────────────────
 function fmtPrice(n) {
@@ -65,6 +66,12 @@ const TYPE_COLORS = {
   index:     'bg-blue-900/50 text-blue-300 border-blue-700/40',
   bond:      'bg-cyan-900/50 text-cyan-300 border-cyan-700/40',
 };
+
+const GROUP_ORDER = [
+  'technology', 'communication', 'discretionary', 'financials', 'healthcare',
+  'staples', 'industrials', 'energy', 'growth', 'broad_market', 'crypto',
+  'bonds', 'commodities', 'forex', 'indices', 'unclassified', 'other',
+];
 
 function AssetAvatar({ asset }) {
   if (asset.image) {
@@ -194,6 +201,7 @@ export function Screener() {
   const [showOnlyPositive, setShowOnlyPositive] = useState(false);
   const [showOnlyNegative, setShowOnlyNegative] = useState(false);
   const [activePreset, setActivePreset] = useState(null);
+  const [collapsedGroups, setCollapsedGroups] = useState({});
 
   function applyPreset(preset) {
     if (activePreset === preset.id) {
@@ -265,6 +273,18 @@ export function Screener() {
     return assets;
   }, [allAssets, search, typeFilter, changeFilter, sortBy, showOnlyPositive, showOnlyNegative]);
 
+  const groupedAssets = useMemo(() => {
+    const groups = new Map();
+    filtered.forEach(asset => {
+      const id = getAssetGroup(asset);
+      if (!groups.has(id)) groups.set(id, []);
+      groups.get(id).push(asset);
+    });
+    return [...groups.entries()]
+      .sort(([a], [b]) => GROUP_ORDER.indexOf(a) - GROUP_ORDER.indexOf(b))
+      .map(([id, assets]) => ({ id, assets }));
+  }, [filtered]);
+
   // ── Stats rápidas ────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
     const withPrice = allAssets.filter(a => a.price != null && a.change24h != null);
@@ -289,6 +309,7 @@ export function Screener() {
               {(isStale || error) && <span className="ml-2 text-amber-500">⚠ {t('screener_stale_data')}</span>}
             </p>
             <p className="text-sm text-slate-400 mt-2">{t('screener_intro')}</p>
+            <p className="text-xs text-slate-500 mt-1">{t('screener_groups_help')}</p>
           </div>
         </div>
         {error && allAssets.length > 0 && (
@@ -458,8 +479,22 @@ export function Screener() {
           </div>
         ) : (
           <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 360px)' }}>
-            {filtered.map((asset, i) => (
-              <AssetRow key={asset.id} asset={asset} rank={i + 1} t={t} />
+            {groupedAssets.map(({ id, assets }) => (
+              <section key={id} className="border-b border-slate-700/40 last:border-0">
+                <button
+                  type="button"
+                  aria-expanded={!collapsedGroups[id]}
+                  onClick={() => setCollapsedGroups(current => ({ ...current, [id]: !current[id] }))}
+                  className="sticky top-0 z-10 flex min-h-11 w-full items-center gap-2 border-b border-slate-700/30 bg-slate-800/95 px-4 py-2 text-left text-sm font-semibold text-slate-200 backdrop-blur hover:bg-slate-700/95"
+                >
+                  <span className={`text-slate-400 transition-transform ${collapsedGroups[id] ? '-rotate-90' : ''}`} aria-hidden="true">⌄</span>
+                  <span className="flex-1">{t(`screener_group_${id}`)}</span>
+                  <span className="rounded-full bg-slate-700/70 px-2 py-0.5 text-xs font-medium text-slate-300">{assets.length}</span>
+                </button>
+                {!collapsedGroups[id] && assets.map(asset => (
+                  <AssetRow key={asset.id} asset={asset} rank={filtered.findIndex(item => item.id === asset.id) + 1} t={t} />
+                ))}
+              </section>
             ))}
           </div>
         )}

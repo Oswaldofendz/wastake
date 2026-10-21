@@ -1,4 +1,4 @@
-const CACHE = 'wastake-v4';
+const CACHE = 'wastake-v5';
 const PRECACHE = ['/', '/index.html'];
 
 // Instalación: pre-cachear el shell de la app
@@ -23,6 +23,7 @@ self.addEventListener('fetch', e => {
 
   // Pasar directamente: API backend, Supabase, fonts
   if (
+    url.origin !== self.location.origin ||
     url.pathname.startsWith('/api/') ||
     url.hostname.includes('supabase') ||
     url.hostname.includes('fonts.googleapis') ||
@@ -33,8 +34,27 @@ self.addEventListener('fetch', e => {
 
   // Cache-first para assets del frontend (js, css, images)
   if (e.request.method === 'GET') {
+    // Check the app shell on the network first so a deployment becomes visible
+    // on the next navigation; fall back to the cached page when offline.
+    if (e.request.mode === 'navigate') {
+      e.respondWith(
+        fetch(e.request)
+          .then(res => {
+            if (res.ok) {
+              const clone = res.clone();
+              caches.open(CACHE).then(c => c.put(e.request, clone));
+            }
+            return res;
+          })
+          .catch(async () => (await caches.match(e.request, { cacheName: CACHE }))
+            ?? (await caches.match('/index.html', { cacheName: CACHE }))
+            ?? Response.error())
+      );
+      return;
+    }
+
     e.respondWith(
-      caches.match(e.request).then(cached => {
+      caches.match(e.request, { cacheName: CACHE }).then(cached => {
         if (cached) return cached;
         return fetch(e.request).then(res => {
           if (res.ok && e.request.url.startsWith(self.location.origin)) {

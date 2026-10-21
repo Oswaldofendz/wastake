@@ -231,8 +231,8 @@ function computeOverallSignal(signals, indicators, lastPrice) {
   const availableWeight = available.reduce((sum, item) => sum + item.weight, 0);
   const score10 = availableWeight
     ? round(available.reduce((sum, item) => sum + item.score * item.weight, 0) / availableWeight, 1)
-    : 5;
-  const bias = score10 <= 4 ? 'bearish' : score10 >= 6 ? 'bullish' : 'mixed';
+    : null;
+  const bias = score10 == null ? 'unavailable' : score10 <= 4 ? 'bearish' : score10 >= 6 ? 'bullish' : 'mixed';
 
   return {
     overall,

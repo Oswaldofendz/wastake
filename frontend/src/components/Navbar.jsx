@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NotificationBell } from './NotificationBell.jsx';
 
@@ -59,6 +59,14 @@ export function Navbar({
     onNavigate?.(id);
     setMenuOpen(false);
   }
+
+  useEffect(() => {
+    const closeOnEscape = event => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, []);
 
   return (
     <>
@@ -171,6 +179,8 @@ export function Navbar({
             onClick={() => setMenuOpen(o => !o)}
             className="lg:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-label="Menú"
+            aria-expanded={menuOpen}
+            aria-controls="mobile-main-navigation"
           >
             {menuOpen
               ? <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="16" y2="16"/><line x1="16" y1="4" x2="4" y2="16"/></svg>
@@ -182,10 +192,10 @@ export function Navbar({
 
       {/* Mobile dropdown menu */}
       {menuOpen && (
-        <div className="lg:hidden fixed inset-0 z-30 top-14" onClick={() => setMenuOpen(false)}>
+        <div className="lg:hidden fixed inset-0 z-30 top-[72px]" onClick={() => setMenuOpen(false)}>
           <div className="absolute inset-0 bg-black/50" />
           <div className="absolute top-0 left-0 right-0 bg-slate-900 border-b border-slate-700/50 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <nav className="px-4 py-3 space-y-3" aria-label={t('nav_label')}>
+            <nav id="mobile-main-navigation" className="px-4 py-3 space-y-3" aria-label={t('nav_label')}>
               {NAV_GROUPS.map(group => (
                 <div key={group.id}>
                   <p className="px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{t(group.titleKey)}</p>

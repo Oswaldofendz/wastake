@@ -145,7 +145,7 @@ export function AuthModal({ onSignIn, onSignUp, onBackToAnalysis }) {
 
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center z-50 px-4"
+      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto px-4 pt-16 pb-8 sm:py-8"
       style={{ background: 'linear-gradient(160deg, #090909 0%, #0c0c0d 40%, #09090a 100%)' }}
     >
       {/* Fondo decorativo con glow teal sutil */}
@@ -154,7 +154,17 @@ export function AuthModal({ onSignIn, onSignUp, onBackToAnalysis }) {
         style={{ background: 'radial-gradient(ellipse, rgba(46,196,200,0.06) 0%, transparent 70%)' }}
       />
 
-      <div className="w-full max-w-md relative">
+      <div className="w-full max-w-md relative my-auto">
+
+        {onBackToAnalysis && (
+          <button
+            type="button"
+            onClick={onBackToAnalysis}
+            className="fixed left-4 top-4 z-10 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-600 bg-slate-900/95 px-4 text-sm font-semibold text-white shadow-lg transition-colors hover:border-slate-400 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300"
+          >
+            {t('auth_back_to_analysis')}
+          </button>
+        )}
 
         {/* Logo + titulo */}
         <div className="text-center mb-8">
@@ -175,19 +185,9 @@ export function AuthModal({ onSignIn, onSignUp, onBackToAnalysis }) {
         </div>
 
         {onBackToAnalysis && (
-          <div className="mb-4 rounded-xl border border-white/10 bg-white/[3%] px-4 py-3 text-center">
-            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              {t('auth_required_note')}
-            </p>
-            <button
-              type="button"
-              onClick={onBackToAnalysis}
-              className="mt-2 inline-flex min-h-10 items-center justify-center rounded-lg px-3 text-sm font-semibold transition-colors hover:bg-white/10"
-              style={{ color: 'var(--accent-silver)' }}
-            >
-              {t('auth_back_to_analysis')}
-            </button>
-          </div>
+          <p className="mb-4 text-center text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+            {t('auth_required_note')}
+          </p>
         )}
 
         {/* Card principal */}
