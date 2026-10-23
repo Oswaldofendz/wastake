@@ -216,9 +216,20 @@ marketRouter.get('/translate', async (req, res) => {
         timeout: 6000,
       }
     );
-    const result = { translatedText: data.responseData?.translatedText ?? q };
-    toCache(cacheKey, result, TTL);
-    res.json(result);
+    const translatedText = String(data.responseData?.translatedText ?? '').trim();
+    const translationSucceeded = data.responseStatus === 200
+      && translatedText
+      && translatedText.normalize('NFKC').toLocaleLowerCase() !== String(q).trim().normalize('NFKC').toLocaleLowerCase();
+
+    if (translationSucceeded) {
+      const result = { translatedText };
+      toCache(cacheKey, result, TTL);
+      return res.json(result);
+    }
+
+    // Do not cache the source text as if it were a translation. A temporary
+    // upstream failure must not pin an English headline for the whole TTL.
+    res.json({ translatedText: q });
   } catch {
     res.json({ translatedText: q }); // devuelve original si falla
   }
