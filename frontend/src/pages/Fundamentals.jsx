@@ -19,9 +19,9 @@ const COPY = {
 };
 
 const ANALYSIS_LABELS = {
-  es: { aiReady: 'Análisis contextual con IA', aiPartial: 'Análisis parcial; el resto usa reglas base', aiMissing: 'IA no configurada en el backend', aiUnavailable: 'IA temporalmente no disponible; se muestran reglas base', original: 'Titular original', category: 'Tema', confidence: 'Confianza del análisis', horizon: 'Horizonte', scenario: 'Escenarios condicionales', bull: 'Si aparecen señales favorables', base: 'Escenario central', bear: 'Si aparecen señales adversas', evidence: 'Evidencia textual', limitation: 'Límites y dudas', depthArticle: 'Texto del artículo consultado', depthRss: 'Análisis basado en extracto RSS', depthTitle: 'Solo titular disponible', provider: 'Proveedor', relevanceMeter: 'Indicador de relevancia estimada', factors: 'Componentes de la relevancia', severity: 'Gravedad 25%', assetLink: 'Relación con el activo 25%', surprise: 'Sorpresa 20%', persistence: 'Persistencia 15%', evidenceFactor: 'Evidencia 15%', translationMissing: 'La IA no pudo traducir este titular' },
-  pt: { aiReady: 'Análise contextual com IA', aiPartial: 'Análise parcial; os restantes usam regras base', aiMissing: 'IA não configurada no backend', aiUnavailable: 'IA temporariamente indisponível; a mostrar regras base', original: 'Título original', category: 'Tema', confidence: 'Confiança da análise', horizon: 'Horizonte', scenario: 'Cenários condicionais', bull: 'Se surgirem sinais favoráveis', base: 'Cenário central', bear: 'Se surgirem sinais adversos', evidence: 'Evidência textual', limitation: 'Limites e dúvidas', depthArticle: 'Texto do artigo consultado', depthRss: 'Análise baseada no excerto RSS', depthTitle: 'Apenas o título disponível', provider: 'Fornecedor', relevanceMeter: 'Indicador de relevância estimada', factors: 'Componentes da relevância', severity: 'Gravidade 25%', assetLink: 'Relação com o ativo 25%', surprise: 'Surpresa 20%', persistence: 'Persistência 15%', evidenceFactor: 'Evidência 15%', translationMissing: 'A IA não conseguiu traduzir este título' },
-  en: { aiReady: 'Contextual AI analysis', aiPartial: 'Partial analysis; remaining items use baseline rules', aiMissing: 'AI is not configured on the backend', aiUnavailable: 'AI is temporarily unavailable; showing baseline rules', original: 'Original headline', category: 'Topic', confidence: 'Analysis confidence', horizon: 'Horizon', scenario: 'Conditional scenarios', bull: 'If favorable signals emerge', base: 'Central scenario', bear: 'If adverse signals emerge', evidence: 'Text evidence', limitation: 'Limits and uncertainty', depthArticle: 'Article text retrieved', depthRss: 'Analysis based on RSS excerpt', depthTitle: 'Headline only available', provider: 'Provider', relevanceMeter: 'Estimated relevance meter', factors: 'Relevance components', severity: 'Severity 25%', assetLink: 'Asset link 25%', surprise: 'Surprise 20%', persistence: 'Persistence 15%', evidenceFactor: 'Evidence 15%', translationMissing: 'AI could not translate this headline' },
+  es: { aiReady: 'Análisis contextual con IA', aiPartial: 'Análisis contextual: {{analyzed}} de {{total}} noticias; el resto usa reglas preliminares', aiMissing: 'IA no configurada en el backend', aiUnavailable: 'IA temporalmente no disponible; se muestran reglas base', original: 'Titular original', category: 'Tema', confidence: 'Confianza del análisis', horizon: 'Horizonte', scenario: 'Escenarios posibles · condicionales, no pronósticos', bull: 'Si aparecen señales favorables', base: 'Escenario central', bear: 'Si aparecen señales adversas', evidence: 'Evidencia textual', limitation: 'Límites y dudas', depthArticle: 'Base: texto del artículo · IA contextual', depthRss: 'Base: extracto RSS · IA contextual', depthTitle: 'Base: solo el titular · IA contextual', rulesOnly: 'Lectura preliminar: reglas del titular; no es análisis contextual', provider: 'Proveedor', relevanceMeter: 'Indicador de relevancia estimada', factors: 'Componentes de la relevancia', severity: 'Gravedad 25%', assetLink: 'Relación con el activo 25%', surprise: 'Sorpresa 20%', persistence: 'Persistencia 15%', evidenceFactor: 'Evidencia 15%', translationMissing: 'La IA no pudo traducir este titular' },
+  pt: { aiReady: 'Análise contextual com IA', aiPartial: 'Análise contextual: {{analyzed}} de {{total}} notícias; as restantes usam regras preliminares', aiMissing: 'IA não configurada no backend', aiUnavailable: 'IA temporariamente indisponível; a mostrar regras base', original: 'Título original', category: 'Tema', confidence: 'Confiança da análise', horizon: 'Horizonte', scenario: 'Cenários possíveis · condicionais, não previsões', bull: 'Se surgirem sinais favoráveis', base: 'Cenário central', bear: 'Se surgirem sinais adversos', evidence: 'Evidência textual', limitation: 'Limites e dúvidas', depthArticle: 'Base: texto do artigo · IA contextual', depthRss: 'Base: excerto RSS · IA contextual', depthTitle: 'Base: apenas o título · IA contextual', rulesOnly: 'Leitura preliminar: regras do título; não é análise contextual', provider: 'Fornecedor', relevanceMeter: 'Indicador de relevância estimada', factors: 'Componentes da relevância', severity: 'Gravidade 25%', assetLink: 'Relação com o ativo 25%', surprise: 'Surpresa 20%', persistence: 'Persistência 15%', evidenceFactor: 'Evidência 15%', translationMissing: 'A IA não conseguiu traduzir este título' },
+  en: { aiReady: 'Contextual AI analysis', aiPartial: 'Contextual analysis: {{analyzed}} of {{total}} stories; the rest use preliminary rules', aiMissing: 'AI is not configured on the backend', aiUnavailable: 'AI is temporarily unavailable; showing baseline rules', original: 'Original headline', category: 'Topic', confidence: 'Analysis confidence', horizon: 'Horizon', scenario: 'Possible scenarios · conditional, not forecasts', bull: 'If favorable signals emerge', base: 'Central scenario', bear: 'If adverse signals emerge', evidence: 'Text evidence', limitation: 'Limits and uncertainty', depthArticle: 'Basis: article text · contextual AI', depthRss: 'Basis: RSS excerpt · contextual AI', depthTitle: 'Basis: headline only · contextual AI', rulesOnly: 'Preliminary reading: headline rules; not contextual analysis', provider: 'Provider', relevanceMeter: 'Estimated relevance meter', factors: 'Relevance components', severity: 'Severity 25%', assetLink: 'Asset link 25%', surprise: 'Surprise 20%', persistence: 'Persistence 15%', evidenceFactor: 'Evidence 15%', translationMissing: 'AI could not translate this headline' },
 };
 
 const FALLBACK_LABELS = {
@@ -108,6 +108,7 @@ export function Fundamentals() {
   const [newsError, setNewsError] = useState('');
   const [priceError, setPriceError] = useState('');
   const [aiStatus, setAiStatus] = useState('');
+  const [aiCoverage, setAiCoverage] = useState({ analyzed: 0, total: 0 });
 
   const asset = assets.find(item => item.id === assetId) ?? assets[0];
   const selectedWindow = WINDOWS.find(window => window.id === periodId) ?? WINDOWS[0];
@@ -122,6 +123,7 @@ export function Fundamentals() {
       setNewsError('');
       setPriceError('');
       setAiStatus('');
+      setAiCoverage({ analyzed: 0, total: 0 });
       const type = getAnalysisType(asset);
       const [newsResult, candleResult] = await Promise.allSettled([
         fetchFundamentalsNews(asset, type, lang),
@@ -132,9 +134,14 @@ export function Fundamentals() {
       if (newsResult.status === 'fulfilled') {
         setArticles(Array.isArray(newsResult.value?.news) ? newsResult.value.news : []);
         setAiStatus(newsResult.value?.aiStatus ?? '');
+        setAiCoverage({
+          analyzed: Number(newsResult.value?.analyzedCount) || 0,
+          total: Number(newsResult.value?.count) || newsResult.value?.news?.length || 0,
+        });
       } else {
         setArticles([]);
         setAiStatus('unavailable');
+        setAiCoverage({ analyzed: 0, total: 0 });
         setNewsError('No se pudieron cargar las noticias de este activo.');
       }
       if (candleResult.status === 'fulfilled') {
@@ -290,7 +297,7 @@ export function Fundamentals() {
         <div className="flex items-center justify-between gap-3 border-b border-slate-700/50 px-4 py-3">
           <h2 className="font-semibold">{t.list} · {asset?.name ?? t.asset}</h2>
           <div className="flex flex-wrap items-center justify-end gap-3 text-xs">
-            <span className={aiStatus === 'ready' ? 'text-emerald-400' : 'text-amber-400'}>{aiStatus === 'ready' ? analysisLabels.aiReady : aiStatus === 'partial' ? analysisLabels.aiPartial : aiStatus === 'not_configured' ? analysisLabels.aiMissing : aiStatus === 'unavailable' ? analysisLabels.aiUnavailable : ''}</span>
+            <span className={aiStatus === 'ready' ? 'text-emerald-400' : 'text-amber-400'}>{aiStatus === 'ready' ? analysisLabels.aiReady : aiStatus === 'partial' ? analysisLabels.aiPartial.replace('{{analyzed}}', aiCoverage.analyzed).replace('{{total}}', aiCoverage.total) : aiStatus === 'not_configured' ? analysisLabels.aiMissing : aiStatus === 'unavailable' ? analysisLabels.aiUnavailable : ''}</span>
             <span className="text-slate-500">{periodArticles.length} de {articles.length} {t.available}</span>
           </div>
         </div>
@@ -311,6 +318,9 @@ export function Fundamentals() {
               const impactCopy = contextual ? (article.mechanism || (article.impact === 'high' ? t.highExplanation : article.impact === 'medium' ? t.mediumExplanation : t.lowExplanation)) : analysisLabels.preliminaryWhy;
               const projection = contextual ? (article.watch || (article.sentiment === 'positive' ? t.projectionPositive : article.sentiment === 'negative' ? t.projectionNegative : t.projectionNeutral)) : analysisLabels.preliminaryWatch;
               const relevanceBand = relevance >= 70 ? 'high' : relevance >= 40 ? 'medium' : 'low';
+              const analysisBasis = contextual
+                ? (article.analysisDepth === 'article' ? analysisLabels.depthArticle : article.analysisDepth === 'rss' ? analysisLabels.depthRss : analysisLabels.depthTitle)
+                : analysisLabels.rulesOnly;
               const relevanceLabel = contextual
                 ? (relevanceBand === 'high' ? t.high : relevanceBand === 'medium' ? t.medium : t.low)
                 : analysisLabels.preliminary;
@@ -332,6 +342,7 @@ export function Fundamentals() {
                     {title !== article.title && <p className="mt-1 text-xs text-slate-500">{analysisLabels.original}: {article.title}</p>}
                     {title === article.title && lang !== 'en' && <p className="mt-1 text-xs text-amber-400">{translating ? analysisLabels.translationLoading : analysisLabels.translationMissing}</p>}
                     <div className="mt-4 rounded-lg border border-slate-700/60 bg-slate-950/40 p-3">
+                      <p className={`mb-3 text-[11px] ${contextual ? 'text-sky-300' : 'text-amber-300'}`} role="note">{analysisBasis}</p>
                       <div className="mb-2 flex items-center justify-between gap-3 text-xs">
                         <span className="font-semibold text-slate-200">{contextual ? t.impact : analysisLabels.preliminaryImpact}: {relevanceLabel}</span>
                         <span className="text-slate-500">{relevance}/100</span>

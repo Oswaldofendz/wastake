@@ -2,7 +2,7 @@ import axios from 'axios';
 import crypto from 'node:crypto';
 import { callLLM } from './llmService.js';
 
-const VERSION = 'event-analysis-v1';
+const VERSION = 'event-analysis-v2';
 const CACHE_TTL = 4 * 60 * 60 * 1000;
 const analysisCache = new Map();
 const ARTICLE_HOSTS = [
@@ -107,12 +107,14 @@ function validateItem(item, index) {
   const mechanism = safeText(item.mechanism);
   const watch = safeText(item.watch);
   if (!localizedTitle || !summary || !mechanism || !watch) return null;
-  const scenarios = {
+  // Scenarios are optional: weak or generic scenarios should not invalidate an
+  // otherwise useful analysis, and must never be presented as a forecast.
+  const scenarioValues = {
     positive: safeText(item.scenarios?.positive, 350),
     base: safeText(item.scenarios?.base, 350),
     negative: safeText(item.scenarios?.negative, 350),
   };
-  if (!scenarios.positive || !scenarios.base || !scenarios.negative) return null;
+  const scenarios = Object.values(scenarioValues).every(Boolean) ? scenarioValues : null;
   const relevance = Math.round(Object.entries(FACTOR_WEIGHTS)
     .reduce((total, [key, weight]) => total + factors[key] * weight, 0));
   const impact = relevance >= 70 ? 'high' : relevance >= 40 ? 'medium' : 'low';
@@ -148,7 +150,7 @@ function buildPrompt(articles, lang) {
 
 Write all user-facing fields in ${langName}. Preserve evidenceQuote verbatim in the article's original language. Return strict JSON only: {"articles":[...]} with exactly one item per supplied article and its integer index. Keep each field concise: summary ≤180 characters, mechanism ≤220, each scenario ≤130, watch ≤180, evidenceQuote ≤150, limitations ≤160. Use one short sentence per field.
 
-For each article return: index, localizedTitle (faithful translation, no new claims), category (short localized label), sentiment (positive|negative|neutral, direction conditional on the evidence), direction (integer -100 to 100; magnitude is directional confidence, not expected return), confidence (0-100, confidence in interpretation), factors (an object with exactly these camelCase numeric keys, each an integer from 0 to 100: severity, assetLink, surprise, persistence, evidence), summary (what happened), mechanism (how the event could affect the asset, or why the link is weak), horizon (near/medium/long term, localized), scenarios (positive/base/negative conditional scenarios, not forecasts), watch (specific confirming/disconfirming data or event), evidenceQuote (one short exact quote from the supplied source text; empty if no usable source text), limitations (missing context, source caveats, or uncertainty).
+For each article return: index, localizedTitle (faithful translation, no new claims), category (short localized label), sentiment (positive|negative|neutral, direction conditional on the evidence), direction (integer -100 to 100; magnitude is directional confidence, not expected return), confidence (0-100, confidence in interpretation), factors (an object with exactly these camelCase numeric keys, each an integer from 0 to 100: severity, assetLink, surprise, persistence, evidence), summary (what happened), mechanism (how the event could affect the asset, or why the link is weak), horizon (near/medium/long term, localized), scenarios (either null or positive/base/negative conditional scenarios, not forecasts). Return null when the supplied evidence cannot support three distinct, event-specific scenarios. Never use generic claims such as "the news drives a rally", "the market stays unchanged", or "the news causes a selloff". Scenarios must describe conditional pathways grounded in facts from this story and observations that would distinguish them. Do not claim causality or predict a price direction. Also return watch (specific confirming/disconfirming data or event), evidenceQuote (one short exact quote from the supplied source text; empty if no usable source text), limitations (missing context, source caveats, or uncertainty).
 
 Scoring calibration: routine commentary and generic market roundups should have low severity and relevance. A company/asset-specific material event can score higher when the text supports it. Never score a story highly only because the headline uses dramatic language. A price move after publication is not proof the story caused it.
 
