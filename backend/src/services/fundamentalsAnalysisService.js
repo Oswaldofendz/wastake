@@ -2,8 +2,9 @@ import axios from 'axios';
 import crypto from 'node:crypto';
 import { callLLM } from './llmService.js';
 
-const VERSION = 'event-analysis-v2';
+const VERSION = 'event-analysis-v3';
 const CACHE_TTL = 4 * 60 * 60 * 1000;
+const MAX_REPAIRS_PER_REQUEST = 3;
 const analysisCache = new Map();
 const ARTICLE_HOSTS = [
   'coindesk.com', 'cointelegraph.com', 'finance.yahoo.com', 'reuters.com',
@@ -202,26 +203,70 @@ export async function enrichFundamentalsNews(news, lang = 'es') {
   try {
     const cacheItems = {};
     let analyzedCount = 0;
+    let repairAttempts = 0;
     for (let start = 0; start < eligible.length; start += 5) {
       const batch = eligible.slice(start, start + 5);
+      let result;
       try {
-        const result = await callLLM(buildPrompt(batch.map(({ article }) => article), locale), {
+        result = await callLLM(buildPrompt(batch.map(({ article }) => article), locale), {
           jsonMode: true,
           maxTokens: 2800,
           temperature: 0.2,
           tag: '[fundamentals-events]',
         });
-        const parsed = JSON.parse(result.text);
-        const modelItems = Array.isArray(parsed.articles) ? parsed.articles : [];
-        batch.forEach(({ article, index }, position) => {
-          const analysis = validateItem(modelItems.find(item => Number(item.index) === position), position);
-          if (!analysis) return;
-          cacheItems[index] = { ...analysis, analysisDepth: article.analysisDepth, analysisProvider: result.provider, analysisVersion: VERSION };
-          Object.assign(article, cacheItems[index]);
-          analyzedCount++;
-        });
       } catch (error) {
         console.warn(`[fundamentals-events] AI batch ${Math.floor(start / 5) + 1} unavailable: ${error.message}`);
+        continue;
+      }
+
+      let modelItems = [];
+      try {
+        const parsed = JSON.parse(result.text);
+        modelItems = Array.isArray(parsed.articles) ? parsed.articles : [];
+      } catch {
+        // A malformed or truncated batch can still be recovered per article below.
+      }
+
+      for (let position = 0; position < batch.length; position++) {
+        const { article, index } = batch[position];
+        let analysis = validateItem(
+          modelItems.find(item => Number(item.index) === position),
+          position,
+        );
+        let provider = result.provider;
+
+        // A partial/malformed batch should not force every missing story onto
+        // keyword rules. Retry only a few failed items individually to keep
+        // additional provider calls bounded.
+        if (!analysis && repairAttempts < MAX_REPAIRS_PER_REQUEST) {
+          repairAttempts++;
+          try {
+            const repaired = await callLLM(buildPrompt([article], locale), {
+              jsonMode: true,
+              maxTokens: 1200,
+              temperature: 0.2,
+              tag: '[fundamentals-events-repair]',
+            });
+            const repairedItems = JSON.parse(repaired.text).articles;
+            const candidate = Array.isArray(repairedItems)
+              ? repairedItems.find(item => Number(item.index) === 0)
+              : null;
+            analysis = validateItem(candidate, 0);
+            if (analysis) provider = repaired.provider;
+          } catch (error) {
+            console.warn(`[fundamentals-events] Single-story recovery unavailable: ${error.message}`);
+          }
+        }
+
+        if (!analysis) continue;
+        cacheItems[index] = {
+          ...analysis,
+          analysisDepth: article.analysisDepth,
+          analysisProvider: provider,
+          analysisVersion: VERSION,
+        };
+        Object.assign(article, cacheItems[index]);
+        analyzedCount++;
       }
     }
     for (const { article } of eligible) delete article.analysisText;
