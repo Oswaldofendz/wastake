@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import axios from 'axios';
+import { callLLM } from '../services/llmService.js';
 
 export const marketRouter = Router();
 
@@ -227,7 +228,29 @@ marketRouter.get('/translate', async (req, res) => {
       return res.json(result);
     }
 
-    // Do not cache the source text as if it were a translation. A temporary
+    // MyMemory can return the source unchanged when its shared free quota is
+    // unavailable. Try the already-configured free AI providers before giving
+    // up, but keep the task strictly to translation (no added analysis).
+    try {
+      const languageNames = { en: 'English', es: 'Spanish', pt: 'Portuguese' };
+      const aiResult = await callLLM(
+        `Translate this short financial-news headline faithfully from ${languageNames[from]} to ${languageNames[to]}. Preserve names, numbers, and uncertainty. Do not add facts or commentary. Return strict JSON only: {"translatedText":"..."}. Text: ${JSON.stringify(String(q).slice(0, 500))}`,
+        { jsonMode: true, maxTokens: 220, temperature: 0, tag: '[headline-translation]' },
+      );
+      const parsed = JSON.parse(aiResult.text);
+      const aiTranslation = String(parsed.translatedText ?? '').trim();
+      const aiSucceeded = aiTranslation
+        && aiTranslation.normalize('NFKC').toLocaleLowerCase() !== String(q).trim().normalize('NFKC').toLocaleLowerCase();
+      if (aiSucceeded) {
+        const result = { translatedText: aiTranslation };
+        toCache(cacheKey, result, TTL);
+        return res.json(result);
+      }
+    } catch (error) {
+      console.warn(`[translate] AI fallback unavailable: ${error.message}`);
+    }
+
+    // Never cache the source text as if it were translated. A temporary
     // upstream failure must not pin an English headline for the whole TTL.
     res.json({ translatedText: q });
   } catch {
