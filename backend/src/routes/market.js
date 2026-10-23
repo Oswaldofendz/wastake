@@ -209,6 +209,7 @@ marketRouter.get('/translate', async (req, res) => {
   const cached = fromCache(cacheKey, TTL);
   if (cached) return res.json(cached);
 
+  let translatedText = '';
   try {
     const { data } = await axios.get(
       'https://api.mymemory.translated.net/get',
@@ -217,20 +218,19 @@ marketRouter.get('/translate', async (req, res) => {
         timeout: 6000,
       }
     );
-    const translatedText = String(data.responseData?.translatedText ?? '').trim();
+    const candidate = String(data.responseData?.translatedText ?? '').trim();
     const translationSucceeded = data.responseStatus === 200
-      && translatedText
-      && translatedText.normalize('NFKC').toLocaleLowerCase() !== String(q).trim().normalize('NFKC').toLocaleLowerCase();
+      && candidate
+      && candidate.normalize('NFKC').toLocaleLowerCase() !== String(q).trim().normalize('NFKC').toLocaleLowerCase();
+    if (translationSucceeded) translatedText = candidate;
+  } catch (error) {
+    // The free translation provider may time out or reject server requests.
+    // Continue to the configured AI providers instead of skipping the backup.
+    console.warn(`[translate] MyMemory unavailable (${error.response?.status ?? error.code ?? 'network error'}); trying AI fallback`);
+  }
 
-    if (translationSucceeded) {
-      const result = { translatedText };
-      toCache(cacheKey, result, TTL);
-      return res.json(result);
-    }
-
-    // MyMemory can return the source unchanged when its shared free quota is
-    // unavailable. Try the already-configured free AI providers before giving
-    // up, but keep the task strictly to translation (no added analysis).
+  if (!translatedText) {
+    // Keep the task strictly to translation; never add analysis or facts.
     try {
       const languageNames = { en: 'English', es: 'Spanish', pt: 'Portuguese' };
       const aiResult = await callLLM(
@@ -238,24 +238,24 @@ marketRouter.get('/translate', async (req, res) => {
         { jsonMode: true, maxTokens: 220, temperature: 0, tag: '[headline-translation]' },
       );
       const parsed = JSON.parse(aiResult.text);
-      const aiTranslation = String(parsed.translatedText ?? '').trim();
-      const aiSucceeded = aiTranslation
-        && aiTranslation.normalize('NFKC').toLocaleLowerCase() !== String(q).trim().normalize('NFKC').toLocaleLowerCase();
-      if (aiSucceeded) {
-        const result = { translatedText: aiTranslation };
-        toCache(cacheKey, result, TTL);
-        return res.json(result);
+      const candidate = String(parsed.translatedText ?? '').trim();
+      if (candidate && candidate.normalize('NFKC').toLocaleLowerCase() !== String(q).trim().normalize('NFKC').toLocaleLowerCase()) {
+        translatedText = candidate;
       }
     } catch (error) {
       console.warn(`[translate] AI fallback unavailable: ${error.message}`);
     }
-
-    // Never cache the source text as if it were translated. A temporary
-    // upstream failure must not pin an English headline for the whole TTL.
-    res.json({ translatedText: q });
-  } catch {
-    res.json({ translatedText: q }); // devuelve original si falla
   }
+
+  if (translatedText) {
+    const result = { translatedText };
+    toCache(cacheKey, result, TTL);
+    return res.json(result);
+  }
+
+  // Never cache the source text as if it were translated. A temporary
+  // upstream failure must not pin an English headline for the whole TTL.
+  res.json({ translatedText: q });
 });
 
 // ── Whale Alerts (BTC mempool grandes txs) ────────────────────
