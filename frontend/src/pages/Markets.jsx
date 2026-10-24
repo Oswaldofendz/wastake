@@ -1,18 +1,16 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FearGreedGauge }    from '../components/FearGreedGauge.jsx';
-import { BTCDominance }      from '../components/BTCDominance.jsx';
 import { MarketHeatmap }     from '../components/MarketHeatmap.jsx';
 import { CorrelationMatrix } from '../components/CorrelationMatrix.jsx';
 import { WhaleAlerts }       from '../components/WhaleAlerts.jsx';
 import { EconomicCalendar }  from '../components/EconomicCalendar.jsx';
 import { MacroRatesTable }   from '../components/MacroRatesTable.jsx';
+import { EventCalendarChart } from '../components/EventCalendarChart.jsx';
 
 const TABS = [
   { id: 'overview', key: 'markets_tab_overview' },
   { id: 'heatmap', key: 'markets_tab_heatmap' },
-  { id: 'correlations', key: 'markets_tab_correlations' },
-  { id: 'calendar', key: 'markets_tab_calendar' },
 ];
 
 export function Markets({ allAssets }) {
@@ -48,20 +46,29 @@ export function Markets({ allAssets }) {
       </div>
 
       <div className="flex-1 p-4 space-y-4">
-        {/* ── Overview ─────────────────────────────────────────── */}
+        {/* ── Events & calendar ────────────────────────────────── */}
         {tab === 'overview' && (
           <>
-            {/* F&G + BTC Dom side by side */}
+            {/* Sentimiento + contexto del calendario */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FearGreedGauge />
-              <BTCDominance />
+              <EventCalendarChart />
             </div>
 
-            {/* Whale Alerts */}
-            <WhaleAlerts />
+            <EconomicCalendar />
+            <MacroRatesTable />
 
-            {/* Quick heatmap preview */}
-            <MarketHeatmap assets={allAssets} />
+            <details className="rounded-xl border border-white/[8%] bg-[#111318]/70">
+              <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-200">
+                {t('correlation_context_title')}
+              </summary>
+              <div className="px-4 pb-4">
+                <p className="mb-3 text-xs leading-relaxed text-slate-400">{t('correlation_context_description')}</p>
+                <CorrelationMatrix />
+              </div>
+            </details>
+
+            <WhaleAlerts />
           </>
         )}
 
@@ -70,18 +77,6 @@ export function Markets({ allAssets }) {
           <MarketHeatmap assets={allAssets} />
         )}
 
-        {/* ── Correlations ─────────────────────────────────────── */}
-        {tab === 'correlations' && (
-          <CorrelationMatrix />
-        )}
-
-        {/* ── Calendar & Macro ─────────────────────────────────── */}
-        {tab === 'calendar' && (
-          <div className="space-y-4">
-            <EconomicCalendar />
-            <MacroRatesTable />
-          </div>
-        )}
       </div>
     </div>
   );

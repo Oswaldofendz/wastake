@@ -3,9 +3,11 @@ import { usePortfolio }   from '../hooks/usePortfolio.js';
 import { usePortfolios }  from '../hooks/usePortfolios.js';
 import { AuthModal }      from '../components/AuthModal.jsx';
 import { AddPositionModal } from '../components/AddPositionModal.jsx';
+import { DcaEntryModal } from '../components/DcaEntryModal.jsx';
 import { DonutChart }     from '../components/DonutChart.jsx';
 import { PortfolioChart } from '../components/PortfolioChart.jsx';
 import { useToast }       from '../components/Toast.jsx';
+import { useTranslation } from 'react-i18next';
 
 // ─── Helpers numéricos ────────────────────────────────────────────────────────
 
@@ -499,6 +501,7 @@ function PortfolioSelector({ portfolios, selected, setSelected, onCreate, onRena
 }
 
 export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const rates = useCurrencyRates(allAssets);
 
@@ -512,6 +515,7 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate
   } = usePortfolio(user, allAssets, activePortfolio?.id ?? null);
 
   const [showAdd,    setShowAdd]    = useState(false);
+  const [showDca,    setShowDca]    = useState(false);
   const [compact,    setCompact]    = useState(false);
   const [currency,   setCurrency]   = useState('USD');
   const [filterType, setFilterType] = useState('all');
@@ -569,6 +573,7 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate
       toast.success('Posición agregada', `${data.assetName} añadido a tu cartera`);
     } catch (err) {
       toast.error('Error al agregar', err.message);
+      throw err;
     }
   }
 
@@ -598,6 +603,8 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate
   );
 
   const allPositions = [...real, ...paper];
+  const dcaPositions = real.filter(position => position.tags?.includes('DCA'));
+  const dcaInvested = dcaPositions.reduce((sum, position) => sum + (position.costBasis ?? 0), 0);
 
   return (
     <div className="flex flex-col h-full p-4 max-w-4xl mx-auto w-full">
@@ -660,6 +667,14 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate
           )}
 
           <button
+            onClick={() => setShowDca(true)}
+            className="text-sm font-medium px-3 py-2.5 rounded-lg border transition-colors min-h-[44px]"
+            style={{ background: 'var(--bg-card)', borderColor: 'var(--border-subtle)', color: 'var(--accent-silver)', cursor: 'pointer' }}
+          >
+            DCA · {dcaPositions.length}
+          </button>
+
+          <button
             onClick={() => setShowAdd(true)}
             className="text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-all flex items-center gap-1.5 min-h-[44px]"
             style={{ background: 'linear-gradient(135deg, #3a3a3a, var(--accent-silver))', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px var(--accent-silver-glow)' }}
@@ -686,6 +701,24 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate
       {error && (
         <p className="text-xs text-red-400 bg-red-900/20 border border-red-800/40 rounded-lg px-4 py-2 mb-4">{error}</p>
       )}
+
+      <section className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3 sm:px-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-subtle)' }} aria-label={t('dca_summary_title')}>
+        <div>
+          <p className="text-sm font-semibold text-white">{t('dca_summary_title')}</p>
+          <p className="mt-0.5 text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>{t('dca_summary_description')}</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <p className="font-mono text-sm font-semibold text-white">{dcaPositions.length}</p>
+            <p className="text-[10px] text-slate-500">{t('dca_logged_buys')}</p>
+          </div>
+          <div className="text-right">
+            <p className="font-mono text-sm font-semibold text-white">{fmtConverted(dcaInvested, currency, rates)}</p>
+            <p className="text-[10px] text-slate-500">{t('dca_total_contributed')}</p>
+          </div>
+          <button type="button" onClick={() => setShowDca(true)} className="min-h-10 rounded-lg bg-slate-200 px-3 text-xs font-semibold text-slate-950 transition hover:bg-white">{t('dca_register_purchase')}</button>
+        </div>
+      </section>
 
       {allPositions.length === 0 ? (
         /* Estado vacío */
@@ -793,6 +826,9 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate
 
       {showAdd && (
         <AddPositionModal onAdd={handleAdd} onClose={() => setShowAdd(false)} />
+      )}
+      {showDca && (
+        <DcaEntryModal assets={allAssets} positions={positions} onAdd={handleAdd} onClose={() => setShowDca(false)} />
       )}
     </div>
   );

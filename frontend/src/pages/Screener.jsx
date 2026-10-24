@@ -157,37 +157,37 @@ const PRESETS = [
   {
     id: 'momentum',
     icon: '🚀', labelKey: 'screener_preset_momentum',
-    apply: () => ({ typeFilter: 'all', changeFilter: 'up_3', sortBy: 'change_desc', showOnlyPositive: true,  showOnlyNegative: false }),
+    apply: () => ({ typeFilter: 'all', changeFilter: 'up_3', sortBy: 'change_desc' }),
   },
   {
     id: 'gainers',
     icon: '▲', labelKey: 'screener_preset_gainers',
-    apply: () => ({ typeFilter: 'all', changeFilter: 'up2',  sortBy: 'change_desc', showOnlyPositive: true,  showOnlyNegative: false }),
+    apply: () => ({ typeFilter: 'all', changeFilter: 'up2',  sortBy: 'change_desc' }),
   },
   {
     id: 'losers',
     icon: '▼', labelKey: 'screener_preset_losers',
-    apply: () => ({ typeFilter: 'all', changeFilter: 'down2', sortBy: 'change_asc', showOnlyPositive: false, showOnlyNegative: true  }),
+    apply: () => ({ typeFilter: 'all', changeFilter: 'down2', sortBy: 'change_asc' }),
   },
   {
     id: 'volatile',
     icon: '⚡', labelKey: 'screener_preset_volatile',
-    apply: () => ({ typeFilter: 'all', changeFilter: 'vol_5', sortBy: 'change_desc', showOnlyPositive: false, showOnlyNegative: false }),
+    apply: () => ({ typeFilter: 'all', changeFilter: 'vol_5', sortBy: 'change_desc' }),
   },
   {
     id: 'flat',
     icon: '➡', labelKey: 'screener_preset_flat',
-    apply: () => ({ typeFilter: 'all', changeFilter: 'flat',  sortBy: 'name_asc',   showOnlyPositive: false, showOnlyNegative: false }),
+    apply: () => ({ typeFilter: 'all', changeFilter: 'flat',  sortBy: 'name_asc' }),
   },
   {
     id: 'crypto_only',
     icon: '₿', labelKey: 'screener_preset_crypto',
-    apply: () => ({ typeFilter: 'crypto', changeFilter: 'all', sortBy: 'mktcap_desc', showOnlyPositive: false, showOnlyNegative: false }),
+    apply: () => ({ typeFilter: 'crypto', changeFilter: 'all', sortBy: 'mktcap_desc' }),
   },
   {
     id: 'stocks_only',
     icon: '📈', labelKey: 'screener_preset_stocks',
-    apply: () => ({ typeFilter: 'stock', changeFilter: 'all', sortBy: 'change_desc', showOnlyPositive: false, showOnlyNegative: false }),
+    apply: () => ({ typeFilter: 'stock', changeFilter: 'all', sortBy: 'change_desc' }),
   },
 ];
 
@@ -200,8 +200,6 @@ export function Screener() {
   const [typeFilter, setTypeFilter]   = useState('all');
   const [changeFilter, setChangeFilter] = useState('all');
   const [sortBy, setSortBy]           = useState('change_desc');
-  const [showOnlyPositive, setShowOnlyPositive] = useState(false);
-  const [showOnlyNegative, setShowOnlyNegative] = useState(false);
   const [activePreset, setActivePreset] = useState(null);
   const [collapsedGroups, setCollapsedGroups] = useState({});
 
@@ -213,8 +211,6 @@ export function Screener() {
       setTypeFilter('all');
       setChangeFilter('all');
       setSortBy('change_desc');
-      setShowOnlyPositive(false);
-      setShowOnlyNegative(false);
       return;
     }
     const s = preset.apply();
@@ -222,8 +218,6 @@ export function Screener() {
     setTypeFilter(s.typeFilter);
     setChangeFilter(s.changeFilter);
     setSortBy(s.sortBy);
-    setShowOnlyPositive(s.showOnlyPositive);
-    setShowOnlyNegative(s.showOnlyNegative);
     setActivePreset(preset.id);
   }
 
@@ -255,10 +249,6 @@ export function Screener() {
     if (changeFilter === 'vol_5') assets = assets.filter(a => Math.abs(a.change24h ?? 0) >= 5);
     if (changeFilter === 'flat')  assets = assets.filter(a => Math.abs(a.change24h ?? 0) <= 1);
 
-    // Solo positivos / negativos
-    if (showOnlyPositive) assets = assets.filter(a => (a.change24h ?? 0) > 0);
-    if (showOnlyNegative) assets = assets.filter(a => (a.change24h ?? 0) < 0);
-
     // Ordenación
     assets.sort((a, b) => {
       switch (sortBy) {
@@ -279,7 +269,7 @@ export function Screener() {
     });
 
     return assets;
-  }, [allAssets, search, typeFilter, changeFilter, sortBy, showOnlyPositive, showOnlyNegative]);
+  }, [allAssets, search, typeFilter, changeFilter, sortBy]);
 
   const groupedAssets = useMemo(() => {
     const groups = new Map();
@@ -362,7 +352,7 @@ export function Screener() {
             <h2 id="screener-filters-title" className="text-sm font-semibold text-white">{t('screener_filters_title')}</h2>
             <p className="mt-1 text-xs leading-relaxed text-slate-400">{t('screener_filters_help')}</p>
           </div>
-          {(search || typeFilter !== 'all' || changeFilter !== 'all' || sortBy !== 'change_desc' || showOnlyPositive || showOnlyNegative) && (
+          {(search || typeFilter !== 'all' || changeFilter !== 'all' || sortBy !== 'change_desc') && (
             <button
               type="button"
               onClick={() => applyPreset({ id: activePreset, apply: () => ({}) })}
@@ -422,20 +412,6 @@ export function Screener() {
             </p>
           )}
 
-          <div className="min-w-0 sm:col-span-2 xl:col-span-2">
-            <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_direction_label')}</span>
-            <div className="grid grid-cols-3 rounded-lg border border-slate-700/50 bg-slate-800/40 p-1" role="group" aria-label={t('screener_direction_label')}>
-              {[
-                { key: 'all', label: t('screener_direction_all'), active: !showOnlyPositive && !showOnlyNegative, onClick: () => { setShowOnlyPositive(false); setShowOnlyNegative(false); setActivePreset(null); } },
-                { key: 'up', label: t('screener_direction_up'), active: showOnlyPositive, onClick: () => { setShowOnlyPositive(true); setShowOnlyNegative(false); setActivePreset(null); } },
-                { key: 'down', label: t('screener_direction_down'), active: showOnlyNegative, onClick: () => { setShowOnlyNegative(true); setShowOnlyPositive(false); setActivePreset(null); } },
-              ].map(option => (
-                <button key={option.key} type="button" aria-pressed={option.active} onClick={option.onClick} className={`min-h-9 rounded-md px-2 text-xs font-semibold transition-colors ${option.active ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-white'}`}>
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         <div className="mt-4 border-t border-slate-700/40 pt-3">
@@ -496,7 +472,7 @@ export function Screener() {
             </svg>
             <p className="text-slate-500 text-sm">{t('screener_no_matches')}</p>
             <button
-              onClick={() => { setSearch(''); setTypeFilter('all'); setChangeFilter('all'); setShowOnlyPositive(false); setShowOnlyNegative(false); setActivePreset(null); }}
+              onClick={() => { setSearch(''); setTypeFilter('all'); setChangeFilter('all'); setSortBy('change_desc'); setActivePreset(null); }}
               className="text-xs text-brand-400 hover:text-brand-300 transition-colors mt-1"
             >
               {t('screener_clear_filters')}

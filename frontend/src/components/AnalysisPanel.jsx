@@ -268,7 +268,7 @@ function InfoModal({ info, onClose }) {
 
 // ── Indicator row ─────────────────────────────────────────────
 
-function IndicatorRow({ name, value, included, roleKey, label, onClick }) {
+function IndicatorRow({ name, value, included, groupKey, groupWeight, roleKey, label, onClick }) {
   const { t } = useTranslation();
   return (
     <button
@@ -279,8 +279,8 @@ function IndicatorRow({ name, value, included, roleKey, label, onClick }) {
         {name}
       </span>
       <span className="min-w-0 break-words text-[11px] sm:text-xs font-mono text-white">{value}</span>
-      <span className={`text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${included ? 'bg-sky-900/30 text-sky-300 border border-sky-700/30' : 'bg-slate-700/50 text-slate-400 border border-slate-600/30'}`}>
-        {included ? t('technical_in_index') : t(roleKey)}
+      <span className={`max-w-40 text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full text-center leading-tight ${included ? 'bg-sky-900/30 text-sky-300 border border-sky-700/30' : 'bg-slate-700/50 text-slate-400 border border-slate-600/30'}`}>
+        {included ? t('technical_group_weight', { group: t(`technical_component_${groupKey}`), weight: groupWeight }) : t(roleKey)}
       </span>
       <span className="text-xs text-slate-500 truncate hidden sm:block">{label}</span>
       {/* Info icon */}
@@ -333,12 +333,14 @@ export function AnalysisPanel({ asset, days = 90 }) {
       name:   'RSI (14)',
       value:  fmtValue(indicators.rsi.current),
       included: true,
+      groupKey: 'momentum', groupWeight: 35,
       label:  t('technical_rsi_row'),
     },
     {
       name:   'MACD (12/26/9)',
       value:  indicators.macd.current ? fmtValue(indicators.macd.current.histogram) : '—',
       included: true,
+      groupKey: 'momentum', groupWeight: 35,
       label:  t('technical_macd_row'),
     },
     {
@@ -347,6 +349,7 @@ export function AnalysisPanel({ asset, days = 90 }) {
         ? `${fmtValue(indicators.ema20.current)} / ${fmtValue(indicators.ema50.current)}`
         : '—',
       included: true,
+      groupKey: 'trend', groupWeight: 35,
       label:  t('technical_ema_row'),
     },
     {
@@ -355,6 +358,7 @@ export function AnalysisPanel({ asset, days = 90 }) {
         ? fmtValue(indicators.bollingerBands.current.middle)
         : '—',
       included: true,
+      groupKey: 'structure', groupWeight: 20,
       label:  t('technical_bollinger_row'),
     },
     {
@@ -363,6 +367,7 @@ export function AnalysisPanel({ asset, days = 90 }) {
         ? `${fmtValue(indicators.adx.current.adx)} · +DI ${fmtValue(indicators.adx.current.pdi)} / −DI ${fmtValue(indicators.adx.current.mdi)}`
         : '—',
       included: true,
+      groupKey: 'participation', groupWeight: 10,
       label: t('technical_adx_row'),
     },
     {

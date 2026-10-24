@@ -216,6 +216,11 @@ export function EconomicCalendar() {
             </button>
           </div>
         </div>
+        {!loading && source && (
+          <p className={`mb-3 rounded-lg border px-3 py-2 text-[11px] leading-relaxed ${source === 'fallback' ? 'border-amber-800/40 bg-amber-950/20 text-amber-200/90' : 'border-slate-700/50 bg-slate-900/40 text-slate-400'}`} role="note">
+            {t(source === 'fallback' ? 'calendar_fallback_values_note' : 'calendar_live_values_note')}
+          </p>
+        )}
 
         {/* Impact filters */}
         <div className="flex gap-1">
@@ -279,6 +284,11 @@ export function EconomicCalendar() {
                   const { category, surprise } = getEventRead(ev);
                   const outlook = eventAssets(ev, category, surprise);
                   const sourceUrl = sourceForEvent(ev, category);
+                  const displayValue = (value, field) => {
+                    if (value != null && String(value).trim() !== '') return value;
+                    if (source === 'fallback') return t('calendar_value_unavailable');
+                    return field === 'actual' && !past ? t('calendar_value_pending') : t('calendar_value_missing');
+                  };
                   return (
                     <details
                       key={i}
@@ -304,8 +314,8 @@ export function EconomicCalendar() {
                           <p className="text-slate-500">{t('calendar_bias_disclaimer')}</p>
                           <a className="inline-flex text-sky-300 underline underline-offset-2 hover:text-sky-200" href={sourceUrl} target="_blank" rel="noopener noreferrer">{t(category === 'other' ? 'calendar_provider_source' : 'calendar_official_source')} ↗</a>
                         </div>
-                        <dl className="grid grid-cols-3 gap-2 text-[11px] sm:min-w-48">
-                          {[[t('calendar_previous'), ev.previous], [t('calendar_forecast'), ev.forecast], [t('calendar_actual'), ev.actual]].map(([label, value]) => <div key={label}><dt className="text-slate-500">{label}</dt><dd className="font-mono text-slate-300">{value ?? '—'}</dd></div>)}
+                        <dl className="grid grid-cols-3 gap-2 text-[11px] sm:min-w-56">
+                          {[[t('calendar_previous'), ev.previous, 'previous'], [t('calendar_forecast'), ev.forecast, 'forecast'], [t('calendar_actual'), ev.actual, 'actual']].map(([label, value, field]) => <div key={label} className="min-w-0"><dt className="text-slate-500">{label}</dt><dd className={`break-words font-mono ${value == null || String(value).trim() === '' ? 'text-slate-500' : 'text-slate-200'}`}>{displayValue(value, field)}</dd></div>)}
                         </dl>
                       </div>
                     </details>
