@@ -94,7 +94,7 @@ function AssetAvatar({ asset }) {
 }
 
 // ─── Fila de la tabla ─────────────────────────────────────────────────────────
-function AssetRow({ asset, rank, t }) {
+function AssetRow({ asset, rank, t, showMarketCap }) {
   const positive = (asset.change24h ?? 0) >= 0;
   const typeColors = TYPE_COLORS[asset.type] ?? TYPE_COLORS.etf;
 
@@ -128,9 +128,11 @@ function AssetRow({ asset, rank, t }) {
       </span>
 
       {/* Market cap — solo desktop */}
-      <span className="hidden lg:block w-24 text-right text-xs text-slate-400 flex-shrink-0">
-        {fmtMktCap(asset.marketCap)}
-      </span>
+      {showMarketCap && (
+        <span className="hidden lg:block w-24 text-right text-xs text-slate-400 flex-shrink-0">
+          {fmtMktCap(asset.marketCap)}
+        </span>
+      )}
 
       {/* Barra visual de variación */}
       <div className="hidden md:flex items-center w-20 flex-shrink-0">
@@ -185,7 +187,7 @@ const PRESETS = [
   {
     id: 'stocks_only',
     icon: '📈', labelKey: 'screener_preset_stocks',
-    apply: () => ({ typeFilter: 'stock', changeFilter: 'all', sortBy: 'mktcap_desc', showOnlyPositive: false, showOnlyNegative: false }),
+    apply: () => ({ typeFilter: 'stock', changeFilter: 'all', sortBy: 'change_desc', showOnlyPositive: false, showOnlyNegative: false }),
   },
 ];
 
@@ -264,7 +266,13 @@ export function Screener() {
         case 'change_asc':  return (a.change24h ?? 0) - (b.change24h ?? 0);
         case 'price_desc':  return (b.price ?? 0) - (a.price ?? 0);
         case 'price_asc':   return (a.price ?? 0) - (b.price ?? 0);
-        case 'mktcap_desc': return (b.marketCap ?? 0) - (a.marketCap ?? 0);
+        case 'mktcap_desc': {
+          const aCap = Number.isFinite(a.marketCap) && a.marketCap > 0 ? a.marketCap : null;
+          const bCap = Number.isFinite(b.marketCap) && b.marketCap > 0 ? b.marketCap : null;
+          if (aCap == null) return bCap == null ? 0 : 1;
+          if (bCap == null) return -1;
+          return bCap - aCap;
+        }
         case 'name_asc':    return (a.name ?? '').localeCompare(b.name ?? '');
         default: return 0;
       }
@@ -284,6 +292,12 @@ export function Screener() {
       .sort(([a], [b]) => GROUP_ORDER.indexOf(a) - GROUP_ORDER.indexOf(b))
       .map(([id, assets]) => ({ id, assets }));
   }, [filtered]);
+
+  // El proveedor gratuito actual solo entrega capitalización para criptoactivos.
+  // No ofrecer el orden en otras clases evita presentar valores ausentes como cero.
+  const availableSortOptions = typeFilter === 'crypto'
+    ? SORT_OPTIONS
+    : SORT_OPTIONS.filter(option => option.id !== 'mktcap_desc');
 
   // ── Stats rápidas ────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
@@ -378,7 +392,12 @@ export function Screener() {
 
           <label className="block min-w-0">
             <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_type_label')}</span>
-            <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setActivePreset(null); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
+            <select value={typeFilter} onChange={e => {
+              const nextType = e.target.value;
+              setTypeFilter(nextType);
+              if (nextType !== 'crypto' && sortBy === 'mktcap_desc') setSortBy('change_desc');
+              setActivePreset(null);
+            }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
               {Object.entries(TYPE_LABELS).map(([k, labelKey]) => <option key={k} value={k}>{t(labelKey)}</option>)}
             </select>
           </label>
@@ -393,9 +412,15 @@ export function Screener() {
           <label className="block min-w-0 sm:col-span-2 xl:col-span-2">
             <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_sort_label')}</span>
             <select value={sortBy} onChange={e => { setSortBy(e.target.value); setActivePreset(null); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
-              {SORT_OPTIONS.map(s => <option key={s.id} value={s.id}>{t(s.labelKey)}</option>)}
+              {availableSortOptions.map(s => <option key={s.id} value={s.id}>{t(s.labelKey)}</option>)}
             </select>
           </label>
+
+          {typeFilter !== 'crypto' && (
+            <p className="text-xs leading-relaxed text-slate-500 sm:col-span-2 xl:col-span-4" role="note">
+              {t('screener_market_cap_coverage')}
+            </p>
+          )}
 
           <div className="min-w-0 sm:col-span-2 xl:col-span-2">
             <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_direction_label')}</span>
@@ -444,7 +469,7 @@ export function Screener() {
           <span className="hidden sm:block w-20">{t('screener_column_type')}</span>
           <span className="w-24 text-right">{t('price')}</span>
           <span className="w-20 text-right">{t('change_24h')}</span>
-          <span className="hidden lg:block w-24 text-right">{t('market_cap')}</span>
+          {typeFilter === 'crypto' && <span className="hidden lg:block w-24 text-right">{t('market_cap')}</span>}
           <span className="hidden md:block w-20 text-center">{t('screener_column_change')}</span>
         </div>
 
@@ -492,7 +517,7 @@ export function Screener() {
                   <span className="rounded-full bg-slate-700/70 px-2 py-0.5 text-xs font-medium text-slate-300">{assets.length}</span>
                 </button>
                 {!collapsedGroups[id] && assets.map(asset => (
-                  <AssetRow key={asset.id} asset={asset} rank={filtered.findIndex(item => item.id === asset.id) + 1} t={t} />
+                  <AssetRow key={asset.id} asset={asset} rank={filtered.findIndex(item => item.id === asset.id) + 1} t={t} showMarketCap={typeFilter === 'crypto'} />
                 ))}
               </section>
             ))}
