@@ -163,6 +163,7 @@ export function CandleChart({ asset, timeframe = '3M' }) {
         timezone:            'Etc/UTC',
         theme:               'dark',
         style:               '1',         // Velas japonesas
+        studies:             ['PivotPointsStandard@tv-basicstudies', 'MAExp@tv-basicstudies', 'RSI@tv-basicstudies'],
         locale:              'es',
         toolbar_bg:          '#0f172a',
         enable_publishing:   false,

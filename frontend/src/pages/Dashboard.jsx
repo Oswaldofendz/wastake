@@ -233,6 +233,7 @@ export function Dashboard() {
                     </button>
                   ))}
                 </div>
+                <p className="px-3 pt-2 text-[11px] leading-4 text-slate-500">{t('chart_default_studies_note')}</p>
 
                 {/* Chart */}
                 <div style={{ flex: 1, minHeight: 0, padding: isMobile ? '8px' : '12px' }}>

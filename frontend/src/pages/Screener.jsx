@@ -504,23 +504,26 @@ export function Screener() {
           </div>
         ) : (
           <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 360px)' }}>
-            {groupedAssets.map(({ id, assets }) => (
-              <section key={id} className="border-b border-slate-700/40 last:border-0">
-                <button
-                  type="button"
-                  aria-expanded={!collapsedGroups[id]}
-                  onClick={() => setCollapsedGroups(current => ({ ...current, [id]: !current[id] }))}
-                  className="sticky top-0 z-10 flex min-h-11 w-full items-center gap-2 border-b border-slate-700/30 bg-slate-800/95 px-4 py-2 text-left text-sm font-semibold text-slate-200 backdrop-blur hover:bg-slate-700/95"
-                >
-                  <span className={`text-slate-400 transition-transform ${collapsedGroups[id] ? '-rotate-90' : ''}`} aria-hidden="true">⌄</span>
-                  <span className="flex-1">{t(`screener_group_${id}`)}</span>
-                  <span className="rounded-full bg-slate-700/70 px-2 py-0.5 text-xs font-medium text-slate-300">{assets.length}</span>
-                </button>
-                {!collapsedGroups[id] && assets.map(asset => (
-                  <AssetRow key={asset.id} asset={asset} rank={filtered.findIndex(item => item.id === asset.id) + 1} t={t} showMarketCap={typeFilter === 'crypto'} />
-                ))}
-              </section>
-            ))}
+            {groupedAssets.map(({ id, assets }) => {
+              const isCollapsed = collapsedGroups[id] ?? true;
+              return (
+                <section key={id} className="border-b border-slate-700/40 last:border-0">
+                  <button
+                    type="button"
+                    aria-expanded={!isCollapsed}
+                    onClick={() => setCollapsedGroups(current => ({ ...current, [id]: !isCollapsed }))}
+                    className="sticky top-0 z-10 flex min-h-11 w-full items-center gap-2 border-b border-slate-700/30 bg-slate-800/95 px-4 py-2 text-left text-sm font-semibold text-slate-200 backdrop-blur hover:bg-slate-700/95"
+                  >
+                    <span className={`text-slate-400 transition-transform ${isCollapsed ? '-rotate-90' : ''}`} aria-hidden="true">⌄</span>
+                    <span className="flex-1">{t(`screener_group_${id}`)}</span>
+                    <span className="rounded-full bg-slate-700/70 px-2 py-0.5 text-xs font-medium text-slate-300">{assets.length}</span>
+                  </button>
+                  {!isCollapsed && assets.map(asset => (
+                    <AssetRow key={asset.id} asset={asset} rank={filtered.findIndex(item => item.id === asset.id) + 1} t={t} showMarketCap={typeFilter === 'crypto'} />
+                  ))}
+                </section>
+              );
+            })}
           </div>
         )}
       </div>

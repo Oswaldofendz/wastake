@@ -268,7 +268,7 @@ function InfoModal({ info, onClose }) {
 
 // ── Indicator row ─────────────────────────────────────────────
 
-function IndicatorRow({ name, value, included, label, onClick }) {
+function IndicatorRow({ name, value, included, roleKey, label, onClick }) {
   const { t } = useTranslation();
   return (
     <button
@@ -280,7 +280,7 @@ function IndicatorRow({ name, value, included, label, onClick }) {
       </span>
       <span className="min-w-0 break-words text-[11px] sm:text-xs font-mono text-white">{value}</span>
       <span className={`text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${included ? 'bg-sky-900/30 text-sky-300 border border-sky-700/30' : 'bg-slate-700/50 text-slate-400 border border-slate-600/30'}`}>
-        {included ? t('technical_in_index') : t('technical_context_only')}
+        {included ? t('technical_in_index') : t(roleKey)}
       </span>
       <span className="text-xs text-slate-500 truncate hidden sm:block">{label}</span>
       {/* Info icon */}
@@ -369,6 +369,7 @@ export function AnalysisPanel({ asset, days = 90 }) {
       name: 'Volumen / media 20',
       value: volumeRatio == null ? '—' : `${volumeRatio.toFixed(2)}×`,
       included: false,
+      roleKey: 'technical_volume_role',
       label: t('technical_volume_row'),
     },
   ];
@@ -449,6 +450,7 @@ export function AnalysisPanel({ asset, days = 90 }) {
             name="ATR (14)"
             value={fmtValue(indicators.atr.current)}
             included={false}
+            roleKey="technical_atr_role"
             label={`${t('technical_atr_row')} · ${volatility.volatility === 'unknown' ? '—' : t(`technical_volatility_${volatility.volatility}`)}`}
             onClick={() => openInfo('ATR (14)')}
           />
