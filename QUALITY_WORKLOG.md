@@ -10,6 +10,7 @@
 6. Fundamentales: titulares e histórico aparecen de forma independiente; el análisis contextual se completa después. Al cambiar de activo se descarta el estado anterior. Etiquetas y errores localizados. Símbolos duplicados retirados del selector.
 7. Explorador: retiradas las vistas rápidas que repetían los filtros existentes; acordeones cerrados por defecto conservados. Filas más compactas en móvil, marcas y símbolos protegidos.
 8. Navegación: sincronización con el historial del navegador y retorno al inicio de la pantalla al cambiar de sección.
+9. Dependencias: actualización compatible de `body-parser` de 1.20.8 a 1.20.9 para corregir el aviso de denegación de servicio detectado durante el despliegue. `npm audit --omit=dev` queda sin vulnerabilidades conocidas en esa revisión.
 
 ## Comprobaciones
 
@@ -17,6 +18,8 @@
 - `cd frontend && npm run build`.
 - Consulta real de fuentes públicas: reunión del FOMC el 28 de octubre de 2026; IPC de octubre el 10 de noviembre. Los valores de consenso y resultados solo se muestran si los facilita la fuente.
 - Revisión visual local: escritorio y ancho de 375 px, modo claro/oscuro, ES/PT/EN, Mercados/Explorador/Fundamentales.
+- Producción: `/health` confirma `quality-v1`; calendario oficial devuelve FOMC el 28 de octubre e IPC el 10 de noviembre. La traducción de prueba «Apple and Amazon rise 5% after earnings» conserva ambas marcas y el 5%.
+- Muestra pública de Bitcoin: 6 de 10 noticias superan los controles de evidencia e idioma; 4 conservan la lectura preliminar. La muestra de Apple no ofreció una cita validable y se mantiene como preliminar. Esto es una comprobación puntual, no una medición estadística de precisión.
 
 ## Límites y siguientes mejoras
 
