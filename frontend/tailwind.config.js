@@ -19,6 +19,7 @@ export default {
         },
         // ── Slate reemplazado por neutros cálidos (sin tinte azul) ─
         slate: {
+          500: '#9299a4',
           600: '#5a5e65',
           700: '#3a3d42',
           800: '#252729',

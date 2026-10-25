@@ -1,6 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
+import { qualityCopy } from './qualityCopy.js';
 
 const resources = {
   en: {
@@ -722,6 +723,8 @@ const resources = {
   },
 };
 
+for (const [lang, copy] of Object.entries(qualityCopy)) Object.assign(resources[lang].translation, copy);
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -734,5 +737,11 @@ i18n
       caches: ['localStorage'],
     },
   });
+
+const updateDocumentLanguage = language => {
+  if (typeof document !== 'undefined') document.documentElement.lang = language?.split('-')[0] || 'es';
+};
+i18n.on('languageChanged', updateDocumentLanguage);
+updateDocumentLanguage(i18n.resolvedLanguage || i18n.language);
 
 export default i18n;

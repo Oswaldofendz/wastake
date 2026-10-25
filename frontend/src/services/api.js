@@ -62,11 +62,11 @@ export const fetchNews = (id, type = 'crypto') => {
 };
 
 // Public news enriched by the backend with localized, evidence-linked AI analysis.
-export const fetchFundamentalsNews = (asset, type = 'crypto', lang = 'es') => {
-  const qs = new URLSearchParams({ type, name: asset.name ?? '', symbol: asset.symbol ?? '', lang });
+export const fetchFundamentalsNews = (asset, type = 'crypto', lang = 'es', stage = 'analysis') => {
+  const qs = new URLSearchParams({ type, name: asset.name ?? '', symbol: asset.symbol ?? '', lang, stage });
   // The backend may read and analyze several public articles; bound the wait
   // so transient provider delays cannot leave the Fundamentals view loading forever.
-  return get(`/api/fundamentals/${encodeURIComponent(asset.id)}?${qs}`, 90_000);
+  return get(`/api/fundamentals/${encodeURIComponent(asset.id)}?${qs}`, stage === 'headlines' ? 20_000 : 60_000);
 };
 
 // Fear & Greed Index (alternative.me)

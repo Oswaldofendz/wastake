@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ALL_ASSETS, getAnalysisType } from '../data/assetCatalog.js';
 import { fetchFundamentalsNews, fetchOHLCV, translateText } from '../services/api.js';
+import { assetLabel } from '../utils/assetLabel.js';
 
 const WINDOWS = [
   { id: 'day', label: { es: '24 h', pt: '24 h', en: '24h' }, days: 1 },
@@ -72,14 +73,14 @@ function reactionAfterArticle(article, candles) {
   return ((after.close / before.close) - 1) * 100;
 }
 
-function formatPercent(value) {
-  if (value == null || !Number.isFinite(value)) return 'Pendiente';
+function formatPercent(value, pending = '—') {
+  if (value == null || !Number.isFinite(value)) return pending;
   return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
 }
 
 function formatDate(value, language) {
   const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return 'Fecha desconocida';
+  if (!Number.isFinite(date.getTime())) return ({ es: 'Fecha desconocida', pt: 'Data desconhecida', en: 'Unknown date' })[language] ?? '—';
   const locale = language === 'pt' ? 'pt-PT' : language === 'en' ? 'en-GB' : 'es-ES';
   return new Intl.DateTimeFormat(locale, {
     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -92,7 +93,7 @@ function scoreTone(value) {
 }
 
 export function Fundamentals() {
-  const { i18n } = useTranslation();
+  const { i18n, t: translate } = useTranslation();
   const lang = languageCode(i18n.resolvedLanguage || i18n.language);
   const t = COPY[lang];
   const analysisLabels = { ...ANALYSIS_LABELS[lang], ...FALLBACK_LABELS[lang] };
@@ -105,6 +106,7 @@ export function Fundamentals() {
   const [translating, setTranslating] = useState(false);
   const [candles, setCandles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
   const [newsError, setNewsError] = useState('');
   const [priceError, setPriceError] = useState('');
   const [aiStatus, setAiStatus] = useState('');
@@ -120,37 +122,45 @@ export function Fundamentals() {
 
     async function load() {
       setLoading(true);
+      setAnalyzing(false);
+      setArticles([]);
+      setCandles([]);
       setNewsError('');
       setPriceError('');
       setAiStatus('');
       setAiCoverage({ analyzed: 0, total: 0 });
       const type = getAnalysisType(asset);
-      const [newsResult, candleResult] = await Promise.allSettled([
-        fetchFundamentalsNews(asset, type, lang),
-        fetchOHLCV(asset.id, type, { days: 90, interval: '1d', range: '3mo' }),
-      ]);
-
-      if (cancelled) return;
-      if (newsResult.status === 'fulfilled') {
-        setArticles(Array.isArray(newsResult.value?.news) ? newsResult.value.news : []);
-        setAiStatus(newsResult.value?.aiStatus ?? '');
-        setAiCoverage({
-          analyzed: Number(newsResult.value?.analyzedCount) || 0,
-          total: Number(newsResult.value?.count) || newsResult.value?.news?.length || 0,
-        });
-      } else {
-        setArticles([]);
-        setAiStatus('unavailable');
-        setAiCoverage({ analyzed: 0, total: 0 });
-        setNewsError('No se pudieron cargar las noticias de este activo.');
-      }
-      if (candleResult.status === 'fulfilled') {
-        setCandles(Array.isArray(candleResult.value?.candles) ? candleResult.value.candles : []);
-      } else {
-        setCandles([]);
-        setPriceError('No se pudo consultar el histórico de precios.');
+      // Price history and headlines render independently; AI never blocks either.
+      fetchOHLCV(asset.id, type, { days: 90, interval: '1d', range: '3mo' })
+        .then(result => { if (!cancelled) setCandles(Array.isArray(result?.candles) ? result.candles : []); })
+        .catch(() => { if (!cancelled) setPriceError(translate('fundamentals_price_error')); });
+      let baseline;
+      try {
+        baseline = await fetchFundamentalsNews(asset, type, lang, 'headlines');
+        if (cancelled) return;
+        setArticles(Array.isArray(baseline?.news) ? baseline.news : []);
+        setAiStatus('pending');
+      } catch {
+        if (cancelled) return;
+        setNewsError(translate('fundamentals_news_error'));
+        setLoading(false);
+        return;
       }
       setLoading(false);
+      if (!baseline?.news?.length) return;
+      setAnalyzing(true);
+      try {
+        const result = await fetchFundamentalsNews(asset, type, lang);
+        if (cancelled) return;
+        setArticles(Array.isArray(result?.news) ? result.news : baseline.news);
+        setAiStatus(result?.aiStatus ?? 'unavailable');
+        setAiCoverage({ analyzed: Number(result?.analyzedCount) || 0, total: Number(result?.count) || baseline.news.length });
+      } catch {
+        if (cancelled) return;
+        setAiStatus('unavailable');
+      } finally {
+        if (!cancelled) setAnalyzing(false);
+      }
     }
 
     load();
@@ -202,15 +212,15 @@ export function Fundamentals() {
   const assetGroups = useMemo(() => {
     const groups = new Map();
     for (const item of assets) {
-      const category = item.categoryLabel ?? 'Otros';
+      const category = translate(`asset_category_${item.categoryId}`, { defaultValue: item.categoryLabel });
       if (!groups.has(category)) groups.set(category, []);
       groups.get(category).push(item);
     }
     return [...groups.entries()];
-  }, [assets]);
+  }, [assets, lang, translate]);
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-6 text-white">
+    <main className="mx-auto w-full min-w-0 max-w-7xl px-4 py-6 text-white">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand-400">{t.eyebrow}</p>
@@ -233,11 +243,11 @@ export function Fundamentals() {
           id="fundamentals-asset"
           value={assetId}
           onChange={event => setAssetId(event.target.value)}
-          className="min-w-56 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+          className="min-w-0 w-full sm:w-auto sm:min-w-56 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
         >
           {assetGroups.map(([category, groupAssets]) => (
             <optgroup key={category} label={category}>
-              {groupAssets.map(item => <option key={item.id} value={item.id}>{item.name} ({item.symbol})</option>)}
+              {groupAssets.map(item => <option translate="no" key={item.id} value={item.id}>{assetLabel(item)}</option>)}
             </optgroup>
           ))}
         </select>
@@ -280,7 +290,7 @@ export function Fundamentals() {
         </article>
         <article className="rounded-xl border border-slate-700/60 bg-slate-900/70 p-4">
           <p className="text-xs uppercase tracking-wide text-slate-400">{t.reaction}</p>
-          <p className={`mt-2 font-mono text-3xl font-bold ${scoreTone(meanReaction)}`}>{formatPercent(meanReaction)}</p>
+          <p className={`mt-2 font-mono text-3xl font-bold ${scoreTone(meanReaction)}`}>{formatPercent(meanReaction, translate('fundamentals_pending'))}</p>
           <p className="mt-1 text-xs text-slate-500">{t.reactionHelp} · {reactions.length}</p>
         </article>
       </section>
@@ -298,9 +308,10 @@ export function Fundamentals() {
           <h2 className="font-semibold">{t.list} · {asset?.name ?? t.asset}</h2>
           <div className="flex flex-wrap items-center justify-end gap-3 text-xs">
             <span className={aiStatus === 'ready' ? 'text-emerald-400' : 'text-amber-400'}>{aiStatus === 'ready' ? analysisLabels.aiReady : aiStatus === 'partial' ? analysisLabels.aiPartial.replace('{{analyzed}}', aiCoverage.analyzed).replace('{{total}}', aiCoverage.total) : aiStatus === 'not_configured' ? analysisLabels.aiMissing : aiStatus === 'unavailable' ? analysisLabels.aiUnavailable : ''}</span>
-            <span className="text-slate-500">{periodArticles.length} de {articles.length} {t.available}</span>
+            <span className="text-slate-400">{periodArticles.length} / {articles.length} {t.available}</span>
           </div>
         </div>
+        {analyzing && <p className="border-b border-slate-700/50 px-4 py-3 text-sm text-sky-300" role="status">{translate('fundamentals_analyzing')}</p>}
         {loading ? (
           <div className="p-8 text-center text-sm text-slate-400">{t.loading}</div>
         ) : periodArticles.length === 0 ? (
@@ -313,7 +324,7 @@ export function Fundamentals() {
               const contextual = hasContextualAnalysis(article);
               const relevance = relevanceValue(article);
               const fallbackTitle = translatedTitles[`${lang}:${articleKey(article)}`];
-              const title = fallbackTitle || article.localizedTitle || article.title;
+              const title = article.localizedTitle || fallbackTitle || article.title;
               const toneLabel = article.sentiment === 'positive' ? t.positive : article.sentiment === 'negative' ? t.negative : t.neutral;
               const impactCopy = contextual ? (article.mechanism || (article.impact === 'high' ? t.highExplanation : article.impact === 'medium' ? t.mediumExplanation : t.lowExplanation)) : analysisLabels.preliminaryWhy;
               const projection = contextual ? (article.watch || (article.sentiment === 'positive' ? t.projectionPositive : article.sentiment === 'negative' ? t.projectionNegative : t.projectionNeutral)) : analysisLabels.preliminaryWatch;
@@ -362,7 +373,7 @@ export function Fundamentals() {
                       {article.limitations && <p className="mt-2 text-xs text-amber-300"><strong>{analysisLabels.limitation}: </strong>{article.limitations}</p>}
                       <p className="mt-2 text-[11px] text-slate-500">{article.analysisDepth === 'article' ? analysisLabels.depthArticle : article.analysisDepth === 'rss' ? analysisLabels.depthRss : analysisLabels.depthTitle}{article.analysisProvider ? ` · ${analysisLabels.provider}: ${article.analysisProvider}` : ` · ${aiStatus === 'not_configured' ? analysisLabels.aiMissing : analysisLabels.aiUnavailable}`}</p>
                     </div>
-                    {article.matchedTerms && (
+                    {article.matchedTerms && !contextual && (
                       <p className="mt-2 text-xs text-slate-500">
                         {t.matched}: {[...article.matchedTerms.positive, ...article.matchedTerms.negative, ...article.matchedTerms.highImpact, ...article.matchedTerms.mediumImpact].join(', ') || '—'}
                       </p>
@@ -376,7 +387,7 @@ export function Fundamentals() {
                     </div>
                     <div>
                       <p className="text-xs text-slate-500">{t.observed}</p>
-                      <p className={`font-mono font-semibold ${scoreTone(reaction)}`}>{formatPercent(reaction)}</p>
+                      <p className={`font-mono font-semibold ${scoreTone(reaction)}`}>{formatPercent(reaction, translate('fundamentals_pending'))}</p>
                       <p className="text-xs text-slate-500">{t.after}</p>
                     </div>
                   </div>

@@ -70,7 +70,7 @@ export function Navbar({
 
   return (
     <>
-      <header className="h-[72px] flex items-center justify-between px-4 backdrop-blur-sm sticky top-0 z-40 gap-3" style={{ background: 'linear-gradient(180deg, rgba(9,9,10,0.98) 0%, rgba(13,14,15,0.95) 100%)', borderBottom: '1px solid rgba(192,192,192,0.08)' }}>
+      <header className="h-[72px] flex items-center justify-between px-4 backdrop-blur-sm sticky top-0 z-40 gap-3" style={{ background: 'var(--bg-primary)', borderBottom: '1px solid var(--border-normal)' }}>
 
         {/* Logo + Desktop Nav */}
         <div className="flex items-center gap-4 min-w-0">
@@ -86,8 +86,8 @@ export function Navbar({
               style={{
                 height: '88px',
                 width: 'auto',
-                mixBlendMode: 'lighten',
-                filter: 'brightness(1.5) contrast(1.1)',
+                mixBlendMode: darkMode ? 'lighten' : 'multiply',
+                filter: darkMode ? 'brightness(1.5) contrast(1.1)' : 'invert(1)',
               }}
             />
           </button>
@@ -122,12 +122,12 @@ export function Navbar({
               {isStale ? (
                 <span
                   className="flex items-center gap-1 text-amber-400"
-                  title="Precios retrasados — CoinGecko no disponible, reintentando cada 30s"
+                  title={t('screener_stale_data')}
                 >
                   <svg viewBox="0 0 16 16" className="w-3 h-3 fill-current flex-shrink-0">
                     <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm7.5-3.5a.5.5 0 0 1 1 0v3.25l2.25 1.3a.5.5 0 0 1-.5.866L7.5 8.5V4.5Z"/>
                   </svg>
-                  <span>retrasado</span>
+                  <span>{t('screener_stale_data')}</span>
                 </span>
               ) : (
                 <span className="text-slate-500">{t('last_updated')}: {lastUpdated.toLocaleTimeString()}</span>
@@ -151,7 +151,7 @@ export function Navbar({
                 ? 'text-slate-400 hover:text-yellow-400 hover:bg-slate-800'
                 : 'text-yellow-500 hover:text-white hover:bg-slate-800',
             ].join(' ')}
-            title={darkMode ? 'Modo claro' : 'Modo oscuro'}
+            title={t(darkMode ? 'theme_light' : 'theme_dark')}
           >
             {darkMode ? <SunIcon /> : <MoonIcon />}
           </button>

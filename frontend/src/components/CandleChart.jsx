@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // ── TradingView symbol map — cubre todos los activos del catálogo ─────────────
 const TV_MAP = {
@@ -127,6 +128,7 @@ function loadTVScript() {
 let idCounter = 0;
 
 export function CandleChart({ asset, timeframe = '3M' }) {
+  const { i18n } = useTranslation();
   const wrapperRef     = useRef(null);
   const containerIdRef = useRef(`tv_widget_${++idCounter}`);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
@@ -164,7 +166,7 @@ export function CandleChart({ asset, timeframe = '3M' }) {
         theme:               'dark',
         style:               '1',         // Velas japonesas
         studies:             ['PivotPointsStandard@tv-basicstudies', 'MAExp@tv-basicstudies', 'RSI@tv-basicstudies'],
-        locale:              'es',
+        locale:              i18n.language.split('-')[0],
         toolbar_bg:          '#0f172a',
         enable_publishing:   false,
         allow_symbol_change: true,
@@ -180,7 +182,7 @@ export function CandleChart({ asset, timeframe = '3M' }) {
     return () => {
       if (wrapperRef.current) wrapperRef.current.innerHTML = '';
     };
-  }, [asset?.id, asset?.tvSymbol, timeframe]);
+  }, [asset?.id, asset?.tvSymbol, timeframe, i18n.language]);
 
   return (
     <div

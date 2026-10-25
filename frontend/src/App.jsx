@@ -81,7 +81,17 @@ export default function App() {
   });
 
   useEffect(() => {
+    const sync = () => {
+      const route = window.location.hash.slice(1);
+      if (['dashboard', 'panorama', 'markets', 'portfolio', 'alerts', 'screener', 'fundamentals'].includes(route)) setCurrentPage(route);
+    };
+    window.addEventListener('hashchange', sync);
+    return () => window.removeEventListener('hashchange', sync);
+  }, []);
+
+  useEffect(() => {
     window.location.hash = currentPage;
+    window.scrollTo(0, 0);
   }, [currentPage]);
 
   // ── Dark / Light mode ────────────────────────────────────────
@@ -103,7 +113,7 @@ export default function App() {
   }, [darkMode]);
 
   return (
-    <div className="min-h-screen text-white flex flex-col" style={{ background: 'linear-gradient(160deg, #090909 0%, #0c0c0d 40%, #09090a 100%)' }}>
+    <div className="min-h-screen text-white flex flex-col" style={{ background: 'var(--bg-primary)' }}>
       <Navbar
         lastUpdated={lastUpdated}
         currentPage={currentPage}
@@ -119,7 +129,7 @@ export default function App() {
 
       {/* ── Banner de instalación PWA ── */}
       {canInstall && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl border border-[#c0c0c0]/30 bg-[#111318]/95 backdrop-blur-sm shadow-xl">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl border border-[#c0c0c0]/30 bg-[var(--bg-card)] backdrop-blur-sm shadow-xl">
           <span className="text-sm text-slate-300">Instala WaStake como app</span>
           <button
             onClick={install}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchNews, translateText } from '../services/api.js';
 import { getAnalysisType } from '../data/assetCatalog.js';
@@ -17,8 +17,8 @@ const MEDIUM_KEYWORDS = [
 
 function detectImpact(text = '', existingImpact) {
   const lower = text.toLowerCase();
-  if (HIGH_KEYWORDS.some(kw => lower.includes(kw)))   return 'high';
-  if (MEDIUM_KEYWORDS.some(kw => lower.includes(kw))) return 'medium';
+  if (HIGH_KEYWORDS.some(kw => new RegExp('\\b' + kw + '\\b').test(lower)))   return 'high';
+  if (MEDIUM_KEYWORDS.some(kw => new RegExp('\\b' + kw + '\\b').test(lower))) return 'medium';
   return existingImpact ?? 'low';
 }
 
@@ -32,11 +32,6 @@ const IMPACT_DOT = {
   medium: 'bg-amber-500',
   low:    'bg-slate-600',
 };
-const IMPACT_LABELS = {
-  high:   '● Alto impacto',
-  medium: '◐ Impacto medio',
-  low:    '○ Bajo impacto',
-};
 const IMPACT_TEXT = {
   high:   'text-red-400',
   medium: 'text-amber-400',
@@ -49,55 +44,39 @@ const SENTIMENT_STYLES = {
   negative: 'bg-red-900/60   text-red-300   border border-red-700/50',
   neutral:  'bg-slate-700/60 text-slate-400  border border-slate-600/50',
 };
-const SENTIMENT_LABELS = { positive: 'Positivo', negative: 'Negativo', neutral: 'Neutral' };
 
-function timeAgo(isoDate) {
-  const publishedAt = Date.parse(isoDate);
-  if (!Number.isFinite(publishedAt)) return 'fecha desconocida';
-  const diff  = Date.now() - publishedAt;
-  const mins  = Math.floor(diff / 60_000);
-  const hours = Math.floor(diff / 3_600_000);
-  const days  = Math.floor(diff / 86_400_000);
-  if (mins  < 60) return `hace ${mins}m`;
-  if (hours < 24) return `hace ${hours}h`;
-  return `hace ${days}d`;
+function timeAgo(isoDate, language) {
+  const time = Date.parse(isoDate);
+  if (!Number.isFinite(time)) return '—';
+  const minutes = Math.max(0, Math.floor((Date.now() - time) / 60_000));
+  const formatter = new Intl.RelativeTimeFormat(language, { numeric: 'auto' });
+  return minutes < 60 ? formatter.format(-minutes, 'minute') : minutes < 1440 ? formatter.format(-Math.floor(minutes / 60), 'hour') : formatter.format(-Math.floor(minutes / 1440), 'day');
 }
 
 // ─── Translation hook ─────────────────────────────────────────
+const newsKey = article => (article.link ?? '') + '|' + article.title;
 function useTranslations(articles, lang) {
   const [titles, setTitles] = useState({});
-  const prevLang = useRef(lang);
-  const prevLen  = useRef(0);
-
   useEffect(() => {
-    if (!articles?.length) return;
-    if (lang === 'en') { setTitles({}); return; }
-    if (lang === prevLang.current && articles.length === prevLen.current) return;
-
-    prevLang.current = lang;
-    prevLen.current  = articles.length;
-
-    // Translate in batches to avoid MyMemory's 500-char limit per call
-    const shortLang = lang.split('-')[0]; // 'es-ES' → 'es'
-
+    const shortLang = lang.split('-')[0];
+    if (!articles?.length || shortLang === 'en') return;
+    let cancelled = false;
     async function translateAll() {
-      const newTitles = {};
-      await Promise.allSettled(
-        articles.map(async (a, i) => {
+      const results = {};
+      for (let start = 0; start < articles.length; start += 3) {
+        await Promise.allSettled(articles.slice(start, start + 3).map(async article => {
           try {
-            const { translatedText } = await translateText(a.title, shortLang);
-            newTitles[i] = translatedText;
-          } catch {
-            newTitles[i] = a.title;
-          }
-        })
-      );
-      setTitles(newTitles);
+            const result = await translateText(article.title, shortLang);
+            if (result.translated && result.translatedText) results[shortLang + ':' + newsKey(article)] = result.translatedText;
+          } catch { /* the original remains explicitly identified */ }
+        }));
+        if (cancelled) return;
+        setTitles(current => ({ ...current, ...results }));
+      }
     }
-
     translateAll();
+    return () => { cancelled = true; };
   }, [articles, lang]);
-
   return titles;
 }
 
@@ -135,14 +114,16 @@ function useNews(asset) {
 
 // ─── Sub-components ───────────────────────────────────────────
 function SentimentBadge({ sentiment }) {
+  const { t } = useTranslation();
   return (
     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${SENTIMENT_STYLES[sentiment] ?? SENTIMENT_STYLES.neutral}`}>
-      {SENTIMENT_LABELS[sentiment] ?? sentiment}
+      {t('news_' + (sentiment || 'neutral'))}
     </span>
   );
 }
 
 function NewsCard({ article, translatedTitle, impact }) {
+  const { t, i18n } = useTranslation();
   return (
     <a href={article.link} target="_blank" rel="noopener noreferrer" className="block group">
       <div className={`p-3 rounded-lg border transition-colors duration-150 hover:brightness-110 ${IMPACT_BORDER[impact]}`}>
@@ -152,7 +133,7 @@ function NewsCard({ article, translatedTitle, impact }) {
             <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${IMPACT_DOT[impact]}`} />
             <span className="text-xs font-medium text-slate-400">{article.source}</span>
           </div>
-          <span className="text-xs text-slate-500 flex-shrink-0">{timeAgo(article.pubDate)}</span>
+          <span className="text-xs text-slate-500 flex-shrink-0">{timeAgo(article.pubDate, i18n.language)}</span>
         </div>
 
         {/* Title (translated if available) */}
@@ -161,15 +142,13 @@ function NewsCard({ article, translatedTitle, impact }) {
         </p>
 
         {/* AI summary */}
-        {article.aiSummary && (
-          <p className="text-xs text-slate-400 italic mb-2 line-clamp-1">{article.aiSummary}</p>
-        )}
+        {!translatedTitle && !i18n.language.startsWith('en') && <p className="mb-2 text-xs text-amber-300">{t('news_original')}</p>}
 
         {/* Badges */}
         <div className="flex items-center gap-2 flex-wrap">
           <SentimentBadge sentiment={article.sentiment} />
           <span className={`text-xs font-medium ${IMPACT_TEXT[impact]}`}>
-            {IMPACT_LABELS[impact]}
+            {t('news_' + impact)}
           </span>
         </div>
       </div>
@@ -202,8 +181,10 @@ function Skeleton() {
 // ─── Main component ───────────────────────────────────────────
 export function NewsPanel({ asset }) {
   const { data, loading, error } = useNews(asset);
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const translatedTitles = useTranslations(data, i18n.language);
+  const shortLang = i18n.language.split('-')[0];
+  const titleFor = article => shortLang === 'en' ? undefined : translatedTitles[shortLang + ':' + newsKey(article)];
 
   if (loading) return (
     <div className="mt-3 bg-slate-800/50 border border-slate-700/30 rounded-xl overflow-hidden">
@@ -213,13 +194,13 @@ export function NewsPanel({ asset }) {
 
   if (error) return (
     <div className="mt-3 bg-slate-800/50 border border-slate-700/30 rounded-xl p-4">
-      <p className="text-xs text-red-400 text-center">No se pudieron cargar las noticias.</p>
+      <p className="text-xs text-red-400 text-center">{t('news_error')}</p>
     </div>
   );
 
   if (!data || data.length === 0) return (
     <div className="mt-3 bg-slate-800/50 border border-slate-700/30 rounded-xl p-4">
-      <p className="text-xs text-slate-500 text-center">Sin noticias recientes para este activo.</p>
+      <p className="text-xs text-slate-500 text-center">{t('news_empty')}</p>
     </div>
   );
 
@@ -234,10 +215,10 @@ export function NewsPanel({ asset }) {
     <div className="mt-3">
       {/* Header */}
       <div className="flex items-center justify-between mb-3 px-1">
-        <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Noticias</h3>
+        <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">{t('news_title')}</h3>
         <span className="text-xs text-slate-500">
-          {data.length} artículos · {asset.name}
-          {i18n.language !== 'en' && <span className="ml-1 text-brand-400">· traducidas</span>}
+          {data.length} {t('news_articles')} · <span translate="no">{asset.name}</span>
+          {shortLang !== 'en' && <span className="ml-1 text-brand-400">· {t('news_translation_count', { count: data.filter(article => titleFor(article)).length, total: data.length })}</span>}
         </span>
       </div>
 
@@ -248,14 +229,14 @@ export function NewsPanel({ asset }) {
         <div className="bg-red-950/20 border border-red-700/40 rounded-xl overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-red-700/30">
             <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
-            <span className="text-xs font-semibold text-red-400 uppercase tracking-wider">Alto impacto</span>
+            <span className="text-xs font-semibold text-red-400 uppercase tracking-wider">{t('news_high')}</span>
             <span className="ml-auto text-xs text-red-500/70 font-mono">{enriched.filter(a => a.computedImpact === 'high').length}</span>
           </div>
           <div className="p-2 space-y-2 max-h-96 overflow-y-auto">
             {enriched.filter(a => a.computedImpact === 'high').length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-6">Sin noticias de alto impacto</p>
+              <p className="text-xs text-slate-500 text-center py-6">{t('news_none')}</p>
             ) : enriched.filter(a => a.computedImpact === 'high').map((article, i) => (
-              <NewsCard key={article.link || i} article={article} translatedTitle={translatedTitles[article._origIdx]} impact="high" />
+              <NewsCard key={article.link || i} article={article} translatedTitle={titleFor(article)} impact="high" />
             ))}
           </div>
         </div>
@@ -264,14 +245,14 @@ export function NewsPanel({ asset }) {
         <div className="bg-amber-950/10 border border-amber-700/40 rounded-xl overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-amber-700/30">
             <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
-            <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Impacto medio</span>
+            <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">{t('news_medium')}</span>
             <span className="ml-auto text-xs text-amber-500/70 font-mono">{enriched.filter(a => a.computedImpact === 'medium').length}</span>
           </div>
           <div className="p-2 space-y-2 max-h-96 overflow-y-auto">
             {enriched.filter(a => a.computedImpact === 'medium').length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-6">Sin noticias de impacto medio</p>
+              <p className="text-xs text-slate-500 text-center py-6">{t('news_none')}</p>
             ) : enriched.filter(a => a.computedImpact === 'medium').map((article, i) => (
-              <NewsCard key={article.link || i} article={article} translatedTitle={translatedTitles[article._origIdx]} impact="medium" />
+              <NewsCard key={article.link || i} article={article} translatedTitle={titleFor(article)} impact="medium" />
             ))}
           </div>
         </div>
@@ -280,14 +261,14 @@ export function NewsPanel({ asset }) {
         <div className="bg-slate-800/40 border border-slate-700/40 rounded-xl overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-700/30">
             <span className="w-2 h-2 rounded-full bg-slate-500 flex-shrink-0" />
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Bajo impacto</span>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t('news_low')}</span>
             <span className="ml-auto text-xs text-slate-500/70 font-mono">{enriched.filter(a => a.computedImpact === 'low').length}</span>
           </div>
           <div className="p-2 space-y-2 max-h-96 overflow-y-auto">
             {enriched.filter(a => a.computedImpact === 'low').length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-6">Sin noticias de bajo impacto</p>
+              <p className="text-xs text-slate-500 text-center py-6">{t('news_none')}</p>
             ) : enriched.filter(a => a.computedImpact === 'low').map((article, i) => (
-              <NewsCard key={article.link || i} article={article} translatedTitle={translatedTitles[article._origIdx]} impact="low" />
+              <NewsCard key={article.link || i} article={article} translatedTitle={titleFor(article)} impact="low" />
             ))}
           </div>
         </div>

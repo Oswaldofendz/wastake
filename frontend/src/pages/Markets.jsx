@@ -22,8 +22,8 @@ export function Markets({ allAssets }) {
       <div className="px-4 pt-4 pb-0 border-b border-slate-700/50">
         {/* Page title */}
         <div className="mb-3">
-          <h1 className="text-lg font-bold text-white">Mercados</h1>
-          <p className="text-xs text-slate-500">Visión global del mercado financiero</p>
+          <h1 className="text-xl font-bold text-white">{t('nav_markets')}</h1>
+          <p className="text-sm text-slate-400">{t('market_subtitle')}</p>
         </div>
 
         {/* Tabs */}
@@ -58,7 +58,7 @@ export function Markets({ allAssets }) {
             <EconomicCalendar />
             <MacroRatesTable />
 
-            <details className="rounded-xl border border-white/[8%] bg-[#111318]/70">
+            <details className="rounded-xl border border-white/[8%] bg-[var(--bg-card)]">
               <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-200">
                 {t('correlation_context_title')}
               </summary>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchCalendar } from '../services/api.js';
+import { localCalendarEvent } from '../utils/calendar.js';
 
 function dayKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -18,7 +19,7 @@ export function EventCalendarChart() {
     fetchCalendar()
       .then(data => {
         if (cancelled) return;
-        setEvents(Array.isArray(data?.events) ? data.events : Array.isArray(data) ? data : []);
+        setEvents((Array.isArray(data?.events) ? data.events : Array.isArray(data) ? data : []).map(localCalendarEvent));
         setSource(Array.isArray(data) ? 'live' : data?.source ?? null);
       })
       .catch(() => { if (!cancelled) setError(true); })
@@ -49,7 +50,7 @@ export function EventCalendarChart() {
   const total = days.reduce((sum, day) => sum + day.high + day.medium + day.low, 0);
 
   return (
-    <section className="rounded-xl border border-white/[8%] bg-[#111318]/90 p-4" aria-labelledby="event-load-title">
+    <section className="rounded-xl border border-white/[8%] bg-[var(--bg-card)] p-4" aria-labelledby="event-load-title">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 id="event-load-title" className="text-xs font-semibold uppercase tracking-wider text-slate-300">{t('calendar_chart_title')}</h2>
@@ -57,6 +58,8 @@ export function EventCalendarChart() {
         </div>
         {source === 'live' && <span className="shrink-0 text-[10px] text-emerald-400">● {t('calendar_live')}</span>}
         {source === 'fallback' && <span className="shrink-0 text-[10px] text-amber-400">◐ {t('calendar_estimated')}</span>}
+        {source === 'official' && <span className="text-xs text-sky-300">{t('calendar_official')}</span>}
+        {source === 'cached' && <span className="text-xs text-amber-300">{t('calendar_cached')}</span>}
       </div>
 
       {loading ? (

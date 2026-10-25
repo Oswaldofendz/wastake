@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const ALERT_TYPE_LABELS = {
   price_above:    'Precio superó objetivo',
@@ -42,6 +43,7 @@ export function NotificationBell({
   onMarkAllRead,
   onNavigateAlerts,
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const containerRef    = useRef(null);
 
@@ -80,7 +82,7 @@ export function NotificationBell({
       <button
         onClick={() => setOpen(prev => !prev)}
         className="relative p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-        aria-label="Notificaciones"
+        aria-label={t('notifications')}
       >
         {/* Bell SVG */}
         <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -98,16 +100,16 @@ export function NotificationBell({
 
       {/* Dropdown panel */}
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-50 overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
-            <span className="text-white font-semibold text-sm">Notificaciones</span>
+            <span className="text-white font-semibold text-sm">{t('notifications')}</span>
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllRead}
                 className="text-xs text-brand-400 hover:text-brand-300 transition-colors font-medium"
               >
-                Marcar todo leído
+                {t('mark_all_read')}
               </button>
             )}
           </div>
@@ -164,7 +166,7 @@ export function NotificationBell({
               onClick={handleNavigate}
               className="w-full text-center text-brand-400 hover:text-brand-300 text-sm font-medium transition-colors"
             >
-              Ver todas las alertas →
+              {t('view_all_alerts')}
             </button>
           </div>
         </div>

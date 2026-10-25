@@ -293,7 +293,7 @@ function MarketComparisonWidget({ asset, currentPrice, analysis }) {
   }, [compareId]);
 
   if (!compareData || !analysis) return (
-    <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl p-4 flex items-center justify-center min-h-[200px]">
+    <div className="bg-[var(--bg-card)] border border-white/[8%] rounded-xl p-4 flex items-center justify-center min-h-[200px]">
       <div className="w-4 h-4 border border-brand-400 border-t-transparent rounded-full animate-spin"/>
     </div>
   );
@@ -312,7 +312,7 @@ function MarketComparisonWidget({ asset, currentPrice, analysis }) {
   const signalLabel = signal === 'outperform' ? 'Supera referencia' : signal === 'underperform' ? 'Por debajo' : 'En línea';
 
   return (
-    <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl p-4 flex flex-col gap-3">
+    <div className="bg-[var(--bg-card)] border border-white/[8%] rounded-xl p-4 flex flex-col gap-3">
       <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Comparación vs {compareLabel}</p>
 
       <div className="grid grid-cols-3 gap-2 text-center">
@@ -579,7 +579,7 @@ export function Panorama() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 
               {/* Card 1: Señal */}
-              <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl p-4 flex flex-col items-center justify-center gap-3 min-h-[320px]">
+              <div className="bg-[var(--bg-card)] border border-white/[8%] rounded-xl p-4 flex flex-col items-center justify-center gap-3 min-h-[320px]">
                 <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold self-start">Señal</p>
                 <div className="flex items-center gap-4 w-full justify-center flex-1">
                   <TrafficLight signal={signal} size="lg" />
@@ -599,7 +599,7 @@ export function Panorama() {
               </div>
 
               {/* Card 2: Indicadores */}
-              <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl p-4">
+              <div className="bg-[var(--bg-card)] border border-white/[8%] rounded-xl p-4">
                 <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-3">Indicadores técnicos</p>
                 <div className="grid grid-cols-2 gap-2">
                   {(() => { const { badge, cls } = signalBadge(sigs?.rsi?.signal); return (
@@ -626,7 +626,7 @@ export function Panorama() {
               </div>
 
               {/* Card 3: Confluencia */}
-              <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl p-4 flex flex-col items-center justify-center gap-2">
+              <div className="bg-[var(--bg-card)] border border-white/[8%] rounded-xl p-4 flex flex-col items-center justify-center gap-2">
                 <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold self-start">Confluencia</p>
                 <ConfluenceGauge score={score} />
                 <div className="flex gap-2 mt-1">
@@ -645,7 +645,7 @@ export function Panorama() {
               </div>
 
               {/* Card 4: Contexto de mercado */}
-              <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl p-4 flex flex-col gap-3">
+              <div className="bg-[var(--bg-card)] border border-white/[8%] rounded-xl p-4 flex flex-col gap-3">
                 <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Contexto de mercado</p>
 
                 {/* Fear & Greed — solo para crypto */}
@@ -760,7 +760,7 @@ export function Panorama() {
               </div>
 
               {/* Card 5: Análisis narrativo IA */}
-              <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl p-4 flex flex-col gap-3">
+              <div className="bg-[var(--bg-card)] border border-white/[8%] rounded-xl p-4 flex flex-col gap-3">
                 <div className="flex items-center gap-2">
                   <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Análisis IA</p>
                   <span className="text-xs bg-brand-900/40 text-brand-400 border border-brand-700/40 rounded-full px-2 py-0.5 font-semibold">Groq</span>

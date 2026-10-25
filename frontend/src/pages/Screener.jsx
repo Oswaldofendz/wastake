@@ -99,16 +99,16 @@ function AssetRow({ asset, rank, t, showMarketCap }) {
   const typeColors = TYPE_COLORS[asset.type] ?? TYPE_COLORS.etf;
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-700/20 last:border-0 hover:bg-slate-700/20 transition-colors">
+    <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 border-b border-slate-700/20 last:border-0 hover:bg-slate-700/20 transition-colors">
       {/* Rank */}
-      <span className="w-6 text-xs text-slate-600 text-right flex-shrink-0">{rank}</span>
+      <span className="hidden sm:block w-6 text-xs text-slate-600 text-right flex-shrink-0">{rank}</span>
 
       {/* Logo + nombre */}
       <div className="flex items-center gap-2.5 flex-1 min-w-0">
         <AssetAvatar asset={asset} />
         <div className="min-w-0">
-          <p className="text-sm font-medium text-white truncate leading-tight">{asset.name}</p>
-          <p className="text-xs text-slate-500 leading-tight">{asset.symbol}</p>
+          <p translate="no" className="text-sm font-medium text-white truncate leading-tight">{asset.name}</p>
+          <p translate="no" className="text-xs text-slate-500 leading-tight">{asset.symbol}</p>
         </div>
       </div>
 
@@ -118,12 +118,12 @@ function AssetRow({ asset, rank, t, showMarketCap }) {
       </span>
 
       {/* Precio */}
-      <span className="w-24 text-right text-sm font-mono font-semibold text-white flex-shrink-0">
+      <span className="w-20 sm:w-24 text-right text-sm font-mono font-semibold text-white flex-shrink-0">
         {fmtPrice(asset.price)}
       </span>
 
       {/* Cambio 24h */}
-      <span className={`w-20 text-right text-sm font-mono font-semibold flex-shrink-0 ${positive ? 'text-green-400' : 'text-red-400'}`}>
+      <span className={`w-16 sm:w-20 text-right text-sm font-mono font-semibold flex-shrink-0 ${positive ? 'text-green-400' : 'text-red-400'}`}>
         {fmtChange(asset.change24h)}
       </span>
 
@@ -153,44 +153,6 @@ function AssetRow({ asset, rank, t, showMarketCap }) {
 }
 
 // ─── Presets de búsqueda rápida ───────────────────────────────────────────────
-const PRESETS = [
-  {
-    id: 'momentum',
-    icon: '🚀', labelKey: 'screener_preset_momentum',
-    apply: () => ({ typeFilter: 'all', changeFilter: 'up_3', sortBy: 'change_desc' }),
-  },
-  {
-    id: 'gainers',
-    icon: '▲', labelKey: 'screener_preset_gainers',
-    apply: () => ({ typeFilter: 'all', changeFilter: 'up2',  sortBy: 'change_desc' }),
-  },
-  {
-    id: 'losers',
-    icon: '▼', labelKey: 'screener_preset_losers',
-    apply: () => ({ typeFilter: 'all', changeFilter: 'down2', sortBy: 'change_asc' }),
-  },
-  {
-    id: 'volatile',
-    icon: '⚡', labelKey: 'screener_preset_volatile',
-    apply: () => ({ typeFilter: 'all', changeFilter: 'vol_5', sortBy: 'change_desc' }),
-  },
-  {
-    id: 'flat',
-    icon: '➡', labelKey: 'screener_preset_flat',
-    apply: () => ({ typeFilter: 'all', changeFilter: 'flat',  sortBy: 'name_asc' }),
-  },
-  {
-    id: 'crypto_only',
-    icon: '₿', labelKey: 'screener_preset_crypto',
-    apply: () => ({ typeFilter: 'crypto', changeFilter: 'all', sortBy: 'mktcap_desc' }),
-  },
-  {
-    id: 'stocks_only',
-    icon: '📈', labelKey: 'screener_preset_stocks',
-    apply: () => ({ typeFilter: 'stock', changeFilter: 'all', sortBy: 'change_desc' }),
-  },
-];
-
 // ─── Componente principal ─────────────────────────────────────────────────────
 export function Screener() {
   const { t } = useTranslation();
@@ -203,22 +165,8 @@ export function Screener() {
   const [activePreset, setActivePreset] = useState(null);
   const [collapsedGroups, setCollapsedGroups] = useState({});
 
-  function applyPreset(preset) {
-    if (activePreset === preset.id) {
-      // Segundo click: desactivar preset
-      setActivePreset(null);
-      setSearch('');
-      setTypeFilter('all');
-      setChangeFilter('all');
-      setSortBy('change_desc');
-      return;
-    }
-    const s = preset.apply();
-    setSearch('');
-    setTypeFilter(s.typeFilter);
-    setChangeFilter(s.changeFilter);
-    setSortBy(s.sortBy);
-    setActivePreset(preset.id);
+  function resetFilters() {
+    setSearch(''); setTypeFilter('all'); setChangeFilter('all'); setSortBy('change_desc');
   }
 
   // ── Filtrado + ordenación ────────────────────────────────────────────────────
@@ -346,7 +294,7 @@ export function Screener() {
       </div>
 
       {/* ── Panel de búsqueda y filtros ── */}
-      <section className="mb-4 rounded-xl border border-white/[8%] bg-[#111318]/70 p-3 sm:p-4" aria-labelledby="screener-filters-title">
+      <section className="mb-4 rounded-xl border border-white/[8%] bg-[var(--bg-card)] p-3 sm:p-4" aria-labelledby="screener-filters-title">
         <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
           <div>
             <h2 id="screener-filters-title" className="text-sm font-semibold text-white">{t('screener_filters_title')}</h2>
@@ -355,7 +303,7 @@ export function Screener() {
           {(search || typeFilter !== 'all' || changeFilter !== 'all' || sortBy !== 'change_desc') && (
             <button
               type="button"
-              onClick={() => applyPreset({ id: activePreset, apply: () => ({}) })}
+              onClick={resetFilters}
               className="min-h-9 rounded-lg border border-slate-600/50 px-3 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-400 hover:text-white"
             >
               {t('screener_clear_filters')}
@@ -373,7 +321,7 @@ export function Screener() {
               <input
                 type="search"
                 value={search}
-                onChange={e => { setSearch(e.target.value); setActivePreset(null); }}
+                onChange={e => { setSearch(e.target.value); }}
                 placeholder={t('search_assets')}
                 className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 py-2 pl-10 pr-3 text-sm text-white placeholder-slate-500 focus:border-brand-500/60 focus:outline-none"
               />
@@ -386,7 +334,6 @@ export function Screener() {
               const nextType = e.target.value;
               setTypeFilter(nextType);
               if (nextType !== 'crypto' && sortBy === 'mktcap_desc') setSortBy('change_desc');
-              setActivePreset(null);
             }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
               {Object.entries(TYPE_LABELS).map(([k, labelKey]) => <option key={k} value={k}>{t(labelKey)}</option>)}
             </select>
@@ -394,14 +341,14 @@ export function Screener() {
 
           <label className="block min-w-0">
             <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_change_label')}</span>
-            <select value={changeFilter} onChange={e => { setChangeFilter(e.target.value); setActivePreset(null); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
+            <select value={changeFilter} onChange={e => { setChangeFilter(e.target.value); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
               {CHANGE_FILTERS.map(f => <option key={f.id} value={f.id}>{t(f.labelKey)}</option>)}
             </select>
           </label>
 
           <label className="block min-w-0 sm:col-span-2 xl:col-span-2">
             <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_sort_label')}</span>
-            <select value={sortBy} onChange={e => { setSortBy(e.target.value); setActivePreset(null); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
+            <select value={sortBy} onChange={e => { setSortBy(e.target.value); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
               {availableSortOptions.map(s => <option key={s.id} value={s.id}>{t(s.labelKey)}</option>)}
             </select>
           </label>
@@ -414,37 +361,18 @@ export function Screener() {
 
         </div>
 
-        <div className="mt-4 border-t border-slate-700/40 pt-3">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{t('screener_quick_views')}</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7">
-            {PRESETS.map(preset => (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => applyPreset(preset)}
-                aria-pressed={activePreset === preset.id}
-                className={`min-h-10 rounded-lg border px-2.5 py-2 text-xs font-semibold transition-colors ${
-                  activePreset === preset.id
-                    ? 'border-[#c0c0c0] bg-[#c0c0c0] text-black'
-                    : 'border-slate-700/50 bg-slate-800/50 text-slate-300 hover:border-slate-500 hover:text-white'
-                }`}
-              >
-                <span aria-hidden="true">{preset.icon}</span> {t(preset.labelKey)}
-              </button>
-            ))}
-          </div>
-        </div>
+
       </section>
 
       {/* ── Tabla ── */}
-      <div className="flex-1 bg-[#111318]/90 border border-white/[8%] rounded-xl overflow-hidden">
+      <div className="flex-1 bg-[var(--bg-card)] border border-white/[8%] rounded-xl overflow-hidden">
         {/* Header de columnas */}
-        <div className="flex items-center gap-3 px-4 py-2.5 text-xs text-slate-500 border-b border-slate-700/40 bg-slate-800/60">
-          <span className="w-6" />
+        <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 text-xs text-slate-500 border-b border-slate-700/40 bg-slate-800/60">
+          <span className="hidden sm:block w-6" />
           <span className="flex-1">{t('screener_column_asset')}</span>
           <span className="hidden sm:block w-20">{t('screener_column_type')}</span>
-          <span className="w-24 text-right">{t('price')}</span>
-          <span className="w-20 text-right">{t('change_24h')}</span>
+          <span className="w-20 sm:w-24 text-right">{t('price')}</span>
+          <span className="w-16 sm:w-20 text-right">{t('change_24h')}</span>
           {typeFilter === 'crypto' && <span className="hidden lg:block w-24 text-right">{t('market_cap')}</span>}
           <span className="hidden md:block w-20 text-center">{t('screener_column_change')}</span>
         </div>
@@ -472,7 +400,7 @@ export function Screener() {
             </svg>
             <p className="text-slate-500 text-sm">{t('screener_no_matches')}</p>
             <button
-              onClick={() => { setSearch(''); setTypeFilter('all'); setChangeFilter('all'); setSortBy('change_desc'); setActivePreset(null); }}
+              onClick={() => { setSearch(''); setTypeFilter('all'); setChangeFilter('all'); setSortBy('change_desc'); }}
               className="text-xs text-brand-400 hover:text-brand-300 transition-colors mt-1"
             >
               {t('screener_clear_filters')}

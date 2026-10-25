@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchCalendar } from '../services/api.js';
+import { localCalendarEvent, localDayKey, calendarTitle, numericEventValue, classifyEconomicEvent } from '../utils/calendar.js';
 
 // ── Helpers ────────────────────────────────────────────────────
 const IMPACT_STYLES = {
@@ -22,10 +23,10 @@ const CURRENCY_COLORS = {
 };
 
 function isToday(dateStr) {
-  return dateStr === new Date().toISOString().slice(0, 10);
+  return dateStr === localDayKey();
 }
 function isPast(dateStr) {
-  return dateStr < new Date().toISOString().slice(0, 10);
+  return dateStr < localDayKey();
 }
 
 function groupByDate(events) {
@@ -44,19 +45,11 @@ function dateLabel(dateStr, language) {
 }
 
 function classifyEvent(title = '') {
-  const text = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  if (/rate|interest|tasa|tasas|tipo de interes|tipos de interes|juros|taxa|taxas|fomc|central bank|monetary policy|decision.*(bce|ecb|fed|boe|boj)|bce.*decision|ecb.*decision/.test(text)) return 'rates';
-  if (/cpi|pce|inflation|consumer price|producer price|ipc|precios al consumidor/.test(text)) return 'inflation';
-  if (/employment|payroll|jobless|unemployment|nonfarm|nfp|nomina|nominas|empleo|desempleo/.test(text)) return 'jobs';
-  if (/gdp|gross domestic|pib/.test(text)) return 'growth';
-  if (/pmi|manufacturing|services|business activity|retail sales/.test(text)) return 'activity';
-  return 'other';
+  return classifyEconomicEvent(title);
 }
 
 function numericValue(value) {
-  if (value == null || value === '') return null;
-  const parsed = Number(String(value).replace(/,/g, '').replace(/[^\d.+-]/g, ''));
-  return Number.isFinite(parsed) ? parsed : null;
+  return numericEventValue(value);
 }
 
 function getEventRead(ev) {
@@ -64,11 +57,13 @@ function getEventRead(ev) {
   const actual = numericValue(ev.actual);
   const forecast = numericValue(ev.forecast);
   if (category === 'other') return { category, surprise: 'mixed' };
-  if (actual == null || forecast == null || actual === forecast) return { category, surprise: actual == null ? 'pending' : 'inline' };
+  if (actual == null || forecast == null) return { category, surprise: 'missing' };
+  if (actual === forecast) return { category, surprise: 'inline' };
   return { category, surprise: actual > forecast ? 'above' : 'below' };
 }
 
 function sourceForEvent(ev, category) {
+  if (/^https:\/\//.test(ev.sourceUrl ?? '')) return ev.sourceUrl;
   const currency = String(ev.currency || '').toUpperCase();
   if (currency === 'USD') {
     if (category === 'rates') return 'https://www.federalreserve.gov/monetarypolicy.htm';
@@ -88,7 +83,7 @@ function sourceForEvent(ev, category) {
 }
 
 function eventAssets(ev, category, surprise) {
-  if (surprise === 'pending' || surprise === 'inline' || surprise === 'mixed') {
+  if (surprise === 'missing' || surprise === 'pending' || surprise === 'inline' || surprise === 'mixed') {
     if (category === 'rates' || category === 'inflation') return [
       { symbol: ev.currency || 'FX', bias: 'neutral' }, { symbol: 'BTC', bias: 'neutral' },
       { symbol: 'QQQ', bias: 'neutral' }, { symbol: 'TLT', bias: 'neutral' },
@@ -100,7 +95,8 @@ function eventAssets(ev, category, surprise) {
   }
   const higher = surprise === 'above';
   const restrictive = category === 'rates' || category === 'inflation';
-  const currencyBias = higher ? 'up' : 'down';
+  const higherIsWeak = /unemployment|jobless|desempleo|desemprego|claims/i.test(ev.title);
+  const currencyBias = higher !== higherIsWeak ? 'up' : 'down';
   if (restrictive) return [
     { symbol: ev.currency || 'FX', bias: currencyBias },
     { symbol: 'BTC', bias: higher ? 'down' : 'up' },
@@ -141,6 +137,7 @@ export function EconomicCalendar() {
   const { t, i18n } = useTranslation();
   const [events, setEvents]       = useState([]);
   const [source, setSource]       = useState(null); // 'live' | 'fallback'
+  const [fetchedAt, setFetchedAt] = useState(null);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(false);
   const [filterImpact, setImpact] = useState('all');
@@ -153,11 +150,12 @@ export function EconomicCalendar() {
         const data = await fetchCalendar();
         // Soporta { events, source } o array directo
         if (Array.isArray(data)) {
-          setEvents(data);
+          setEvents(data.map(localCalendarEvent));
           setSource('live');
         } else {
-          setEvents(Array.isArray(data.events) ? data.events : []);
+          setEvents(Array.isArray(data.events) ? data.events.map(localCalendarEvent) : []);
           setSource(data.source ?? null);
+          setFetchedAt(data.fetchedAt ?? null);
         }
       } catch {
         setEvents([]);
@@ -183,15 +181,17 @@ export function EconomicCalendar() {
   const todayCount  = events.filter(e => isToday(e.date)).length;
 
   return (
-    <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl overflow-hidden">
+    <div className="bg-[var(--bg-card)] border border-white/[8%] rounded-xl overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 border-b border-slate-700/40">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
           <div>
             <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
               {t('calendar_title')}
               {source === 'live' && <span className="ml-2 text-green-400 normal-case font-normal">● {t('calendar_live')}</span>}
               {source === 'fallback' && <span className="ml-2 text-amber-400 normal-case font-normal">◐ {t('calendar_estimated')}</span>}
+              {source === 'official' && <span className="ml-2 text-sky-300 normal-case font-normal">◐ {t('calendar_official')}</span>}
+              {source === 'cached' && <span className="ml-2 text-amber-300 normal-case font-normal">◐ {t('calendar_cached')}</span>}
             </h3>
             {!loading && (
               <p className="text-xs text-slate-500 mt-0.5">
@@ -217,10 +217,11 @@ export function EconomicCalendar() {
           </div>
         </div>
         {!loading && source && (
-          <p className={`mb-3 rounded-lg border px-3 py-2 text-[11px] leading-relaxed ${source === 'fallback' ? 'border-amber-800/40 bg-amber-950/20 text-amber-200/90' : 'border-slate-700/50 bg-slate-900/40 text-slate-400'}`} role="note">
-            {t(source === 'fallback' ? 'calendar_fallback_values_note' : 'calendar_live_values_note')}
+          <p className={`mb-3 rounded-lg border px-3 py-2 text-xs leading-relaxed ${source === 'fallback' || source === 'cached' ? 'border-amber-800/40 bg-amber-950/20 text-amber-200/90' : 'border-slate-700/50 bg-slate-900/40 text-slate-400'}`} role="note">
+            {t(source === 'official' ? 'calendar_official_note' : source === 'cached' ? 'calendar_cached_note' : source === 'fallback' ? 'calendar_fallback_values_note' : 'calendar_live_values_note')}
           </p>
         )}
+        <p className="mb-3 text-xs text-slate-400">{t('calendar_timezone', { zone: Intl.DateTimeFormat().resolvedOptions().timeZone })}{fetchedAt ? ` · ${t('calendar_checked')}: ${new Date(fetchedAt).toLocaleString(i18n.language)}` : ''}</p>
 
         {/* Impact filters */}
         <div className="flex gap-1">
@@ -286,8 +287,9 @@ export function EconomicCalendar() {
                   const sourceUrl = sourceForEvent(ev, category);
                   const displayValue = (value, field) => {
                     if (value != null && String(value).trim() !== '') return value;
-                    if (source === 'fallback') return t('calendar_value_unavailable');
-                    return field === 'actual' && !past ? t('calendar_value_pending') : t('calendar_value_missing');
+                    if (source === 'fallback' || source === 'official' || source === 'cached' || ['BLS', 'Federal Reserve'].includes(ev.sourceName)) return t('calendar_value_unavailable');
+                    const released = ev.scheduledAt ? Date.parse(ev.scheduledAt) <= Date.now() : past;
+                    return field === 'forecast' ? t('calendar_missing_consensus') : field === 'actual' && !released ? t('calendar_value_pending') : t('calendar_value_missing');
                   };
                   return (
                     <details
@@ -296,9 +298,9 @@ export function EconomicCalendar() {
                     >
                       <summary className="flex cursor-pointer list-none items-center gap-2">
                         <span className={`h-2 w-2 rounded-full ${dot} flex-shrink-0`} />
-                        <span className="w-12 flex-shrink-0 font-mono text-[11px] text-slate-400">{ev.time || '—'}<span className={`block font-bold ${currColor}`}>{ev.currency}</span></span>
+                        <span className="w-16 flex-shrink-0 text-xs text-slate-400"><span className="font-mono">{ev.time || t('calendar_no_time')}</span><span translate="no" className={`block font-bold ${currColor}`}>{ev.currency}</span></span>
                         <span className="min-w-0 flex-1">
-                          <span className="block text-xs font-medium leading-snug text-white sm:text-sm">{ev.title}</span>
+                          <span className="block text-sm font-medium leading-snug text-white">{calendarTitle(ev, t, i18n.language)}</span>
                           <span className="mt-1 flex flex-wrap items-center gap-1">
                             <span className={`rounded-full border px-1.5 py-0.5 text-[10px] ${badge}`}>{t(`calendar_${ev.impact || 'low'}`)}</span>
                             {outlook.map(item => <span key={item.symbol} className={`rounded border px-1 py-0.5 text-[10px] font-semibold ${item.bias === 'up' ? 'border-emerald-800/50 text-emerald-300' : item.bias === 'down' ? 'border-red-800/50 text-red-300' : 'border-slate-600/50 text-slate-400'}`}>{item.bias === 'up' ? '↑' : item.bias === 'down' ? '↓' : item.bias === 'mixed' ? '↕' : '↔'} {item.symbol}</span>)}
@@ -312,7 +314,8 @@ export function EconomicCalendar() {
                           <p><span className="font-medium text-slate-300">{t('calendar_market_relevance')}:</span> {t(`calendar_${category}_relevance`)}</p>
                           <p className="text-amber-300/90">{t(`calendar_surprise_${surprise}`, { currency: ev.currency || 'FX' })}</p>
                           <p className="text-slate-500">{t('calendar_bias_disclaimer')}</p>
-                          <a className="inline-flex text-sky-300 underline underline-offset-2 hover:text-sky-200" href={sourceUrl} target="_blank" rel="noopener noreferrer">{t(category === 'other' ? 'calendar_provider_source' : 'calendar_official_source')} ↗</a>
+                          <p>{t('calendar_original_title')}: <span lang="en">{ev.title}</span></p>
+                          <a className="inline-flex min-h-8 items-center text-sky-300 underline underline-offset-2 hover:text-sky-200" href={sourceUrl} target="_blank" rel="noopener noreferrer">{t('calendar_source')}: {ev.sourceName || t('calendar_official_source')} ↗</a>
                         </div>
                         <dl className="grid grid-cols-3 gap-2 text-[11px] sm:min-w-56">
                           {[[t('calendar_previous'), ev.previous, 'previous'], [t('calendar_forecast'), ev.forecast, 'forecast'], [t('calendar_actual'), ev.actual, 'actual']].map(([label, value, field]) => <div key={label} className="min-w-0"><dt className="text-slate-500">{label}</dt><dd className={`break-words font-mono ${value == null || String(value).trim() === '' ? 'text-slate-500' : 'text-slate-200'}`}>{displayValue(value, field)}</dd></div>)}

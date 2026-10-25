@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { fetchFearGreed } from '../services/api.js';
 
 const ZONES = [
@@ -15,6 +16,7 @@ function getZone(value) {
 
 // SVG arc gauge — semicircle 0°→180°
 function ArcGauge({ value }) {
+  const { t } = useTranslation();
   const zone = getZone(value);
   const R  = 52;
   const cx = 60; const cy = 62;
@@ -28,7 +30,7 @@ function ArcGauge({ value }) {
   const arcEnd    = polar(angle);
   const arcStart  = polar(0);
   const trackEnd  = polar(180);
-  const largeArc  = angle > 90 ? 1 : 0;
+  const largeArc  = 0; // A semicircular gauge never uses SVG's arc greater than 180°.
 
   // Colored zone segments
   const zoneSegments = [];
@@ -44,7 +46,7 @@ function ArcGauge({ value }) {
   }
 
   return (
-    <svg viewBox="0 0 120 70" className="w-full max-w-[200px]">
+    <svg viewBox="0 0 120 74" className="w-full max-w-[200px]" role="img" aria-label={`Fear & Greed: ${value}/100`}>
       {/* Zone arcs (track) */}
       {zoneSegments.map((seg, i) => (
         <path
@@ -75,20 +77,21 @@ function ArcGauge({ value }) {
         const ny = cy + (R - 4) * Math.sin(needleRad);
         return (
           <>
-            <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="white" strokeWidth="2" strokeLinecap="round" />
-            <circle cx={cx} cy={cy} r="3" fill="white" />
+            <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="var(--text-primary)" strokeWidth="2" strokeLinecap="round" />
+            <circle cx={cx} cy={cy} r="3" fill="var(--text-primary)" />
           </>
         );
       })()}
 
       {/* Zone labels */}
-      <text x="5"   y="68" fill="#ef4444" fontSize="5" fontFamily="monospace">Miedo</text>
-      <text x="93"  y="68" fill="#22c55e" fontSize="5" fontFamily="monospace">Codicia</text>
+      <text x="2" y="72" fill="#ef4444" fontSize="6.5">{t('fng_fear')}</text>
+      <text x="118" y="72" textAnchor="end" fill="#22c55e" fontSize="6.5">{t('fng_greed')}</text>
     </svg>
   );
 }
 
 function HistoryBar({ history }) {
+  const { i18n } = useTranslation();
   if (!history?.length) return null;
   const reversed = [...history].reverse(); // oldest first
 
@@ -100,7 +103,7 @@ function HistoryBar({ history }) {
         return (
           <div
             key={i}
-            title={`${entry.value} — ${new Date(entry.timestamp * 1000).toLocaleDateString('es-ES', { weekday: 'short' })}`}
+            title={`${entry.value} — ${new Date(entry.timestamp * 1000).toLocaleDateString(i18n.language, { weekday: 'short' })}`}
             className="flex-1 rounded-t"
             style={{ height: `${h}%`, backgroundColor: zone.color, opacity: 0.7 }}
           />
@@ -111,6 +114,7 @@ function HistoryBar({ history }) {
 }
 
 export function FearGreedGauge() {
+  const { t, i18n } = useTranslation();
   const [data, setData]     = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState(null);
@@ -122,15 +126,15 @@ export function FearGreedGauge() {
   }, []);
 
   if (loading) return (
-    <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl p-4 animate-pulse">
+    <div className="bg-[var(--bg-card)] border border-white/[8%] rounded-xl p-4 animate-pulse">
       <div className="h-3 bg-slate-700 rounded w-2/3 mb-4" />
       <div className="h-24 bg-slate-700/50 rounded-lg" />
     </div>
   );
 
   if (error || !data) return (
-    <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl p-4">
-      <p className="text-xs text-slate-500 text-center">Fear & Greed no disponible</p>
+    <div className="bg-[var(--bg-card)] border border-white/[8%] rounded-xl p-4">
+      <p className="text-xs text-slate-500 text-center">{t('fng_unavailable')}</p>
     </div>
   );
 
@@ -152,16 +156,16 @@ export function FearGreedGauge() {
         <ArcGauge value={value} />
 
         <p className={`text-3xl font-bold font-mono -mt-1 ${zone.text}`}>{value}</p>
-        <p className={`text-sm font-semibold mt-1 ${zone.text}`}>{zone.label}</p>
+        <p className={`text-sm font-semibold mt-1 ${zone.text}`}>{t(({ 25: 'fng_extreme_fear', 45: 'fng_fear', 55: 'fng_neutral', 75: 'fng_greed', 100: 'fng_extreme_greed' })[zone.max])}</p>
         <p className="text-xs text-slate-500 mt-0.5">
-          Actualizado: {new Date(Number(current.timestamp) * 1000).toLocaleDateString('es-ES')}
+          {t('last_updated')}: {new Date(Number(current.timestamp) * 1000).toLocaleDateString(i18n.language)}
         </p>
       </div>
 
       {/* 7-day history bars */}
       {history?.length > 0 && (
         <div className="mt-3 pt-3 border-t border-slate-700/40">
-          <p className="text-xs text-slate-500 mb-1.5">Últimos 7 días</p>
+          <p className="text-xs text-slate-500 mb-1.5">{t('last_seven_days')}</p>
           <HistoryBar history={history} />
         </div>
       )}

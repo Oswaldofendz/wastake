@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { fetchWhaleAlerts } from '../services/api.js';
 
 function fmt(n) {
@@ -11,7 +12,7 @@ function fmt(n) {
 function timeAgo(ts) {
   const diff = Date.now() - ts * 1000;
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1)  return 'ahora';
+  if (mins < 1) return '0m';
   if (mins < 60) return `${mins}m`;
   return `${Math.floor(mins / 60)}h`;
 }
@@ -32,6 +33,7 @@ function SizeIndicator({ btc }) {
 }
 
 export function WhaleAlerts() {
+  const { t } = useTranslation();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -50,19 +52,19 @@ export function WhaleAlerts() {
   const whales = data?.whales ?? [];
 
   return (
-    <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl overflow-hidden">
+    <div className="bg-[var(--bg-card)] border border-white/[8%] rounded-xl overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 border-b border-slate-700/40 flex items-center justify-between">
         <div>
           <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-            Whale Alerts — BTC
+            {t('whales_title')}
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">Grandes txs en mempool · mín 5 BTC</p>
+          <p className="text-xs text-slate-500 mt-0.5">{t('whales_description')}</p>
         </div>
         <button
           onClick={load}
           className="text-slate-500 hover:text-white transition-colors"
-          title="Actualizar"
+          title={t('retry')}
         >
           <svg viewBox="0 0 20 20" className="w-4 h-4 fill-current">
             <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H3.989a.75.75 0 0 0-.75.75v4.242a.75.75 0 0 0 1.5 0v-2.43l.31.31a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.39zm1.23-3.723a.75.75 0 0 0 .219-.53V2.929a.75.75 0 0 0-1.5 0V5.36l-.31-.31A7 7 0 0 0 3.239 8.188a.75.75 0 1 0 1.448.389A5.5 5.5 0 0 1 13.89 6.11l.311.31h-2.432a.75.75 0 0 0 0 1.5h4.243a.75.75 0 0 0 .53-.219z" clipRule="evenodd" />
@@ -78,8 +80,8 @@ export function WhaleAlerts() {
         </div>
       ) : whales.length === 0 ? (
         <div className="px-4 py-8 text-center">
-          <p className="text-slate-500 text-sm">Sin transacciones whale recientes</p>
-          <p className="text-slate-600 text-xs mt-1">El mempool puede estar vacío o bajo actividad</p>
+          <p className="text-slate-500 text-sm">{t('whales_empty')}</p>
+          <p className="text-slate-600 text-xs mt-1">{t('whales_empty_help')}</p>
         </div>
       ) : (
         <ul className="divide-y divide-slate-700/30 max-h-64 overflow-y-auto">

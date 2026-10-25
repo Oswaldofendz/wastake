@@ -22,6 +22,9 @@ fundamentalsRouter.get('/:id', async (req, res) => {
   try {
     const headlines = await getRawNewsForAsset(id, type, aliases);
     const baseline = headlines.map(scoreHeadline);
+    if (req.query.stage === 'headlines') {
+      return res.json({ id, type, lang, count: baseline.length, news: baseline, aiStatus: 'pending', analyzedCount: 0 });
+    }
     const analysis = await enrichFundamentalsNews(baseline, lang);
     res.json({ id, type, lang, count: analysis.news.length, scoringVersion: 'keyword-rules-v1', ...analysis });
   } catch (err) {

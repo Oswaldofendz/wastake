@@ -184,7 +184,7 @@ export function CorrelationMatrix() {
   }, [load]);
 
   if (loading) return (
-    <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl p-6 animate-pulse">
+    <div className="bg-[var(--bg-card)] border border-white/[8%] rounded-xl p-6 animate-pulse">
       <div className="h-3 bg-slate-700 rounded w-1/3 mb-4" />
       <div className="grid grid-cols-6 gap-1">
         {Array.from({ length: 30 }).map((_, i) => (
@@ -195,7 +195,7 @@ export function CorrelationMatrix() {
   );
 
   if (error) return (
-    <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl p-6 text-center" role="alert">
+    <div className="bg-[var(--bg-card)] border border-white/[8%] rounded-xl p-6 text-center" role="alert">
       <p className="text-sm text-amber-300">{t('correlation_unavailable')}</p>
       <p className="mt-2 text-xs text-slate-500">{t('correlation_no_series')}</p>
       <button type="button" onClick={load} className="mt-4 rounded-lg border border-slate-600 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">
@@ -205,7 +205,7 @@ export function CorrelationMatrix() {
   );
 
   return (
-    <div className="bg-[#111318]/90 border border-white/[8%] rounded-xl overflow-hidden">
+    <div className="bg-[var(--bg-card)] border border-white/[8%] rounded-xl overflow-hidden">
       <div className="px-4 py-3 border-b border-slate-700/40 flex items-center justify-between">
         <div>
           <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">

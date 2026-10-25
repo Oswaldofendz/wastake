@@ -47,7 +47,7 @@ app.use(rateLimit({
 // Rate limit por ruta API — 120 req / min
 const apiLimiter = rateLimit({ windowMs: 60 * 1000, max: 120 });
 
-app.get('/health', (_, res) => res.json({ status: 'ok', ts: Date.now() }));
+app.get('/health', (_, res) => res.json({ status: 'ok', version: 'quality-v1', ts: Date.now() }));
 
 // TikTok domain verification — sirve un archivo plano a la raíz si las
 // env vars están definidas. TikTok pide algo del estilo:
