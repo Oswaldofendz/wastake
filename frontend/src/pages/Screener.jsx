@@ -2,6 +2,9 @@ import { useState, useMemo } from 'react';
 import { usePrices } from '../hooks/usePrices.js';
 import { useTranslation } from 'react-i18next';
 import { getAssetGroup } from '../data/assetSectors.js';
+import { AssetSearch } from '../components/AssetSearch.jsx';
+import { AnalysisPanel } from '../components/AnalysisPanel.jsx';
+import { CandleChart } from '../components/PriceChart.jsx';
 
 // ─── Helpers de formato ───────────────────────────────────────────────────────
 function fmtPrice(n) {
@@ -159,6 +162,7 @@ export function Screener() {
   const { allAssets, loading, error, isStale, refresh } = usePrices(60_000);
 
   const [search, setSearch]           = useState('');
+  const [inspectedAsset, setInspectedAsset] = useState(null);
   const [typeFilter, setTypeFilter]   = useState('all');
   const [changeFilter, setChangeFilter] = useState('all');
   const [sortBy, setSortBy]           = useState('change_desc');
@@ -298,7 +302,7 @@ export function Screener() {
         <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
           <div>
             <h2 id="screener-filters-title" className="text-sm font-semibold text-white">{t('screener_filters_title')}</h2>
-            <p className="mt-1 text-xs leading-relaxed text-slate-400">{t('screener_filters_help')}</p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-400">{t('screener_filters_description')}</p>
           </div>
           {(search || typeFilter !== 'all' || changeFilter !== 'all' || sortBy !== 'change_desc') && (
             <button
@@ -312,21 +316,7 @@ export function Screener() {
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <label className="block min-w-0 sm:col-span-2 xl:col-span-2">
-            <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_search_label')}</span>
-            <span className="relative block">
-              <svg viewBox="0 0 20 20" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 fill-slate-500 pointer-events-none">
-                <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
-              </svg>
-              <input
-                type="search"
-                value={search}
-                onChange={e => { setSearch(e.target.value); }}
-                placeholder={t('search_assets')}
-                className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 py-2 pl-10 pr-3 text-sm text-white placeholder-slate-500 focus:border-brand-500/60 focus:outline-none"
-              />
-            </span>
-          </label>
+          <div className="min-w-0 sm:col-span-2 xl:col-span-2"><AssetSearch query={search} onQueryChange={setSearch} onSelect={setInspectedAsset}/></div>
 
           <label className="block min-w-0">
             <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_type_label')}</span>
@@ -365,6 +355,10 @@ export function Screener() {
       </section>
 
       {/* ── Tabla ── */}
+      {inspectedAsset && <section className="mb-4 rounded-xl border border-sky-700/50 p-3">
+        <div className="mb-3 flex items-center justify-between gap-2"><h2 translate="no" className="font-semibold">{inspectedAsset.name} · {inspectedAsset.symbol}</h2><button type="button" onClick={()=>setInspectedAsset(null)} className="min-h-10 px-3" aria-label={t('close','Cerrar')}>✕</button></div>
+        <CandleChart asset={inspectedAsset}/><AnalysisPanel asset={inspectedAsset}/>
+      </section>}
       <div className="flex-1 bg-[var(--bg-card)] border border-white/[8%] rounded-xl overflow-hidden">
         {/* Header de columnas */}
         <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 text-xs text-slate-500 border-b border-slate-700/40 bg-slate-800/60">
@@ -409,7 +403,7 @@ export function Screener() {
         ) : (
           <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 360px)' }}>
             {groupedAssets.map(({ id, assets }) => {
-              const isCollapsed = collapsedGroups[id] ?? true;
+              const isCollapsed = search.trim() ? false : (collapsedGroups[id] ?? true);
               return (
                 <section key={id} className="border-b border-slate-700/40 last:border-0">
                   <button

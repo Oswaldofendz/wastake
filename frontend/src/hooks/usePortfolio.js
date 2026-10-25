@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../services/supabase.js';
+import { portfolioMetrics } from '../utils/portfolioMetrics.js';
 
 export function usePortfolio(user, allAssets = [], portfolioId = null) {
   const [positions, setPositions] = useState([]);
@@ -38,10 +39,7 @@ export function usePortfolio(user, allAssets = [], portfolioId = null) {
   const real  = enriched.filter(p => !p.is_simulation);
   const paper = enriched.filter(p =>  p.is_simulation);
 
-  const totalValue = real.reduce((s, p) => s + (p.currentValue ?? 0), 0);
-  const totalCost  = real.reduce((s, p) => s + p.costBasis, 0);
-  const totalPnl   = totalValue - totalCost;
-  const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+  const {totalValue,totalCost,totalPnl,totalPnlPct}=portfolioMetrics(enriched);
 
   async function addPosition({ assetId, assetName, assetType, quantity, entryPrice, isPaper, notes, tags, targetPrice, purchaseDate }) {
     const { error: err } = await supabase.from('portfolio').insert({

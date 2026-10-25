@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchAnalysis, fetchFearGreed, fetchNews, fetchOHLCV, fetchNarrative, fetchVIX, fetchDXY } from '../services/api.js';
 import { ANALYZABLE_CATEGORIES } from '../data/assetCatalog.js';
 import { usePrices } from '../hooks/usePrices.js';
+import { AssetSearch } from '../components/AssetSearch.jsx';
 
 // Primer activo del catálogo (Bitcoin)
 const DEFAULT_ASSET = ANALYZABLE_CATEGORIES[0].assets[0];
@@ -376,6 +377,7 @@ export function Panorama() {
   const [fadeIn, setFadeIn]         = useState(true);
   const [dropOpen, setDropOpen]     = useState(false);
   const [expandedCats, setExpandedCats] = useState({ crypto: true });
+  const requestVersion = useRef(0);
 
   // Data states
   const [mainData,         setMainData]         = useState(null);
@@ -390,6 +392,7 @@ export function Panorama() {
   const [error,            setError]            = useState(null);
 
   const load = useCallback(async (a) => {
+    const version = ++requestVersion.current;
     setLoading(true);
     setError(null);
 
@@ -404,6 +407,7 @@ export function Panorama() {
       fetchOHLCV(a.id, aType, aType === 'crypto' ? { days: 90 } : {}),
     ]);
 
+    if (version !== requestVersion.current) return;
     if (main.status === 'fulfilled') {
       setMainData(main.value);
       const s = main.value?.analysis?.summary?.score ?? 0;
@@ -431,9 +435,9 @@ export function Panorama() {
     setNarrativeLoading(true);
     setNarrativeData(null);
     fetchNarrative(a.id, aType, i18n.language.split('-')[0])
-      .then(r => setNarrativeData(r.narrative))
-      .catch(() => setNarrativeData(null))
-      .finally(() => setNarrativeLoading(false));
+      .then(r => { if(version===requestVersion.current)setNarrativeData(r.narrative); })
+      .catch(() => { if(version===requestVersion.current)setNarrativeData(null); })
+      .finally(() => { if(version===requestVersion.current)setNarrativeLoading(false); });
   }, [i18n.language]);
 
   // On asset change: reset data and auto-load
@@ -445,8 +449,8 @@ export function Panorama() {
       setFadeIn(true);
       load(asset);
     }, 180);
-    return () => clearTimeout(t);
-  }, [asset]);
+    return () => { clearTimeout(t); requestVersion.current++; };
+  }, [asset, load]);
 
   // ── Derived values ──────────────────────────────────────────────────────────
   const analysis = mainData?.analysis;
@@ -500,6 +504,7 @@ export function Panorama() {
         </div>
 
         {/* ── Asset selector ──────────────────────────────────────── */}
+        <div className="mb-4"><AssetSearch onSelect={setAsset}/></div>
         <div className="relative mb-6" onClick={e => e.stopPropagation()}>
           <button
             onClick={() => setDropOpen(d => !d)}
@@ -507,11 +512,11 @@ export function Panorama() {
           >
             <AssetLogo asset={asset} size={10} />
             <div className="flex-1 text-left min-w-0">
-              <p className="text-base font-bold text-white truncate">{asset.name}</p>
+              <p translate="no" className="text-base font-bold text-white truncate">{asset.name}</p>
               <p className="text-xs text-slate-400">{asset.symbol} · {asset.type === 'crypto' ? 'Criptomoneda' : 'Activo tradicional'}</p>
             </div>
             {currentPrice != null && (
-              <p className="text-lg font-mono font-bold text-white flex-shrink-0">{fmtPrice(currentPrice)}</p>
+              <p className="text-lg font-mono font-bold text-white flex-shrink-0">{asset.currency&&asset.currency!=='USD'?`${currentPrice.toLocaleString(undefined,{maximumFractionDigits:4})} ${asset.currency}`:fmtPrice(currentPrice)}</p>
             )}
             <svg viewBox="0 0 20 20" fill="currentColor" className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform ${dropOpen ? 'rotate-180' : ''}`}>
               <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" />

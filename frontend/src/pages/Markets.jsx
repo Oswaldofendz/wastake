@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FearGreedGauge }    from '../components/FearGreedGauge.jsx';
-import { MarketHeatmap }     from '../components/MarketHeatmap.jsx';
+import { MarketHeatmap }     from '../components/MarketMap.jsx';
 import { CorrelationMatrix } from '../components/CorrelationMatrix.jsx';
 import { WhaleAlerts }       from '../components/WhaleAlerts.jsx';
 import { EconomicCalendar }  from '../components/EconomicCalendar.jsx';

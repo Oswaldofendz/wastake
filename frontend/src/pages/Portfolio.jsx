@@ -5,9 +5,10 @@ import { AuthModal }      from '../components/AuthModal.jsx';
 import { AddPositionModal } from '../components/AddPositionModal.jsx';
 import { DcaEntryModal } from '../components/DcaEntryModal.jsx';
 import { DonutChart }     from '../components/DonutChart.jsx';
-import { PortfolioChart } from '../components/PortfolioChart.jsx';
+import { PortfolioChart } from '../components/ContributionHistory.jsx';
 import { useToast }       from '../components/Toast.jsx';
 import { useTranslation } from 'react-i18next';
+import { PortfolioOverview } from '../components/PortfolioOverview.jsx';
 
 // ─── Helpers numéricos ────────────────────────────────────────────────────────
 
@@ -43,10 +44,12 @@ function fmtConverted(usdValue, currency, rates) {
   const sign = usdValue < 0 ? '-' : '';
   const abs  = Math.abs(usdValue);
   if (currency === 'EUR') {
-    const v = abs * (rates.EUR ?? 0.92);
+    if(!Number.isFinite(rates.EUR))return '—';
+    const v = abs * rates.EUR;
     return `${sign}€${v >= 1000 ? v.toLocaleString(undefined, { maximumFractionDigits: 0 }) : v < 1 ? v.toFixed(4) : v.toFixed(2)}`;
   }
-  if (currency === 'BTC' && rates.BTC) {
+  if (currency === 'BTC') {
+    if(!Number.isFinite(rates.BTC))return '—';
     return `${sign}₿${(abs * rates.BTC).toFixed(6)}`;
   }
   return fmtUsd(usdValue);
@@ -55,7 +58,7 @@ function fmtConverted(usdValue, currency, rates) {
 // ─── Hook: tipo de cambio ─────────────────────────────────────────────────────
 
 function useCurrencyRates(allAssets) {
-  const [rates, setRates] = useState({ EUR: 0.92, BTC: null });
+  const [rates, setRates] = useState({ EUR: null, BTC: null });
 
   useEffect(() => {
     fetch('https://open.er-api.com/v6/latest/USD')
@@ -89,7 +92,7 @@ function exportPortfolioCSV(positions, totalValue, totalPnl, totalPnlPct) {
     ];
   });
   rows.push([]);
-  rows.push(['TOTAL','','','','','','', totalValue.toFixed(2),'', totalPnl.toFixed(2), totalPnlPct.toFixed(2),'','','']);
+  rows.push(['TOTAL','','','','','','', totalValue?.toFixed(2)??'','', totalPnl?.toFixed(2)??'', totalPnlPct?.toFixed(2)??'','','']);
   const csv = [headers, ...rows]
     .map(r => r.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(','))
     .join('\n');
@@ -720,9 +723,10 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate
         </div>
       </section>
 
+      <PortfolioOverview positions={positions} onAdd={()=>setShowAdd(true)} onDca={()=>setShowDca(true)} onExplore={()=>onNavigate?.('screener')}/>
       {allPositions.length === 0 ? (
         /* Estado vacío */
-        <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
+        <div className="flex flex-col items-center justify-center text-center py-6">
           <div className="w-14 h-14 rounded-2xl border flex items-center justify-center mb-4"
             style={{ background: 'var(--bg-card)', borderColor: 'var(--border-subtle)' }}>
             <svg className="w-7 h-7" style={{ color: 'var(--text-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -748,7 +752,7 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate
               <SummaryCard label="Costo base"    value={fmtConverted(totalCost, currency, rates)} />
               <SummaryCard
                 label="P&L total"
-                value={(totalPnl >= 0 ? '+' : '') + fmtConverted(totalPnl, currency, rates)}
+                value={(totalPnl != null && totalPnl >= 0 ? '+' : '') + fmtConverted(totalPnl, currency, rates)}
                 subColor={pnlColor(totalPnl)}
               />
               <SummaryCard
@@ -787,7 +791,7 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate
               className="rounded-xl border p-4 mb-4"
               style={{ background: 'var(--bg-card)', borderColor: 'var(--border-subtle)' }}
             >
-              <p className="text-xs font-medium mb-3" style={{ color: 'var(--text-muted)' }}>Evolución del portfolio</p>
+              <p className="text-xs font-medium mb-3" style={{ color: 'var(--text-muted)' }}>{t('portfolio_history')}</p>
               <PortfolioChart positions={real} />
             </div>
           )}

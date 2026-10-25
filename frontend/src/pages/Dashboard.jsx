@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePrices } from '../hooks/usePrices.js';
 import { PriceCard } from '../components/PriceCard.jsx';
-import { CandleChart } from '../components/CandleChart.jsx';
+import { CandleChart } from '../components/PriceChart.jsx';
 import { AssetSearch } from '../components/AssetSearch.jsx';
 import { Disclaimer } from '../components/Disclaimer.jsx';
 import { AnalysisPanel } from '../components/AnalysisPanel.jsx';
@@ -194,13 +194,13 @@ export function Dashboard() {
             <>
               {/* Stats */}
               <div className="grid grid-cols-3 gap-2 mb-3">
-                <StatCard label={t('price')} value={fmtPrice(chartAsset.price)} mono />
+                <StatCard label={`${t('price')} · ${chartAsset.currency || 'USD'}`} value={fmtPrice(chartAsset.price, chartAsset.currency || 'USD')} mono />
                 <StatCard
                   label={t('change_24h')}
                   value={chartAsset.change24h != null && !isNaN(chartAsset.change24h) ? `${chartAsset.change24h >= 0 ? '+' : ''}${chartAsset.change24h.toFixed(2)}%` : '—'}
                   positive={(chartAsset.change24h ?? 0) >= 0}
                 />
-                <StatCard label={t('volume')} value={fmtCompact(chartAsset.volume24h)} />
+                <StatCard label={t('volume')} value={chartAsset.type === 'crypto' ? fmtCompact(chartAsset.volume24h) : chartAsset.volume24h > 0 ? chartAsset.volume24h.toLocaleString(undefined,{notation:'compact',maximumFractionDigits:2}) : '—'} />
               </div>
 
               {/* Timeframe selector + Chart container */}
@@ -208,9 +208,8 @@ export function Dashboard() {
                 className="bg-slate-900 rounded-xl border border-slate-700/50 mb-3 overflow-hidden"
                 style={{
                   width: '100%',
-                  height: isMobile ? '340px' : undefined,
-                  flex: isMobile ? 'none' : '1',
-                  minHeight: isMobile ? '340px' : '300px',
+                  flex: 'none',
+                  minHeight: '400px',
                   display: 'flex',
                   flexDirection: 'column',
                 }}
@@ -290,8 +289,9 @@ function StatCard({ label, value, mono = false, positive }) {
   );
 }
 
-function fmtPrice(n) {
+function fmtPrice(n, currency='USD') {
   if (n == null || isNaN(n)) return '—';
+  if(currency!=='USD') return `${n.toLocaleString(undefined,{maximumFractionDigits:4})} ${currency}`;
   if (n >= 1000) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
   if (n >= 1)    return `$${n.toFixed(2)}`;
   return `$${n.toFixed(4)}`;

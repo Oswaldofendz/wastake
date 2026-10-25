@@ -107,19 +107,20 @@ const TF_TO_TV_INTERVAL = {
 function getTVSymbol(asset) {
   if (!asset) return 'BINANCE:BTCUSDT';
   if (asset.tvSymbol) return asset.tvSymbol;
-  return TV_MAP[asset.id] ?? TV_MAP[asset.symbol] ?? `BINANCE:${asset.symbol ?? asset.id}USDT`;
+  return TV_MAP[asset.id] ?? TV_MAP[asset.symbol] ?? (asset.type === 'crypto' && asset.analysisType !== 'stock' ? `BINANCE:${asset.symbol ?? asset.id}USDT` : asset.id);
 }
 
 // Carga el script de TradingView una sola vez
 let tvScriptPromise = null;
 function loadTVScript() {
   if (tvScriptPromise) return tvScriptPromise;
-  tvScriptPromise = new Promise((resolve) => {
+  tvScriptPromise = new Promise((resolve, reject) => {
     if (window.TradingView) { resolve(); return; }
     const script = document.createElement('script');
     script.src   = 'https://s3.tradingview.com/tv.js';
     script.async = true;
     script.onload = resolve;
+    script.onerror = () => { tvScriptPromise = null; reject(new Error('TradingView unavailable')); };
     document.head.appendChild(script);
   });
   return tvScriptPromise;
@@ -127,8 +128,9 @@ function loadTVScript() {
 
 let idCounter = 0;
 
-export function CandleChart({ asset, timeframe = '3M' }) {
-  const { i18n } = useTranslation();
+export function TradingViewChart({ asset, timeframe = '3M' }) {
+  const { i18n, t } = useTranslation();
+  const [unavailable, setUnavailable] = useState(false);
   const wrapperRef     = useRef(null);
   const containerIdRef = useRef(`tv_widget_${++idCounter}`);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
@@ -141,6 +143,8 @@ export function CandleChart({ asset, timeframe = '3M' }) {
 
   useEffect(() => {
     if (!wrapperRef.current) return;
+    let alive = true;
+    setUnavailable(false);
 
     const containerId = containerIdRef.current;
     const symbol      = getTVSymbol(asset);
@@ -165,7 +169,7 @@ export function CandleChart({ asset, timeframe = '3M' }) {
         timezone:            'Etc/UTC',
         theme:               'dark',
         style:               '1',         // Velas japonesas
-        studies:             ['PivotPointsStandard@tv-basicstudies', 'MAExp@tv-basicstudies', 'RSI@tv-basicstudies'],
+        studies:             ['MAExp@tv-basicstudies'],
         locale:              i18n.language.split('-')[0],
         toolbar_bg:          '#0f172a',
         enable_publishing:   false,
@@ -177,18 +181,22 @@ export function CandleChart({ asset, timeframe = '3M' }) {
         popup_height:        '650',
         container_id:        containerId,
       });
-    });
+    }).catch(() => { if(alive)setUnavailable(true); });
 
     return () => {
+      alive = false;
       if (wrapperRef.current) wrapperRef.current.innerHTML = '';
     };
   }, [asset?.id, asset?.tvSymbol, timeframe, i18n.language]);
 
   return (
+    <>
+    {unavailable && <p role="status" className="p-4 text-sm text-amber-300">{t('chart_advanced_error')}</p>}
     <div
       ref={wrapperRef}
       className="w-full rounded-lg overflow-hidden"
       style={{ height: isMobile ? '300px' : '100%', minHeight: isMobile ? '300px' : '260px' }}
     />
+    </>
   );
 }

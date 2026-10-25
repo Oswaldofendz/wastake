@@ -51,7 +51,7 @@ analysisRouter.get('/:id', async (req, res) => {
     let candles;
 
     if (type === 'crypto') {
-      candles = await getCryptoOHLCV(id, parseInt(days));
+      candles = await getCryptoOHLCV(id, Math.max(90, Math.min(365, parseInt(days)||90)));
     } else {
       candles = await getTraditionalOHLCV(id);
     }
@@ -61,6 +61,8 @@ analysisRouter.get('/:id', async (req, res) => {
     }
 
     const analysis = computeIndicators(candles);
+    analysis.meta.currency = candles.currency ?? null;
+    analysis.meta.source = candles.source ?? null;
     const result   = { id, type, analysis };
     setCache(cacheKey, result);
     res.json(result);
@@ -100,7 +102,7 @@ analysisRouter.get('/:id/narrative', async (req, res) => {
     const langName = langNames[lang] || 'Spanish';
 
     const prompt = `You are a professional financial analyst. Write a concise market analysis paragraph in ${langName} (2-3 sentences, max 120 words) for ${id.toUpperCase()} based on these indicators:
-- Price: $${lastPrice}
+- Price: ${lastPrice} ${candles.currency || (type === 'crypto' ? 'USD' : 'source quote currency')}. Do not assume USD for other currencies.
 - RSI: ${indicators.rsi.current} (${signals.rsi.signal})
 - MACD histogram: ${indicators.macd.current?.histogram} (${signals.macd.signal})
 - EMA20: ${indicators.ema20.current}, EMA50: ${indicators.ema50.current} (${signals.ema.signal})

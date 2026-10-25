@@ -65,15 +65,16 @@ priceRouter.get('/traditional', async (req, res) => {
 priceRouter.get('/ohlcv/:id', async (req, res) => {
   const { id } = req.params;
   const { type = 'crypto', days = '7', interval = '1d', range = '3mo' } = req.query;
+  if (!/^[A-Za-z0-9^=._-]{1,100}$/.test(id)) return res.status(400).json({ error: 'Invalid asset' });
 
   try {
     let candles;
     if (type === 'crypto') {
-      candles = await getCryptoOHLCV(id, parseInt(days));
+      candles = await getCryptoOHLCV(id, Math.max(30,Math.min(365,parseInt(days)||90)));
     } else {
       candles = await getTraditionalOHLCV(id, interval, range);
     }
-    res.json({ id, candles });
+    res.json({ id, candles, source: candles.source ?? 'Yahoo Finance / Stooq', currency: candles.currency ?? null });
   } catch (err) {
     res.status(502).json({ error: err.message });
   }

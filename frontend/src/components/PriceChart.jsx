@@ -1,0 +1,74 @@
+import { useEffect, useRef, useState } from 'react';
+import { createChart, ColorType, LineStyle } from 'lightweight-charts';
+import { useTranslation } from 'react-i18next';
+import { TradingViewChart } from './CandleChart.jsx';
+import { fetchOHLCV } from '../services/api.js';
+import { getAnalysisType } from '../data/assetCatalog.js';
+import { cleanCandles, emaSeries, significantLevels } from '../utils/chartLevels.js';
+
+const DAYS = { '1S': 7, '1M': 30, '3M': 90, '6M': 180, '1A': 365 };
+export function CandleChart({ asset, timeframe = '3M' }) {
+  const { t, i18n } = useTranslation();
+  const ref = useRef(null);
+  const [advanced, setAdvanced] = useState(false);
+  const [levelsOn, setLevelsOn] = useState(true);
+  const [emaOn, setEmaOn] = useState(true);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [retry, setRetry] = useState(0);
+  const [levels, setLevels] = useState([]);
+  useEffect(() => {
+    let cancelled=false;
+    setLoading(true);setResult(null);setError(false);
+    fetchOHLCV(asset.id,getAnalysisType(asset),{days:365}).then(r=>{
+      if(cancelled)return;
+      const candles=cleanCandles(r.candles);
+      if(candles.length<2)throw new Error('No candles');
+      setResult({...r,candles});
+    }).catch(()=>{if(!cancelled)setError(true);}).finally(()=>{if(!cancelled)setLoading(false);});
+    return ()=>{cancelled=true;};
+  },[asset.id,asset.analysisType,retry]);
+  useEffect(()=>{
+    if(advanced || loading || !ref.current || !result)return;
+    const all=result.candles;
+    const cutoff=all.at(-1).time-DAYS[timeframe]*86400;
+    const visible=all.filter(c=>c.time>=cutoff);
+    const keyLevels=significantLevels(all);
+    setLevels(keyLevels);
+    const text=getComputedStyle(ref.current).getPropertyValue('--text-primary').trim() || '#cbd5e1';
+    const background=getComputedStyle(ref.current).getPropertyValue('--bg-card').trim() || '#111318';
+    const chart=createChart(ref.current,{autoSize:true,layout:{background:{type:ColorType.Solid,color:background},textColor:text,fontFamily:'Inter, sans-serif'},
+      grid:{vertLines:{visible:false},horzLines:{color:'rgba(128,128,128,0.12)'}},
+      rightPriceScale:{borderVisible:false,scaleMargins:{top:0.12,bottom:0.1}},
+      timeScale:{borderVisible:false,timeVisible:false},localization:{locale:i18n.language}});
+    const close=all.at(-1).close;
+    const precision=close>=1?2:Math.min(8,Math.max(4,-Math.floor(Math.log10(close))+2));
+    const series=chart.addCandlestickSeries({upColor:'#16b981',downColor:'#f05262',borderVisible:false,wickUpColor:'#16b981',wickDownColor:'#f05262',priceFormat:{type:'price',precision,minMove:10**(-precision)}});
+    series.setData(visible);
+    if(emaOn) [20,50].forEach((period,index)=>{
+      const line=chart.addLineSeries({color:index?'#a78bfa':'#38bdf8',lineWidth:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+      line.setData(emaSeries(all,period).filter(p=>p.time>=cutoff));
+    });
+    if(levelsOn)keyLevels.forEach(level=>series.createPriceLine({price:level.price,color:level.kind==='support'?'#34d399':'#fb7185',lineWidth:1,lineStyle:LineStyle.Dashed,axisLabelVisible:true,title:t(`chart_${level.kind}`)}));
+    chart.timeScale().fitContent();
+    return ()=>chart.remove();
+  },[result,loading,timeframe,advanced,levelsOn,emaOn,i18n.language]);
+  return <div className="w-full min-w-0">
+    <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+      <button type="button" aria-pressed={!advanced} onClick={()=>setAdvanced(false)} className={`min-h-9 rounded border px-3 ${!advanced?'border-sky-500 text-sky-300':'border-slate-600'}`}>{t('chart_clean')}</button>
+      <button type="button" aria-pressed={advanced} onClick={()=>setAdvanced(true)} className={`min-h-9 rounded border px-3 ${advanced?'border-sky-500 text-sky-300':'border-slate-600'}`}>{t('chart_advanced')}</button>
+      {!advanced && <><label className="flex items-center gap-1"><input type="checkbox" checked={levelsOn} onChange={e=>setLevelsOn(e.target.checked)}/>{t('chart_levels')}</label><label className="flex items-center gap-1"><input type="checkbox" checked={emaOn} onChange={e=>setEmaOn(e.target.checked)}/><span className="text-sky-400">EMA 20</span> / <span className="text-violet-400">50</span></label></>}
+    </div>
+    {advanced?<TradingViewChart asset={asset} timeframe={timeframe}/>:loading?<p role="status" className="p-10 text-center text-sm text-slate-400">{t('loading')}</p>:error?<div role="alert" className="p-8 text-center text-sm"><p>{t('chart_error')}</p><button className="mt-3 underline" onClick={()=>setRetry(n=>n+1)}>{t('retry')}</button></div>:<>
+      <div ref={ref} style={{height:330,width:'100%'}} aria-label={`${asset.name} · ${timeframe}`} role="img"/>
+      <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-400" aria-live="polite">
+        <span translate="no">{asset.symbol} · {result?.currency || asset.currency || 'USD'} · {result?.source}</span>
+        {levelsOn && levels.map(l=><span key={l.kind} className={l.kind==='support'?'text-emerald-400':'text-rose-400'}>{t(`chart_${l.kind}`)}: {l.price.toLocaleString(i18n.language,{maximumFractionDigits:l.price>=1?2:8})}</span>)}
+        {levelsOn && !levels.length && <span>{t('chart_no_levels')}</span>}
+      </div>
+      <details className="mt-2 text-[11px] text-slate-400"><summary className="cursor-pointer">{t('chart_levels')} · {t('methodology','Método')}</summary><p className="mt-1 leading-5">{t('chart_method')}</p></details>
+      <p className="mt-1 text-[10px] text-slate-500">TradingView Lightweight Charts™ · Copyright © 2023 TradingView, Inc. <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer" className="underline">TradingView</a></p>
+    </>}
+  </div>;
+}

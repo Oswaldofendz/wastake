@@ -315,7 +315,7 @@ export function Fundamentals() {
         {loading ? (
           <div className="p-8 text-center text-sm text-slate-400">{t.loading}</div>
         ) : periodArticles.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-400">{t.empty}</div>
+          <div className="p-8 text-center text-sm text-slate-400" role="status"><p>{t.empty}</p><p className="mt-2">{translate('fund_empty_help')}</p>{periodId !== WINDOWS.at(-1).id && <button type="button" onClick={()=>setPeriodId(WINDOWS.at(-1).id)} className="mt-4 min-h-10 rounded-lg border border-sky-600 px-4 text-sky-300">{translate('fund_expand')}</button>}</div>
         ) : (
           <div className="divide-y divide-slate-800">
             {periodArticles.map((article, index) => {

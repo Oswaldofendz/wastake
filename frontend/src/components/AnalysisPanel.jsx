@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { fetchAnalysis } from '../services/api.js';
+import { fetchAnalysis, fetchFearGreed } from '../services/api.js';
 import { getAnalysisType } from '../data/assetCatalog.js';
-import { FearGreedWidget } from './FearGreedWidget.jsx';
+import { AssetRangeContext } from './AssetRangeContext.jsx';
 
 // ── Indicator education content ───────────────────────────────
 const INDICATOR_INFO = {
@@ -126,14 +126,14 @@ function fmtValue(v) {
 function FearGreedInline() {
   const [value, setValue] = useState(null);
   useEffect(() => {
-    import('../services/api.js').then(({ fetchFearGreed }) => {
+    let cancelled=false;
       fetchFearGreed()
         .then(res => {
-          const v = parseInt(res?.current?.value ?? res?.data?.[0]?.value ?? 0);
-          if (!isNaN(v)) setValue(v);
+          const v = parseInt(res?.current?.value ?? res?.data?.[0]?.value);
+          if (!cancelled && !isNaN(v)) setValue(v);
         })
         .catch(() => {});
-    });
+    return ()=>{cancelled=true;};
   }, []);
   if (value === null) return <div className="h-16 flex items-center text-xs text-slate-500">Cargando...</div>;
   const colors =
@@ -402,14 +402,10 @@ export function AnalysisPanel({ asset, days = 90 }) {
 
             {/* Card 1: Fear & Greed */}
             <div className="flex flex-col items-center justify-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-3 py-4 gap-2">
-              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Fear & Greed</p>
+              {asset?.type === 'crypto' && <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Fear & Greed</p>}
               {asset?.type === 'crypto' && <FearGreedInline />}
-              {asset?.type !== 'crypto' && (
-                <div className="flex flex-col items-center gap-1">
-                  <p className="text-xs text-slate-500 text-center">Sentimiento</p>
-                  <p className="text-xs text-slate-400 text-center">Ver sección Panorama</p>
-                </div>
-              )}
+              {asset?.type === 'crypto' && <p className="mt-1 text-center text-[11px] text-slate-400">{t('asset_crypto_scope')}</p>}
+              {asset?.type !== 'crypto' && <AssetRangeContext asset={asset}/>}
             </div>
 
             {/* Composite technical score and its directional scale */}

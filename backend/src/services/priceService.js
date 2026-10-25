@@ -205,13 +205,17 @@ async function fetchYahooPrices(symbols) {
         const meta = data.chart?.result?.[0]?.meta;
         if (!meta) return;
         const price = meta.regularMarketPrice;
-        const prev  = meta.chartPreviousClose;
+        const closes = data.chart.result[0].indicators?.quote?.[0]?.close?.filter(Number.isFinite) ?? [];
+        const prev = meta.regularMarketPreviousClose ?? closes.at(-2);
         if (!price || isNaN(price)) return;
         result[sym] = {
           price,
-          change:    prev > 0 ? ((price - prev) / prev) * 100 : 0,
+          change:    prev > 0 ? ((price - prev) / prev) * 100 : null,
           volume:    meta.regularMarketVolume ?? 0,
           marketCap: meta.marketCap ?? 0,
+          currency: meta.currency ?? null,
+          quoteAsOf: meta.regularMarketTime ? new Date(meta.regularMarketTime * 1000).toISOString() : null,
+          source: 'Yahoo Finance',
         };
       } catch (err) {
         // Symbol no disponible — se omite silenciosamente
@@ -233,7 +237,7 @@ export async function getCryptoPrices(ids = Object.keys(CRYPTO_ASSETS)) {
 
   try {
     const { data } = await axios.get(
-      `${process.env.COINGECKO_BASE}/simple/price`,
+      `${process.env.COINGECKO_BASE || 'https://api.coingecko.com/api/v3'}/simple/price`,
       {
         params: {
           ids: ids.join(','),
@@ -297,57 +301,34 @@ export async function getCryptoOHLCV(id, days = 90) {
   if (cached) return cached;
 
   try {
-    // /market_chart — más fiable en el free tier, retorna daily OHLCV
+    const symbol = CC_SYMBOL_MAP[id];
+    if (symbol) {
+      const actual = await getTraditionalOHLCV(`${symbol}-USD`);
+      if (actual.length >= 30) {
+        const candles = actual.slice(-Math.max(30, Math.min(365, days)));
+        candles.source = 'Yahoo Finance'; candles.currency = 'USD';
+        toCache(key, candles, CACHE_TTL.ohlcv);
+        return candles;
+      }
+    }
+    // Actual OHLC only. Daily closes cannot reconstruct intraday highs/lows.
     const { data } = await axios.get(
-      `${process.env.COINGECKO_BASE}/coins/${id}/market_chart`,
+      `${process.env.COINGECKO_BASE || 'https://api.coingecko.com/api/v3'}/coins/${id}/ohlc`,
       {
-        params: { vs_currency: 'usd', days, interval: 'daily' },
+        params: { vs_currency: 'usd', days: 30 },
         headers: CG_HEADERS,
         timeout: 10000,
       }
     );
 
-    const prices  = data.prices  ?? [];
-    const volumes = data.total_volumes ?? [];
-
-    if (prices.length < 2) throw new Error('Insufficient data from market_chart');
-
-    // Velas OHLCV sintéticas a partir de cierres diarios
-    const candles = prices.map(([time, close], i) => {
-      const prev = i > 0 ? prices[i - 1][1] : close;
-      return {
-        time:   Math.floor(time / 1000),
-        open:   prev,
-        high:   Math.max(close, prev),
-        low:    Math.min(close, prev),
-        close,
-        volume: volumes[i]?.[1] ?? 0,
-      };
-    });
+    const candles = data.map(([time, open, high, low, close]) => ({ time: Math.floor(time/1000), open, high, low, close }));
+    if (candles.length < 2) throw new Error('Insufficient OHLC data');
+    candles.source = 'CoinGecko OHLC'; candles.currency = 'USD';
 
     toCache(key, candles, CACHE_TTL.ohlcv);
     return candles;
   } catch (err) {
-    // Fallback al endpoint /ohlc
-    try {
-      const safeDays = Math.min(days, 30);
-      const { data } = await axios.get(
-        `${process.env.COINGECKO_BASE}/coins/${id}/ohlc`,
-        { params: { vs_currency: 'usd', days: safeDays }, headers: CG_HEADERS, timeout: 10000 }
-      );
-      const candles = data.map(([time, open, high, low, close]) => ({
-        time: Math.floor(time / 1000), open, high, low, close,
-      }));
-      toCache(key, candles, CACHE_TTL.ohlcv);
-      return candles;
-    } catch (fallbackErr) {
-      const status = fallbackErr.response?.status;
-      if (status === 429) {
-        const stale = fromCacheStale(key);
-        if (stale) return stale;
-      }
-      throw fallbackErr;
-    }
+    throw err;
   }
 }
 
@@ -373,9 +354,12 @@ export async function getTraditionalPrices() {
         type:      meta.type,
         image:     meta.image ?? null,
         price:     yahoo?.price    ?? null,
-        change24h: yahoo?.change   ?? 0,
+        change24h: yahoo?.change   ?? null,
         volume24h: yahoo?.volume   ?? 0,
         marketCap: yahoo?.marketCap ?? 0,
+        currency: yahoo?.currency ?? null,
+        quoteAsOf: yahoo?.quoteAsOf ?? null,
+        source: yahoo?.source ?? null,
         updatedAt: Date.now(),
       };
     }
@@ -427,10 +411,12 @@ export async function getTraditionalOHLCV(symbol) {
         high:  q.high?.[i],
         low:   q.low?.[i],
         close: q.close?.[i],
+        volume: q.volume?.[i],
       }))
-      .filter(c => c.open != null && c.close != null && !isNaN(c.open) && c.open > 0)
+      .filter(c => [c.open,c.high,c.low,c.close].every(n => Number.isFinite(n) && n > 0) && c.high >= Math.max(c.open,c.close) && c.low <= Math.min(c.open,c.close))
       .slice(-365);
 
+    candles.source = 'Yahoo Finance'; candles.currency = result.meta?.currency;
     toCache(key, candles, CACHE_TTL.ohlcv);
     return candles;
   } catch {
@@ -459,10 +445,27 @@ export async function getTraditionalOHLCV(symbol) {
         })
         .filter(c => !isNaN(c.open) && c.open > 0)
         .slice(-365);
+      candles.source = 'Stooq';
       toCache(key, candles, CACHE_TTL.ohlcv);
       return candles;
     } catch {
       return [];
     }
   }
+}
+
+export async function getSingleQuote(id, type = 'stock') {
+  if (type === 'crypto') {
+    const data = await getCryptoPrices([id]);
+    return data[id] ? { ...data[id], currency: 'USD' } : null;
+  }
+  const key = `single_quote_${id}`;
+  const hit = fromCache(key);
+  if (hit) return hit;
+  const prices = await fetchYahooPrices([id]);
+  const q = prices[id];
+  if (!q) return null;
+  const value = { id, price: q.price, change24h: q.change, volume24h: q.volume, currency: q.currency, quoteAsOf: q.quoteAsOf, source: q.source };
+  toCache(key, value, CACHE_TTL.price);
+  return value;
 }

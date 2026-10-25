@@ -2,6 +2,7 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { qualityCopy } from './qualityCopy.js';
+import { annotationCopy } from './annotationCopy.js';
 
 const resources = {
   en: {
@@ -724,6 +725,7 @@ const resources = {
 };
 
 for (const [lang, copy] of Object.entries(qualityCopy)) Object.assign(resources[lang].translation, copy);
+for (const [lang, copy] of Object.entries(annotationCopy)) Object.assign(resources[lang].translation, copy);
 
 i18n
   .use(LanguageDetector)
