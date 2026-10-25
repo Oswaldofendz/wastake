@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { normalizeYahooAsset, normalizeNasdaqRows } from '../src/services/assetDiscoveryService.js';
 import { cleanCandles, significantLevels, emaSeries } from '../../frontend/src/utils/chartLevels.js';
 import { portfolioMetrics, plannedContributions } from '../../frontend/src/utils/portfolioMetrics.js';
+import axios from 'axios';
+import { getCapitalizationUniverse } from '../src/services/assetDiscoveryService.js';
 
 test('external identity keeps its exchange and data provider, including Yahoo crypto symbols',()=>{
   const a=normalizeYahooAsset({symbol:'ASML.AS',quoteType:'EQUITY',longname:'ASML Holding N.V.',exchDisp:'Amsterdam'});
@@ -35,4 +37,18 @@ test('missing portfolio quotes never become losses; concentration aggregates lot
   assert.equal(metrics.assets,2);assert.equal(metrics.concentration,100);assert.equal(metrics.quoted,2);
   assert.equal(plannedContributions(100,'weekly',12),5200);assert.equal(plannedContributions(100,'monthly',12),1200);
   assert.equal(plannedContributions(-1,'monthly',12),null);
+});
+
+test('a blocked CoinGecko ranking falls back to source-labelled catalog caps with partial coverage',async()=>{
+  const original=axios.get;
+  axios.get=async url=>{
+    if(url.includes('api.nasdaq.com'))return{data:{data:{rows:[{symbol:'AAPL',name:'Apple',lastsale:'$200',pctchange:'1%',marketCap:'3000000'}]}}};
+    if(url.includes('cryptocompare.com'))return{data:{RAW:{BTC:{USD:{PRICE:100,CHANGEPCT24HOUR:2,MKTCAP:2000,VOLUME24HOURTO:50}}}}};
+    throw Object.assign(new Error('Rate limited'),{response:{status:429}});
+  };
+  try {
+    const r=await getCapitalizationUniverse();
+    assert.equal(r.partial,true);assert.equal(r.cryptoCoverage,'catalog_fallback');
+    assert.equal(r.crypto[0].source,'cryptocompare');assert.equal(r.crypto[0].marketCap,2000);
+  }finally{axios.get=original;}
 });

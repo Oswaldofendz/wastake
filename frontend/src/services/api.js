@@ -43,7 +43,7 @@ export const fetchAssets = () => get('/api/assets');
 // Búsqueda de activos
 export const searchAssets = (q) => get(`/api/assets/search?q=${encodeURIComponent(q)}`);
 export const fetchAssetQuote = (asset) => get(`/api/assets/quote/${encodeURIComponent(asset.id)}?type=${asset.analysisType ?? (asset.type === 'crypto' ? 'crypto' : 'stock')}`);
-export const fetchRankings = () => get('/api/assets/rankings', 25_000);
+export const fetchRankings = () => get('/api/assets/rankings', 35_000);
 
 // Análisis técnico (RSI, MACD, EMA, Bollinger, ATR)
 export const fetchAnalysis = (id, type = 'crypto', days = 90) => {

@@ -12,13 +12,14 @@
 
 ## Validación
 
-- 13 pruebas automáticas: identidades externas, filtrado de capitalizaciones, agregación OHLC real, límite/confirmación de niveles, EMA insuficiente, cotizaciones ausentes y planificación de aportes, además de regresiones anteriores de idioma/calendario.
+- 14 pruebas automáticas: identidades externas, filtrado de capitalizaciones, agregación OHLC real, límite/confirmación de niveles, EMA insuficiente, cotizaciones ausentes y planificación de aportes, respaldo ante bloqueo de CoinGecko y regresiones anteriores de idioma/calendario.
 - Compilación de producción. Verificación visual local en escritorio y 375 px: búsqueda ASML con bolsas distintas y gráfico/análisis, mapa/rankings sin desbordamiento, guía de cartera y aporte semanal de 100 USD durante 12 meses = 5200 USD. Pruebas de cartera sin insertar ni modificar datos de usuario.
 - Comprobación puntual de API local: 5764 valores recibidos de Nasdaq, 50 criptoactivos de CoinGecko, 365 velas reales BTC-USD con volumen. Estas cantidades son de la consulta, no cobertura garantizada.
 
 ## Límites
 
 - Fuentes públicas gratuitas sujetas a disponibilidad, bloqueo y cuotas. Caché de búsquedas 5 minutos, capitalizaciones 30 minutos. Fallos se identifican sin completar números inventados.
+- Producción: CoinGecko puede rechazar el ranking de 50 activos desde Render. Se recurre a los precios/capitalizaciones del catálogo cripto (CoinGecko o CryptoCompare), con proveedor por fila y cobertura parcial explícita. No se presenta ese catálogo como el top mundial.
 - El ranking incluye valores cotizados recibidos de Nasdaq y hasta 50 criptoactivos; no es un ranking mundial exhaustivo de empresas. Clases de acciones pueden aparecer por separado y no deben sumarse como empresas distintas.
 - Los niveles son una regla histórica propia y auditable, no un modelo predictivo validado. Una zona puede romperse. No se pinta cada pivote ni se modifica el historial con velas ficticias.
 - Los símbolos externos no garantizan histórico/noticias disponibles; se identifica la bolsa y se informa ausencia de cotización. No se añaden a una cartera ni se ejecutan órdenes al buscarlos.
@@ -33,3 +34,4 @@
 - https://www.nasdaq.com/market-activity/stocks/screener — fuente pública de capitalización y valores cotizados.
 - https://www.coingecko.com/en/api — búsqueda e información de criptoactivos.
 - https://help.portfolio-performance.info/en/reference/view/reports/performance/dashboard/ — separar aportaciones, resultado, distribución y riesgo.
+
