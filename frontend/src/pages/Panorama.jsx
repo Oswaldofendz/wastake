@@ -5,6 +5,7 @@ import { ANALYZABLE_CATEGORIES } from '../data/assetCatalog.js';
 import { usePrices } from '../hooks/usePrices.js';
 import { AssetSearch } from '../components/AssetSearch.jsx';
 import { summarizeNews } from '../utils/panoramaAnalysis.js';
+import { MarketComparison } from '../components/MarketComparison.jsx';
 
 // Primer activo del catálogo (Bitcoin)
 const DEFAULT_ASSET = ANALYZABLE_CATEGORIES[0].assets[0];
@@ -776,7 +777,7 @@ export function Panorama() {
               </div>
 
               {/* Card 6: Comparación con mercado */}
-              <MarketComparisonWidget asset={asset} currentPrice={currentPrice} analysis={analysis} />
+              <MarketComparison asset={asset} candles={candles ?? []} />
 
           </div>
         )}

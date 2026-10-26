@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { summarizeNews } from '../../frontend/src/utils/panoramaAnalysis.js';
+import { summarizeNews, commonCloseComparison } from '../../frontend/src/utils/panoramaAnalysis.js';
 
 test('news relevance cannot invert sentiment', () => {
   const positive = Array.from({length:3}, () => ({sentiment:'positive', impact:'high'}));
@@ -14,4 +14,21 @@ test('unknown news tone is not counted as neutral and opposing tones remain mixe
   assert.equal(result.tone,'mixed');
   assert.equal(result.classified,2);
   assert.equal(result.counts.neutral,0);
+});
+
+const bar = (day,close) => ({time:day*86400,open:close,high:close,low:close,close});
+test('external asset comparison uses shared closes without any catalog lookup',()=>{
+  const asset=[bar(10,100),bar(11,120),bar(12,90),bar(13,150)];
+  const ref=[bar(10,200),bar(12,210),bar(13,999)];
+  const result=commonCloseComparison(asset,ref,13*86_400_000);
+  assert.equal(result.from,10*86400);assert.equal(result.to,12*86400);
+  assert.ok(Math.abs(result.assetReturn+10)<1e-8);
+  assert.ok(Math.abs(result.referenceReturn-5)<1e-8);
+  assert.ok(Math.abs(result.difference+15)<1e-8);
+});
+test('unavailable history is pending while a genuine zero return stays zero',()=>{
+  assert.equal(commonCloseComparison([], [bar(10,100)],20*86_400_000),null);
+  assert.equal(commonCloseComparison([bar(10,100)], [bar(10,200)],20*86_400_000),null);
+  const flat=[bar(10,100),bar(11,100)];
+  assert.equal(commonCloseComparison(flat,flat,20*86_400_000).assetReturn,0);
 });
