@@ -260,10 +260,11 @@ function Skeleton() {
 
 // ── Main component ────────────────────────────────────────────
 
-export function AnalysisPanel({ asset, days = 90 }) {
+export function AnalysisPanel({ asset, days = 90, onAnalysis }) {
   const { t } = useTranslation();
   const { data, loading, error } = useAnalysis(asset, days);
   const [activeInfo, setActiveInfo]   = useState(null); // { shortName, ...INDICATOR_INFO }
+  useEffect(()=>{onAnalysis?.({id:asset?.id,type:asset?.type,analysis:data,loading:loading||(!data&&!error),error});},[asset?.id,asset?.type,data,loading,error,onAnalysis]);
 
   if (loading) return (
     <div className="mt-3 bg-slate-800/50 border border-slate-700/30 rounded-xl overflow-hidden">

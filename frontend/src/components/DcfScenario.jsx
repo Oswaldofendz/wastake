@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { evaluateDcf, dcfSensitivity } from '../utils/companyValuation.js';
 
 const adjustments=['cash','debt','preferred','minority','nonOperatingAssets','otherClaims'];
-export function DcfScenario({data}) {
+export function DcfScenario({data,onResult}) {
   const {t,i18n}=useTranslation();
   const tr=(key,options)=>t(`valuation.${key}`,options);
   const [fields,setFields]=useState({});
@@ -13,7 +13,8 @@ export function DcfScenario({data}) {
   const quoteCurrency=q?.currency==='GBp'?'GBP':q?.currency;
   const price=quoteCurrency===currency&&Number.isFinite(q?.price)?q.price/(q.currency==='GBp'?100:1):null;
   const input={cashFlows:[1,2,3,4,5].map(n=>number(`fcff${n}`)),wacc:number('wacc')/100,g:number('g')/100,shares:number('diluted'),margin:number('margin')/100,price,...Object.fromEntries(adjustments.map(key=>[key,number(key)]))};
-  const result=evaluateDcf(input);
+  const result=useMemo(()=>evaluateDcf(input),[fields,data]);
+  useEffect(()=>{onResult?.({...result,currency});},[result,currency,onResult]);
   const fmt=(v,digits=2)=>Number.isFinite(v)?v.toLocaleString(i18n.language,{maximumFractionDigits:digits}):'—';
   const field=(key,label)=> <label key={key} className="block min-w-0 text-xs text-slate-300"><span className="mb-1 block">{label}</span><input type="number" step="any" value={fields[key]??''} onChange={e=>setFields(current=>({...current,[key]:e.target.value}))} className="min-h-11 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-base text-white"/></label>;
   const prefill=()=>setFields(current=>({...current,...Object.fromEntries(['cash','debt','preferred','minority'].flatMap(key=>{

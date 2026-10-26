@@ -164,6 +164,7 @@ export function Screener() {
 
   const [search, setSearch]           = useState('');
   const [inspectedAsset, setInspectedAsset] = useState(null);
+  const [analysisSnapshot,setAnalysisSnapshot]=useState(null);
   const inspectionRef=useRef(null);
   useEffect(()=>{ if(inspectedAsset)inspectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },[inspectedAsset]);
   const [typeFilter, setTypeFilter]   = useState('all');
@@ -360,7 +361,7 @@ export function Screener() {
       {/* ── Tabla ── */}
       {inspectedAsset && <section ref={inspectionRef} className="mb-4 scroll-mt-24 rounded-xl border border-sky-700/50 p-3">
         <div className="mb-3 flex items-center justify-between gap-2"><h2 translate="no" className="font-semibold">{inspectedAsset.name} · {inspectedAsset.symbol}</h2><button type="button" onClick={()=>setInspectedAsset(null)} className="min-h-10 px-3" aria-label={t('close','Cerrar')}>✕</button></div>
-        <AssetValuationCard key={inspectedAsset.id} asset={inspectedAsset}/><CandleChart asset={inspectedAsset}/><AnalysisPanel asset={inspectedAsset}/>
+        <AssetValuationCard key={`${inspectedAsset.type}:${inspectedAsset.id}`} asset={inspectedAsset} technical={analysisSnapshot?.id===inspectedAsset.id&&analysisSnapshot?.type===inspectedAsset.type?analysisSnapshot:null}/><CandleChart asset={inspectedAsset}/><AnalysisPanel key={`${inspectedAsset.type}:${inspectedAsset.id}`} asset={inspectedAsset} onAnalysis={setAnalysisSnapshot}/>
       </section>}
       <div className="flex-1 bg-[var(--bg-card)] border border-white/[8%] rounded-xl overflow-hidden">
         {/* Header de columnas */}

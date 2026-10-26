@@ -3,10 +3,35 @@ import assert from 'node:assert/strict';
 import { companyRatios,evaluateDcf,dcfSensitivity } from '../../frontend/src/utils/companyValuation.js';
 import { parseFinancialSeries } from '../src/services/companyResearchService.js';
 import { protectFinancialNames,restoreFinancialNames } from '../src/services/financialLanguageService.js';
+import { entrySummary } from '../../frontend/src/utils/entrySummary.js';
 
 // Synthetic fixtures: these are not financial records or production defaults.
 const scenario=()=>({cashFlows:[100,100,100,100,100],wacc:.1,g:0,cash:0,debt:0,preferred:0,minority:0,nonOperatingAssets:0,otherClaims:0,shares:100,price:8,margin:.2});
 const fact=(value,currency='USD',date='2025-12-31')=>({value,currency,date});
+test('quick reading uses the existing score boundaries and never invents missing direction',()=>{
+  const input=score=>({analysis:{summary:{score10:score,coverage:100}}});
+  assert.equal(entrySummary(input(4)),'wait');assert.equal(entrySummary(input(4.1)),'mixed');assert.equal(entrySummary(input(5.9)),'mixed');assert.equal(entrySummary(input(6)),'favorable');
+  assert.equal(entrySummary({loading:true}),'pending');assert.equal(entrySummary({error:true}),'unavailable');
+  assert.equal(entrySummary(input(null)),'unavailable');assert.equal(entrySummary(input(11)),'unavailable');
+  assert.equal(entrySummary({analysis:{summary:{score10:9,coverage:65}}}),'incomplete');
+});
+test('bullish technicals cannot conceal losses, negative cash flow or unavailable company accounts',()=>{
+  const input={isStock:true,analysis:{summary:{score10:8,coverage:100}},company:{yearEnd:'2025-12-31',company:{sector:'Technology'},flows:{earnings:fact(30),operatingCashFlow:fact(50),capex:fact(-10)}}};
+  assert.equal(entrySummary(input),'favorable');
+  assert.equal(entrySummary({...input,company:null}),'incomplete');
+  assert.equal(entrySummary({...input,company:{...input.company,company:null}}),'incomplete');
+  assert.equal(entrySummary({...input,company:{...input.company,flows:{...input.company.flows,earnings:fact(-1)}}}),'caution');
+  assert.equal(entrySummary({...input,company:{...input.company,flows:{...input.company.flows,capex:fact(-70)}}}),'caution');
+  assert.equal(entrySummary({...input,company:{...input.company,flows:{...input.company.flows,operatingCashFlow:null}}}),'incomplete');
+  assert.equal(entrySummary({...input,company:{...input.company,company:{sector:'Finance'}}}),'specialist');
+});
+test('scenario price caution overrides favorable entry presentation but invalid inputs do not create a valuation',()=>{
+  const input={isStock:true,analysis:{summary:{score10:8,coverage:100}},company:{yearEnd:'2025-12-31',company:{sector:'Industrials'},flows:{earnings:fact(30),operatingCashFlow:fact(50),capex:fact(-10)}}};
+  assert.equal(entrySummary({...input,scenario:{status:'above',fairValue:10}}),'valuationCaution');
+  assert.equal(entrySummary({...input,scenario:{status:'no_equity',fairValue:null}}),'valuationCaution');
+  assert.equal(entrySummary({...input,scenario:{error:'missing'}}),'favorable');
+  assert.equal(entrySummary({...input,analysis:{summary:{score10:3,coverage:100}},scenario:{status:'below_margin',fairValue:30}}),'wait');
+});
 test('constant FCFF perpetuity, separate safety discount and upside',()=>{
   const r=evaluateDcf(scenario());
   assert.ok(Math.abs(r.enterpriseValue-1000)<1e-8);

@@ -8,6 +8,16 @@ En Explorar, busca una empresa por nombre o símbolo y selecciona el resultado c
 
 La primera parte explica el negocio, muestra las cuentas y ofrece una lectura basada en sus signos: pérdidas, beneficio acompañado de caja libre negativa, beneficio y caja positiva, o información insuficiente. Ninguno de esos estados afirma por sí solo que una acción sea barata.
 
+### Resumen «En un vistazo»
+
+Antes del perfil y las explicaciones se presenta una lectura visual de las condiciones de entrada, el mismo índice técnico 0–10 del panel inferior y cuatro cifras principales (cotización, ventas anuales, PER y caja libre anual, con sus periodos). No solicita otro análisis ni utiliza IA para crear una recomendación. El panel inferior comparte su resultado con el resumen, identificado por activo y clase para no mostrar la señal de otro activo al cambiar la selección.
+
+Regla de presentación experimental: exige los cuatro grupos técnicos disponibles (100% del peso); índice ≤4 = «Conviene esperar confirmación», >4 y <6 = «Sin una dirección clara», ≥6 = «Señales favorables para una entrada». En acciones se exige además conocer sector, ejercicio, resultado y caja libre; pérdidas o caja libre no positiva cambian la lectura a «Precaución: cuentas bajo presión». Los sectores financieros reciben una lectura especializada, no un visto bueno con un modelo industrial. Los datos ausentes nunca se convierten en neutralidad, rentabilidad cero o una oportunidad.
+
+La valoración se muestra por separado: permanece sin confirmar hasta completar un DCF válido. Al editar el DCF se actualiza el resumen y se activa cautela si el precio supera el valor del escenario o este no deja capital ordinario positivo. Borrar una hipótesis devuelve la valoración a pendiente. Un descuento en el DCF no anula una lectura técnica bajista. En otros activos, el resumen utiliza cotización, RSI, volumen relativo y ATR/precio; no inventa cuentas empresariales.
+
+Los colores y flechas expresan esta regla, no una probabilidad de ganancia, una orden ni una metodología de rentabilidad validada. La explicación de las reglas y la fecha/fuente de la última vela están disponibles dentro del propio resumen. Referencia educativa sobre el papel de indicadores históricos: [Fidelity, guía de indicadores técnicos](https://www.fidelity.com/learning-center/trading-investing/technical-analysis/technical-indicator-guide/overview).
+
 La segunda parte permite construir un escenario DCF. No contiene hipótesis prefijadas. Las cifras introducidas son locales a la ficha, no se guardan en la cartera ni se envían a un bróker. Cambiar de activo reinicia el escenario.
 
 ## Correcciones a la propuesta de Boeing
@@ -96,7 +106,7 @@ El gráfico y el índice técnico siguen disponibles debajo; su función es tend
 
 ## Validación
 
-- 27 pruebas automáticas del backend, incluidas siete nuevas pruebas de valoración, parser e identidades.
+- 30 pruebas automáticas del backend, incluidas las pruebas de valoración, parser, identidades y tres casos adicionales del resumen (umbrales, datos ausentes/presión financiera y coherencia con el escenario DCF).
 - Caso sintético independiente: FCFF 100 durante cinco años, WACC 10%, g 0%, ajustes 0, acciones 100 → EV 1.000, valor/acción 10. Precio 8 → descuento 20%, diferencia valor/precio 25%, umbral con margen 20% = 8. No son cifras de Boeing.
 - Pruebas de preferentes/minoritarios, flujos iniciales negativos, terminal negativo, g ≥ WACC, acciones cero, datos ausentes, distintas monedas y periodos, GBp/GBP, estados sin balance trimestral, y nombres con puntuación.
 - Compilación de producción del frontend. El aviso de tamaño del paquete es previo al alcance de esta ficha; no impide la compilación.
