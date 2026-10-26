@@ -1,4 +1,6 @@
 const rows = {
+ assetTitle:['¿Cómo valorar este activo?','How do you value this asset?','Como avaliar este ativo?'],
+ assetIntro:['Cada clase de activo necesita criterios distintos. Consulta qué tiene sentido comparar antes de interpretar su precio.','Each asset class needs different criteria. Check what makes sense to compare before interpreting its price.','Cada classe de ativo exige critérios diferentes. Consulte o que faz sentido comparar antes de interpretar o preço.'],
  retryTranslation:['Reintentar traducción del perfil','Retry profile translation','Tentar traduzir o perfil novamente'],
  translating:['Traduciendo el perfil; se muestra el original mientras tanto.','Translating the profile; showing the original meanwhile.','A traduzir o perfil; o original é apresentado entretanto.'],
  reading:['Lectura de las cuentas disponibles','Reading the available accounts','Leitura das contas disponíveis'],
