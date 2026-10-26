@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { summarizeNews, commonCloseComparison } from '../../frontend/src/utils/panoramaAnalysis.js';
+import { summarizeNews, commonCloseComparison, formatQuote } from '../../frontend/src/utils/panoramaAnalysis.js';
 
 test('news relevance cannot invert sentiment', () => {
   const positive = Array.from({length:3}, () => ({sentiment:'positive', impact:'high'}));
@@ -9,6 +9,7 @@ test('news relevance cannot invert sentiment', () => {
   assert.equal(summarizeNews([{sentiment:'negative',impact:'low'}]).tone,'negative');
 });
 test('unknown news tone is not counted as neutral and opposing tones remain mixed', () => {
+  assert.equal(summarizeNews([{sentiment:'neutral',impact:'low',analysisStatus:'unavailable'}]).classified,0);
   assert.equal(summarizeNews([{impact:'high'}]).tone,'unavailable');
   const result=summarizeNews([{sentiment:'positive'}, {sentiment:'negative'}, {sentiment:'invalid'}]);
   assert.equal(result.tone,'mixed');
@@ -27,8 +28,16 @@ test('external asset comparison uses shared closes without any catalog lookup',(
   assert.ok(Math.abs(result.difference+15)<1e-8);
 });
 test('unavailable history is pending while a genuine zero return stays zero',()=>{
+  assert.equal(commonCloseComparison(null, null),null);
   assert.equal(commonCloseComparison([], [bar(10,100)],20*86_400_000),null);
   assert.equal(commonCloseComparison([bar(10,100)], [bar(10,200)],20*86_400_000),null);
   const flat=[bar(10,100),bar(11,100)];
   assert.equal(commonCloseComparison(flat,flat,20*86_400_000).assetReturn,0);
+});
+
+test('external prices preserve EUR and subunits instead of assuming dollars',()=>{
+  assert.ok(formatQuote(100,'EUR','en').includes('€'));
+  assert.ok(!formatQuote(100,'EUR','en').includes('$'));
+  assert.equal(formatQuote(100,'GBp','en'),'100 GBp');
+  assert.equal(formatQuote(null,'USD','en'),'—');
 });

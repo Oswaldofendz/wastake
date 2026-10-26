@@ -127,13 +127,14 @@ async function analyzeSentiment(articles) {
   );
   if (!process.env.GROQ_API_KEY?.trim() && !hasGeminiKey) {
     console.warn('[news] No AI keys configured — skipping sentiment analysis');
-    return articles.map(a => ({ ...a, sentiment: 'neutral', impact: 'low', aiSummary: '' }));
+    return articles.map(a => ({ ...a, sentiment: 'neutral', impact: 'low', aiSummary: '', analysisStatus: 'unavailable' }));
   }
 
   const results = [];
   for (let i = 0; i < articles.length; i++) {
     if (i > 0) await sleep(GEMINI_DELAY_MS);
     let parsed = { sentiment: 'neutral', impact: 'low', aiSummary: '' };
+    let analysisStatus = 'unavailable';
     try {
       const result = await callLLM(SENTIMENT_PROMPT(articles[i]), {
         jsonMode: true,
@@ -142,6 +143,7 @@ async function analyzeSentiment(articles) {
         tag: '[news-sentiment]',
       });
       parsed = parseAIJson(result.text);
+      if (['positive','neutral','negative'].includes(parsed.sentiment)) analysisStatus = 'assessed';
       console.log(`[news] ${result.provider} [${i + 1}/${articles.length}] → ${parsed.sentiment} / ${parsed.impact}`);
     } catch {
       console.warn(`[news] AI analysis unavailable [${i + 1}/${articles.length}]`);
@@ -151,6 +153,7 @@ async function analyzeSentiment(articles) {
       sentiment: parsed.sentiment ?? 'neutral',
       impact:    parsed.impact    ?? 'low',
       aiSummary: parsed.aiSummary ?? '',
+      analysisStatus,
     });
   }
   return results;

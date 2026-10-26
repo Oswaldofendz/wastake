@@ -60,6 +60,8 @@ async function fetchCryptoComparePrices(ids) {
         type:      'crypto',
         updatedAt: Date.now(),
         source:    'cryptocompare',
+        currency: 'USD',
+        quoteAsOf: Number.isFinite(d.LASTUPDATE) ? new Date(d.LASTUPDATE*1000).toISOString() : null,
       };
     }
     return result;
@@ -245,6 +247,7 @@ export async function getCryptoPrices(ids = Object.keys(CRYPTO_ASSETS)) {
           include_24hr_change: true,
           include_24hr_vol: true,
           include_market_cap: true,
+          include_last_updated_at: true,
         },
         headers: CG_HEADERS,
         timeout: 8000,
@@ -262,6 +265,9 @@ export async function getCryptoPrices(ids = Object.keys(CRYPTO_ASSETS)) {
         change24h: raw.usd_24h_change ?? 0,
         volume24h: raw.usd_24h_vol    ?? 0,
         marketCap: raw.usd_market_cap ?? 0,
+        source: 'CoinGecko',
+        currency: 'USD',
+        quoteAsOf: Number.isFinite(raw.last_updated_at) ? new Date(raw.last_updated_at*1000).toISOString() : null,
         type:      'crypto',
         updatedAt: Date.now(),
       };

@@ -10,8 +10,11 @@ function timeoutMessage() {
   return 'The request timed out. Please try again.';
 }
 
-async function get(path, timeoutMs = 20_000) {
+async function get(path, timeoutMs = 20_000, signal) {
   const controller = new AbortController();
+  const cancel = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener('abort', cancel, { once: true });
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(`${BASE}${path}`, { signal: controller.signal });
@@ -21,10 +24,12 @@ async function get(path, timeoutMs = 20_000) {
     }
     return await res.json();
   } catch (err) {
+    if (signal?.aborted) throw new DOMException('Request cancelled', 'AbortError');
     if (controller.signal.aborted) throw new Error(timeoutMessage());
     throw err;
   } finally {
     clearTimeout(timeout);
+    signal?.removeEventListener('abort', cancel);
   }
 }
 
@@ -32,9 +37,9 @@ async function get(path, timeoutMs = 20_000) {
 export const fetchAllPrices = () => get('/api/prices/all');
 
 // Velas OHLCV para el gráfico
-export const fetchOHLCV = (id, type = 'crypto', params = {}) => {
+export const fetchOHLCV = (id, type = 'crypto', params = {}, options = {}) => {
   const qs = new URLSearchParams({ type, ...params }).toString();
-  return get(`/api/prices/ohlcv/${encodeURIComponent(id)}?${qs}`);
+  return get(`/api/prices/ohlcv/${encodeURIComponent(id)}?${qs}`, 20_000, options.signal);
 };
 
 // Catálogo de activos
@@ -42,25 +47,25 @@ export const fetchAssets = () => get('/api/assets');
 
 // Búsqueda de activos
 export const searchAssets = (q) => get(`/api/assets/search?q=${encodeURIComponent(q)}`);
-export const fetchAssetQuote = (asset) => get(`/api/assets/quote/${encodeURIComponent(asset.id)}?type=${asset.analysisType ?? (asset.type === 'crypto' ? 'crypto' : 'stock')}`);
+export const fetchAssetQuote = (asset, options = {}) => get(`/api/assets/quote/${encodeURIComponent(asset.id)}?type=${asset.analysisType ?? (asset.type === 'crypto' ? 'crypto' : 'stock')}`, 20_000, options.signal);
 export const fetchRankings = () => get('/api/assets/rankings', 35_000);
 
 // Análisis técnico (RSI, MACD, EMA, Bollinger, ATR)
-export const fetchAnalysis = (id, type = 'crypto', days = 90) => {
+export const fetchAnalysis = (id, type = 'crypto', days = 90, options = {}) => {
   const qs = new URLSearchParams({ type, days }).toString();
-  return get(`/api/analysis/${encodeURIComponent(id)}?${qs}`);
+  return get(`/api/analysis/${encodeURIComponent(id)}?${qs}`, 20_000, options.signal);
 };
 
 // Narrative AI analysis (Gemini)
-export const fetchNarrative = (id, type = 'crypto', lang = 'es') => {
+export const fetchNarrative = (id, type = 'crypto', lang = 'es', options = {}) => {
   const qs = new URLSearchParams({ type, lang }).toString();
-  return get(`/api/analysis/${encodeURIComponent(id)}/narrative?${qs}`, 60_000);
+  return get(`/api/analysis/${encodeURIComponent(id)}/narrative?${qs}`, 60_000, options.signal);
 };
 
 // Noticias con sentimiento (Gemini)
-export const fetchNews = (id, type = 'crypto') => {
+export const fetchNews = (id, type = 'crypto', options = {}) => {
   const qs = new URLSearchParams({ type }).toString();
-  return get(`/api/news/${encodeURIComponent(id)}?${qs}`, 60_000);
+  return get(`/api/news/${encodeURIComponent(id)}?${qs}`, 60_000, options.signal);
 };
 
 // Public news enriched by the backend with localized, evidence-linked AI analysis.

@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getCryptoOHLCV, getTraditionalOHLCV } from '../services/priceService.js';
 import { computeIndicators } from '../services/technicalAnalysisService.js';
 import { callLLM } from '../services/llmService.js';
+import { isLikelyLanguage } from '../services/financialLanguageService.js';
 
 // Supabase client for the persistent entity-visual cache.
 // Reused only by the visual-subject endpoint below.
@@ -77,7 +78,7 @@ analysisRouter.get('/:id', async (req, res) => {
 analysisRouter.get('/:id/narrative', async (req, res) => {
   const { id } = req.params;
   const { type = 'crypto', lang = 'es' } = req.query;
-  const cacheKey = `narrative_${id}_${lang}`;
+  const cacheKey = `narrative_v2_${type}_${id}_${lang}`;
 
   const cached = getCache(cacheKey);
   if (cached) return res.json(cached);
@@ -101,15 +102,16 @@ analysisRouter.get('/:id/narrative', async (req, res) => {
     const langNames = { es: 'Spanish', pt: 'Portuguese', en: 'English' };
     const langName = langNames[lang] || 'Spanish';
 
-    const prompt = `You are a professional financial analyst. Write a concise market analysis paragraph in ${langName} (2-3 sentences, max 120 words) for ${id.toUpperCase()} based on these indicators:
+    const prompt = `Explain this historical technical snapshot in ${langName} (2-3 sentences, max 120 words) for ${id.toUpperCase()}. Keep asset names and ticker symbols unchanged. Use only these indicators; do not claim to have researched news or live markets:
 - Price: ${lastPrice} ${candles.currency || (type === 'crypto' ? 'USD' : 'source quote currency')}. Do not assume USD for other currencies.
 - RSI: ${indicators.rsi.current} (${signals.rsi.signal})
 - MACD histogram: ${indicators.macd.current?.histogram} (${signals.macd.signal})
 - EMA20: ${indicators.ema20.current}, EMA50: ${indicators.ema50.current} (${signals.ema.signal})
 - Bollinger: ${signals.bb.signal}
-- Overall score: ${summary.score}/100 (${summary.overall})
+- Technical index: ${summary.score10 ?? 'unavailable'}/10 (${summary.bias}), available weight: ${summary.coverage}%. This is an experimental historical heuristic, not a probability.
+- Last available bar: ${new Date(analysis.meta.to*1000).toISOString()}
 
-Write only the analysis paragraph, no titles, no bullet points, no markdown.`;
+Write only the explanation, no titles, lists or markdown. Explain uncertainty. Do not issue buy/sell/hold instructions, invent target prices, or present a forecast as fact.`;
 
     let narrative = null;
     let provider  = null;
@@ -121,6 +123,7 @@ Write only the analysis paragraph, no titles, no bullet points, no markdown.`;
         tag:         '[narrative]',
       });
       narrative = (out.text ?? '').trim() || null;
+      if (narrative && !isLikelyLanguage(narrative, lang)) narrative = null;
       provider  = out.provider;
     } catch (err) {
       console.error('[narrative] both providers failed:', err.message);
