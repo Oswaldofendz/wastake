@@ -23,7 +23,11 @@ export function protectFinancialNames(text, extraIdentities = []) {
     identities.push({ token, value });
     return token;
   };
-  const extra=extraIdentities.filter(v=>typeof v==='string'&&v.trim()).slice(0,5).map(v=>v.slice(0,100)).sort((a,b)=>b.length-a.length);
+  const extra=[...new Set(extraIdentities.filter(v=>typeof v==='string'&&v.trim()).slice(0,5).flatMap(v=>{
+    const name=v.trim().slice(0,100);
+    const base=name.replace(/\s*\(The\)\s*$/i,'').replace(/,?\s+(?:Corporation|Corp\.?|Inc\.?|Ltd\.?|Limited|plc|N\.V\.|S\.A\.|SE|AG|Company)\s*$/i,'').trim();
+    return base.length>=4?[name,base]:[name];
+  }))].sort((a,b)=>b.length-a.length);
   const dynamic=extra.length?new RegExp(`(?<![\\p{L}\\p{N}_])(?:${extra.map(escape).join('|')})(?![\\p{L}\\p{N}_])`,'giu'):null;
   const prepared=dynamic?String(text).replace(dynamic,replace):String(text);
   const protectedText = prepared.replace(namePattern, replace).replace(tickerPattern, replace);

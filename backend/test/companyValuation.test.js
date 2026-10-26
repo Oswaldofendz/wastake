@@ -63,4 +63,7 @@ test('dynamic company identities survive translation placeholders including punc
   assert.ok(!p.text.includes('Boeing'));assert.ok(!p.text.includes('ASML Holding N.V.'));
   assert.equal(restoreFinancialNames(p.text,p.identities),original);
   assert.equal(restoreFinancialNames(p.text.replace(p.identities[0].token,''),p.identities),null);
+  const bank=protectFinancialNames('Bank of America serves customers.',['Bank of America Corporation']);
+  assert.ok(!bank.text.includes('Bank of America'));
+  assert.equal(restoreFinancialNames(bank.text,bank.identities),'Bank of America serves customers.');
 });
