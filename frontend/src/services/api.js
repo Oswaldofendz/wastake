@@ -1,3 +1,4 @@
+import { ANALYSIS_DAYS } from '../utils/marketConventions.js';
 const BASE = import.meta.env.VITE_API_URL ?? '';
 
 function timeoutMessage() {
@@ -51,7 +52,7 @@ export const fetchAssetQuote = (asset, options = {}) => get(`/api/assets/quote/$
 export const fetchRankings = () => get('/api/assets/rankings', 35_000);
 
 // Análisis técnico (RSI, MACD, EMA, Bollinger, ATR)
-export const fetchAnalysis = (id, type = 'crypto', days = 90, options = {}) => {
+export const fetchAnalysis = (id, type = 'crypto', days = ANALYSIS_DAYS, options = {}) => {
   const qs = new URLSearchParams({ type, days }).toString();
   return get(`/api/analysis/${encodeURIComponent(id)}?${qs}`, 20_000, options.signal);
 };

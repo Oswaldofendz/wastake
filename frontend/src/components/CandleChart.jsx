@@ -79,13 +79,16 @@ const TV_MAP = {
   '^GSPC':  'SP:SPX',
   '^NDX':   'NASDAQ:NDX',
   '^DJI':   'DJ:DJI',
-  '^FTSE':  'SPREADEX:FTSE',
+  '^FTSE':  'FTSE:UKX',
   '^N225':  'INDEX:NKY',
   '^GDAXI': 'XETR:DAX',
 
   // Materias primas
-  'GC=F': 'TVC:GOLD',
-  'SI=F': 'TVC:SILVER',
+  'GC=F': 'COMEX:GC1!',
+  'SI=F': 'COMEX:SI1!',
+  'CL=F': 'NYMEX:CL1!',
+  'NG=F': 'NYMEX:NG1!',
+  'HG=F': 'COMEX:HG1!',
 
   // Bonos ETFs
   'TLT': 'NASDAQ:TLT',
@@ -96,15 +99,15 @@ const TV_MAP = {
 };
 
 // Mapeo de timeframe → intervalo de TradingView
-const TF_TO_TV_INTERVAL = {
-  '1S': '60',   // 1 hora para semana
-  '1M': 'D',
-  '3M': 'D',
-  '6M': 'W',
-  '1A': 'W',
+const TF_TO_TV_RANGE = {
+  '1S': '5D',
+  '1M': '1M',
+  '3M': '3M',
+  '6M': '6M',
+  '1A': '12M',
 };
 
-function getTVSymbol(asset) {
+export function getTVSymbol(asset) {
   if (!asset) return 'BINANCE:BTCUSDT';
   if (asset.tvSymbol) return asset.tvSymbol;
   return TV_MAP[asset.id] ?? TV_MAP[asset.symbol] ?? (asset.type === 'crypto' && asset.analysisType !== 'stock' ? `BINANCE:${asset.symbol ?? asset.id}USDT` : asset.id);
@@ -148,7 +151,7 @@ export function TradingViewChart({ asset, timeframe = '3M' }) {
 
     const containerId = containerIdRef.current;
     const symbol      = getTVSymbol(asset);
-    const interval    = TF_TO_TV_INTERVAL[timeframe] ?? 'D';
+    const range = TF_TO_TV_RANGE[timeframe] ?? '3M';
 
     // Limpiar widget anterior y crear nuevo contenedor
     wrapperRef.current.innerHTML = '';
@@ -159,13 +162,14 @@ export function TradingViewChart({ asset, timeframe = '3M' }) {
     wrapperRef.current.appendChild(inner);
 
     loadTVScript().then(() => {
-      if (!window.TradingView || !document.getElementById(containerId)) return;
+      if (!alive || !window.TradingView || !document.getElementById(containerId)) return;
 
       // eslint-disable-next-line no-new
       new window.TradingView.widget({
         autosize:            true,
         symbol,
-        interval,
+        interval: 'D',
+        range,
         timezone:            'Etc/UTC',
         theme:               'dark',
         style:               '1',         // Velas japonesas
@@ -173,7 +177,7 @@ export function TradingViewChart({ asset, timeframe = '3M' }) {
         locale:              i18n.language.split('-')[0],
         toolbar_bg:          '#0f172a',
         enable_publishing:   false,
-        allow_symbol_change: true,
+        allow_symbol_change: false,
         hide_side_toolbar:   false,
         withdateranges:      true,
         show_popup_button:   true,
@@ -191,6 +195,7 @@ export function TradingViewChart({ asset, timeframe = '3M' }) {
 
   return (
     <>
+    <p className="mb-2 text-xs leading-5 text-slate-400">{t('audit_external_chart')}</p>
     {unavailable && <p role="status" className="p-4 text-sm text-amber-300">{t('chart_advanced_error')}</p>}
     <div
       ref={wrapperRef}

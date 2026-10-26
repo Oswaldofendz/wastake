@@ -1,11 +1,16 @@
 // Relevance describes magnitude/attention, never direction. Missing tone is not neutral.
+export function newsAssessment(article={}) {
+  const evaluated=article.analysisStatus!=='unavailable';
+  return {sentiment:evaluated&&['positive','negative','neutral'].includes(article.sentiment)?article.sentiment:null,
+    impact:evaluated&&['high','medium','low'].includes(article.impact)?article.impact:null};
+}
 export function summarizeNews(news = []) {
   const counts = { positive: 0, negative: 0, neutral: 0 };
   let highImpact = 0;
   for (const article of news) {
-    const assessed = article?.analysisStatus !== 'unavailable';
-    if (assessed && Object.hasOwn(counts, article?.sentiment)) counts[article.sentiment]++;
-    if (assessed && article?.impact === 'high') highImpact++;
+    const assessed=newsAssessment(article??{});
+    if (assessed.sentiment) counts[assessed.sentiment]++;
+    if (assessed.impact==='high') highImpact++;
   }
   const classified = counts.positive + counts.negative + counts.neutral;
   let tone = 'unavailable';
@@ -33,11 +38,12 @@ export function commonCloseComparison(assetCandles = [], referenceCandles = [], 
   return {from,to,assetReturn,referenceReturn,difference:assetReturn-referenceReturn};
 }
 
-export function formatQuote(value, currency, language = 'es') {
+export function formatQuote(value, currency, language = 'es', precision = null) {
   if (!Number.isFinite(value)) return '—';
+  const digits=Number.isInteger(precision)&&precision>=0&&precision<=20?precision:Math.abs(value)>0&&Math.abs(value)<1?Math.min(20,Math.max(6,-Math.floor(Math.log10(Math.abs(value)))+3)):2;
   if (/^[A-Z]{3}$/.test(currency ?? '')) {
-    try { return new Intl.NumberFormat(language,{style:'currency',currency,maximumFractionDigits:value<1?6:2}).format(value); }
+    try { return new Intl.NumberFormat(language,{style:'currency',currency,maximumFractionDigits:digits}).format(value); }
     catch { /* Preserve the source unit if Intl does not recognize it. */ }
   }
-  return `${value.toLocaleString(language,{maximumFractionDigits:value<1?6:2})}${currency?` ${currency}`:''}`;
+  return `${value.toLocaleString(language,{maximumFractionDigits:digits})}${currency?` ${currency}`:''}`;
 }

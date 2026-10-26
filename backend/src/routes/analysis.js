@@ -42,7 +42,7 @@ function setAngleCache(key, data) { newsAngleCache.set(key, { data, ts: Date.now
 // GET /api/analysis/:id?type=stock
 analysisRouter.get('/:id', async (req, res) => {
   const { id } = req.params;
-  const { type = 'crypto', days = '90' } = req.query;
+  const { type = 'crypto', days = '365' } = req.query;
 
   const cacheKey = `${id}_${type}_${days}`;
   const cached = getCache(cacheKey);
@@ -52,7 +52,7 @@ analysisRouter.get('/:id', async (req, res) => {
     let candles;
 
     if (type === 'crypto') {
-      candles = await getCryptoOHLCV(id, Math.max(90, Math.min(365, parseInt(days)||90)));
+      candles = await getCryptoOHLCV(id, Math.max(90, Math.min(365, parseInt(days)||365)));
     } else {
       candles = await getTraditionalOHLCV(id);
     }
@@ -78,7 +78,7 @@ analysisRouter.get('/:id', async (req, res) => {
 analysisRouter.get('/:id/narrative', async (req, res) => {
   const { id } = req.params;
   const { type = 'crypto', lang = 'es' } = req.query;
-  const cacheKey = `narrative_v2_${type}_${id}_${lang}`;
+  const cacheKey = `narrative_v3_365_${type}_${id}_${lang}`;
 
   const cached = getCache(cacheKey);
   if (cached) return res.json(cached);
@@ -86,7 +86,7 @@ analysisRouter.get('/:id/narrative', async (req, res) => {
   try {
     let candles;
     if (type === 'crypto') {
-      candles = await getCryptoOHLCV(id, 90);
+      candles = await getCryptoOHLCV(id, 365);
     } else {
       candles = await getTraditionalOHLCV(id);
     }

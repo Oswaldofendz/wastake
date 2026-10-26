@@ -2,25 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchNews, translateText } from '../services/api.js';
 import { getAnalysisType } from '../data/assetCatalog.js';
-
-// ─── Keyword-based impact detection ──────────────────────────
-const HIGH_KEYWORDS = [
-  'crash', 'ban', 'hack', 'hacked', 'crisis', 'collapse', 'sec', 'regulation',
-  'scam', 'fraud', 'lawsuit', 'arrest', 'seized', 'criminal', 'bankrupt',
-  'exploit', 'stolen', 'breach', 'emergency', 'shutdown', 'suspend',
-];
-const MEDIUM_KEYWORDS = [
-  'warning', 'risk', 'decline', 'drop', 'concern', 'worry', 'sell', 'fall',
-  'tumble', 'slump', 'weak', 'volatile', 'uncertainty', 'caution', 'fear',
-  'investigation', 'probe', 'delay', 'miss', 'disappoint',
-];
-
-function detectImpact(text = '', existingImpact) {
-  const lower = text.toLowerCase();
-  if (HIGH_KEYWORDS.some(kw => new RegExp('\\b' + kw + '\\b').test(lower)))   return 'high';
-  if (MEDIUM_KEYWORDS.some(kw => new RegExp('\\b' + kw + '\\b').test(lower))) return 'medium';
-  return existingImpact ?? 'low';
-}
+import { newsAssessment } from '../utils/panoramaAnalysis.js';
 
 const IMPACT_BORDER = {
   high:   'border-red-700/60 bg-red-950/20',
@@ -57,6 +39,7 @@ function timeAgo(isoDate, language) {
 const newsKey = article => (article.link ?? '') + '|' + article.title;
 function useTranslations(articles, lang) {
   const [titles, setTitles] = useState({});
+  const identities=articles?.map(newsKey).join('\n');
   useEffect(() => {
     const shortLang = lang.split('-')[0];
     if (!articles?.length || shortLang === 'en') return;
@@ -76,7 +59,7 @@ function useTranslations(articles, lang) {
     }
     translateAll();
     return () => { cancelled = true; };
-  }, [articles, lang]);
+  }, [identities, lang]);
   return titles;
 }
 
@@ -85,19 +68,31 @@ function useNews(asset) {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
+  const [analyzing,setAnalyzing]=useState(false);
+  const [analysisError,setAnalysisError]=useState(false);
+  const [attempt,setAttempt]=useState(0);
 
   useEffect(() => {
     if (!asset) return;
     let cancelled = false;
+    const controller=new AbortController();
 
     async function load() {
       setLoading(true);
       setData(null);
       setError(null);
+      setAnalyzing(false);setAnalysisError(false);
       try {
         const type   = getAnalysisType(asset);
-        const result = await fetchNews(asset.id, type);
-        if (!cancelled) setData(result.news);
+        const result = await fetchNews(asset.id,type,{stage:'headlines',signal:controller.signal});
+        if(cancelled)return;
+        setData(result.news??[]);setLoading(false);
+        if(result.news?.length){
+          setAnalyzing(true);
+          try{const enriched=await fetchNews(asset.id,type,{signal:controller.signal});if(!cancelled){setData(enriched.news??result.news);setAnalysisError(enriched.news?.length>0&&enriched.news.every(a=>!newsAssessment(a).impact));}}
+          catch{if(!cancelled)setAnalysisError(true);}
+          finally{if(!cancelled)setAnalyzing(false);}
+        }
       } catch (err) {
         if (!cancelled) setError(err.message);
       } finally {
@@ -106,10 +101,10 @@ function useNews(asset) {
     }
 
     load();
-    return () => { cancelled = true; };
-  }, [asset?.id]);
+    return () => { cancelled = true;controller.abort(); };
+  }, [asset?.id,asset?.type,asset?.analysisType,attempt]);
 
-  return { data, loading, error };
+  return { data, loading, error,analyzing,analysisError,retry:()=>setAttempt(n=>n+1) };
 }
 
 // ─── Sub-components ───────────────────────────────────────────
@@ -117,7 +112,7 @@ function SentimentBadge({ sentiment }) {
   const { t } = useTranslation();
   return (
     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${SENTIMENT_STYLES[sentiment] ?? SENTIMENT_STYLES.neutral}`}>
-      {t('news_' + (sentiment || 'neutral'))}
+      {sentiment?t('news_'+sentiment):t('audit_news_unassessed')}
     </span>
   );
 }
@@ -126,7 +121,7 @@ function NewsCard({ article, translatedTitle, impact }) {
   const { t, i18n } = useTranslation();
   return (
     <a href={article.link} target="_blank" rel="noopener noreferrer" className="block group">
-      <div className={`p-3 rounded-lg border transition-colors duration-150 hover:brightness-110 ${IMPACT_BORDER[impact]}`}>
+      <div className={`p-3 rounded-lg border transition-colors duration-150 hover:brightness-110 ${IMPACT_BORDER[impact]??IMPACT_BORDER.low}`}>
         {/* Source + time */}
         <div className="flex items-center justify-between gap-2 mb-1.5">
           <div className="flex items-center gap-1.5">
@@ -146,9 +141,9 @@ function NewsCard({ article, translatedTitle, impact }) {
 
         {/* Badges */}
         <div className="flex items-center gap-2 flex-wrap">
-          <SentimentBadge sentiment={article.sentiment} />
+          <SentimentBadge sentiment={newsAssessment(article).sentiment} />
           <span className={`text-xs font-medium ${IMPACT_TEXT[impact]}`}>
-            {t('news_' + impact)}
+            {impact?t('news_'+impact):t('audit_news_impact_pending')}
           </span>
         </div>
       </div>
@@ -180,7 +175,7 @@ function Skeleton() {
 
 // ─── Main component ───────────────────────────────────────────
 export function NewsPanel({ asset }) {
-  const { data, loading, error } = useNews(asset);
+  const { data, loading, error,analyzing,analysisError,retry } = useNews(asset);
   const { t, i18n } = useTranslation();
   const translatedTitles = useTranslations(data, i18n.language);
   const shortLang = i18n.language.split('-')[0];
@@ -195,6 +190,7 @@ export function NewsPanel({ asset }) {
   if (error) return (
     <div className="mt-3 bg-slate-800/50 border border-slate-700/30 rounded-xl p-4">
       <p className="text-xs text-red-400 text-center">{t('news_error')}</p>
+      <button type="button" onClick={retry} className="mt-3 min-h-10 text-sm text-sky-300 underline">{t('retry')}</button>
     </div>
   );
 
@@ -204,12 +200,14 @@ export function NewsPanel({ asset }) {
     </div>
   );
 
-  // Enriquecer artículos con impacto por keywords e índice original para traducciones
+  // Preserve the same assessment used by the other views.
   const enriched = data.map((a, i) => ({
     ...a,
     _origIdx: i,
-    computedImpact: detectImpact(a.title, a.impact),
+    computedImpact:newsAssessment(a).impact,
   }));
+  const groups=['high','medium','low'].filter(impact=>enriched.some(a=>a.computedImpact===impact));
+  const columns=groups.length===3?'lg:grid-cols-3':groups.length===2?'lg:grid-cols-2':'';
 
   return (
     <div className="mt-3">
@@ -222,11 +220,13 @@ export function NewsPanel({ asset }) {
         </span>
       </div>
 
-      {/* 3 columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+      {(analyzing||analysisError)&&<p className="mb-3 text-xs text-amber-300" role="status">{t(analyzing?'audit_news_analyzing':'audit_news_analysis_unavailable')}</p>}
+      {enriched.some(a=>!a.computedImpact)&&<section className="mb-3 rounded-xl border border-slate-700 p-3"><h4 className="mb-2 text-xs font-semibold text-slate-300">{t(analysisError?'audit_news_unclassified':'audit_news_pending_title')}</h4><div className="grid max-h-[32rem] gap-2 overflow-y-auto sm:grid-cols-2">{enriched.filter(a=>!a.computedImpact).map((article,i)=><NewsCard key={article.link||i} article={article} translatedTitle={titleFor(article)} impact={null}/>)}</div></section>}
+      {/* Classified articles use the shared backend assessment, not title keywords. */}
+      <div className={`grid grid-cols-1 gap-3 ${columns}`}>
 
         {/* HIGH */}
-        <div className="bg-red-950/20 border border-red-700/40 rounded-xl overflow-hidden">
+        {groups.includes('high')&&<div className="bg-red-950/20 border border-red-700/40 rounded-xl overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-red-700/30">
             <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
             <span className="text-xs font-semibold text-red-400 uppercase tracking-wider">{t('news_high')}</span>
@@ -239,10 +239,10 @@ export function NewsPanel({ asset }) {
               <NewsCard key={article.link || i} article={article} translatedTitle={titleFor(article)} impact="high" />
             ))}
           </div>
-        </div>
+        </div>}
 
         {/* MEDIUM */}
-        <div className="bg-amber-950/10 border border-amber-700/40 rounded-xl overflow-hidden">
+        {groups.includes('medium')&&<div className="bg-amber-950/10 border border-amber-700/40 rounded-xl overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-amber-700/30">
             <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
             <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">{t('news_medium')}</span>
@@ -255,10 +255,10 @@ export function NewsPanel({ asset }) {
               <NewsCard key={article.link || i} article={article} translatedTitle={titleFor(article)} impact="medium" />
             ))}
           </div>
-        </div>
+        </div>}
 
         {/* LOW */}
-        <div className="bg-slate-800/40 border border-slate-700/40 rounded-xl overflow-hidden">
+        {groups.includes('low')&&<div className="bg-slate-800/40 border border-slate-700/40 rounded-xl overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-700/30">
             <span className="w-2 h-2 rounded-full bg-slate-500 flex-shrink-0" />
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t('news_low')}</span>
@@ -271,7 +271,7 @@ export function NewsPanel({ asset }) {
               <NewsCard key={article.link || i} article={article} translatedTitle={titleFor(article)} impact="low" />
             ))}
           </div>
-        </div>
+        </div>}
 
       </div>
     </div>

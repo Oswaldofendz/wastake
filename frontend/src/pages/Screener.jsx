@@ -1,20 +1,14 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { usePrices } from '../hooks/usePrices.js';
 import { useTranslation } from 'react-i18next';
 import { getAssetGroup } from '../data/assetSectors.js';
 import { AssetSearch } from '../components/AssetSearch.jsx';
 import { AnalysisPanel } from '../components/AnalysisPanel.jsx';
 import { CandleChart } from '../components/PriceChart.jsx';
 import { AssetValuationCard } from '../components/AssetValuationCard.jsx';
+import { formatQuote } from '../utils/panoramaAnalysis.js';
+import { marketStats } from '../utils/marketConventions.js';
 
 // ─── Helpers de formato ───────────────────────────────────────────────────────
-function fmtPrice(n) {
-  if (n == null || isNaN(n)) return '—';
-  if (n >= 1000) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-  if (n >= 1)    return `$${n.toFixed(2)}`;
-  return `$${n.toFixed(4)}`;
-}
-
 function fmtChange(n) {
   if (n == null || isNaN(n)) return '—';
   return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
@@ -99,7 +93,8 @@ function AssetAvatar({ asset }) {
 
 // ─── Fila de la tabla ─────────────────────────────────────────────────────────
 function AssetRow({ asset, rank, t, showMarketCap, onSelect }) {
-  const positive = (asset.change24h ?? 0) >= 0;
+  const {i18n}=useTranslation();
+  const positive = Number.isFinite(asset.change24h)?asset.change24h>=0:null;
   const typeColors = TYPE_COLORS[asset.type] ?? TYPE_COLORS.etf;
 
   return (
@@ -123,11 +118,11 @@ function AssetRow({ asset, rank, t, showMarketCap, onSelect }) {
 
       {/* Precio */}
       <span className="w-20 sm:w-24 text-right text-sm font-mono font-semibold text-white flex-shrink-0">
-        {fmtPrice(asset.price)}
+        {formatQuote(asset.price,asset.currency,i18n.language,asset.type==='forex'?5:null)}
       </span>
 
       {/* Cambio 24h */}
-      <span className={`w-16 sm:w-20 text-right text-sm font-mono font-semibold flex-shrink-0 ${positive ? 'text-green-400' : 'text-red-400'}`}>
+      <span className={`w-16 sm:w-20 text-right text-sm font-mono font-semibold flex-shrink-0 ${positive===null?'text-slate-400':positive ? 'text-green-400' : 'text-red-400'}`}>
         {fmtChange(asset.change24h)}
       </span>
 
@@ -158,9 +153,9 @@ function AssetRow({ asset, rank, t, showMarketCap, onSelect }) {
 
 // ─── Presets de búsqueda rápida ───────────────────────────────────────────────
 // ─── Componente principal ─────────────────────────────────────────────────────
-export function Screener() {
+export function Screener({marketData}) {
   const { t } = useTranslation();
-  const { allAssets, loading, error, isStale, refresh } = usePrices(60_000);
+  const { allAssets, loading, error, isStale, refresh } = marketData;
 
   const [search, setSearch]           = useState('');
   const [inspectedAsset, setInspectedAsset] = useState(null);
@@ -170,7 +165,6 @@ export function Screener() {
   const [typeFilter, setTypeFilter]   = useState('all');
   const [changeFilter, setChangeFilter] = useState('all');
   const [sortBy, setSortBy]           = useState('change_desc');
-  const [activePreset, setActivePreset] = useState(null);
   const [collapsedGroups, setCollapsedGroups] = useState({});
 
   function resetFilters() {
@@ -179,7 +173,7 @@ export function Screener() {
 
   // ── Filtrado + ordenación ────────────────────────────────────────────────────
   const filtered = useMemo(() => {
-    let assets = [...allAssets].filter(a => a.price != null);
+    let assets = [...allAssets].filter(a => Number.isFinite(a.price)&&a.price>0);
 
     // Filtro de texto
     if (search.trim()) {
@@ -203,7 +197,7 @@ export function Screener() {
     if (changeFilter === 'down2') assets = assets.filter(a => (a.change24h ?? 0) <= -2);
     if (changeFilter === 'down5') assets = assets.filter(a => (a.change24h ?? 0) <= -5);
     if (changeFilter === 'vol_5') assets = assets.filter(a => Math.abs(a.change24h ?? 0) >= 5);
-    if (changeFilter === 'flat')  assets = assets.filter(a => Math.abs(a.change24h ?? 0) <= 1);
+    if (changeFilter === 'flat')  assets = assets.filter(a => Number.isFinite(a.change24h)&&Math.abs(a.change24h) <= 1);
 
     // Ordenación
     assets.sort((a, b) => {
@@ -246,15 +240,8 @@ export function Screener() {
     : SORT_OPTIONS.filter(option => option.id !== 'mktcap_desc');
 
   // ── Stats rápidas ────────────────────────────────────────────────────────────
-  const stats = useMemo(() => {
-    const withPrice = allAssets.filter(a => a.price != null && a.change24h != null);
-    const gainers = withPrice.filter(a => a.change24h > 0).length;
-    const losers  = withPrice.filter(a => a.change24h < 0).length;
-    const avgChange = withPrice.length
-      ? (withPrice.reduce((s, a) => s + a.change24h, 0) / withPrice.length).toFixed(2)
-      : 0;
-    return { total: withPrice.length, gainers, losers, avgChange };
-  }, [allAssets]);
+  const stats=useMemo(()=>marketStats(filtered),[filtered]);
+  const catalogTotal=useMemo(()=>marketStats(allAssets).total,[allAssets]);
 
   return (
     <div className="flex flex-col h-full p-4 max-w-6xl mx-auto w-full">
@@ -265,7 +252,7 @@ export function Screener() {
           <div>
             <h1 className="text-xl font-bold text-white">{t('screener_title')}</h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              {t('screener_results_count', { total: stats.total, results: filtered.length })}
+              {t('screener_results_count', { total: catalogTotal, results: filtered.length })}
               {(isStale || error) && <span className="ml-2 text-amber-500">⚠ {t('screener_stale_data')}</span>}
             </p>
             <p className="text-sm text-slate-400 mt-2">{t('screener_intro')}</p>
@@ -282,14 +269,14 @@ export function Screener() {
         )}
 
         {/* ── Stats rápidas ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4" aria-live="polite">
+        {!inspectedAsset&&<><p className="mt-4 text-xs text-slate-400">{t('audit_filtered_stats',{known:stats.known,missing:stats.missing,unchanged:stats.unchanged})}</p><div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2" aria-live="polite">
           {[
             { label: t('screener_rising'), value: stats.gainers, color: 'text-green-400', bg: 'bg-green-900/20 border-green-700/30' },
             { label: t('screener_falling'), value: stats.losers, color: 'text-red-400', bg: 'bg-red-900/20 border-red-700/30' },
             {
               label: t('screener_average_move'),
-              value: `${stats.avgChange >= 0 ? '+' : ''}${stats.avgChange}%`,
-              color: Number(stats.avgChange) >= 0 ? 'text-green-400' : 'text-red-400',
+              value: stats.avgChange===null?'—':`${stats.avgChange >= 0 ? '+' : ''}${stats.avgChange.toFixed(2)}%`,
+              color: stats.avgChange===null?'text-slate-400':stats.avgChange >= 0 ? 'text-green-400' : 'text-red-400',
               bg: 'bg-slate-800/60 border-slate-700/40',
             },
           ].map(s => (
@@ -298,7 +285,7 @@ export function Screener() {
               <p className={`text-xl font-bold font-mono mt-0.5 ${s.color}`}>{s.value}</p>
             </div>
           ))}
-        </div>
+        </div></>}
       </div>
 
       {/* ── Panel de búsqueda y filtros ── */}
@@ -324,7 +311,7 @@ export function Screener() {
 
           <label className="block min-w-0">
             <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_type_label')}</span>
-            <select value={typeFilter} onChange={e => {
+            <select aria-label={t('screener_type_label')} value={typeFilter} onChange={e => {
               const nextType = e.target.value;
               setTypeFilter(nextType);
               if (nextType !== 'crypto' && sortBy === 'mktcap_desc') setSortBy('change_desc');
@@ -335,14 +322,14 @@ export function Screener() {
 
           <label className="block min-w-0">
             <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_change_label')}</span>
-            <select value={changeFilter} onChange={e => { setChangeFilter(e.target.value); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
+            <select aria-label={t('screener_change_label')} value={changeFilter} onChange={e => { setChangeFilter(e.target.value); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
               {CHANGE_FILTERS.map(f => <option key={f.id} value={f.id}>{t(f.labelKey)}</option>)}
             </select>
           </label>
 
           <label className="block min-w-0 sm:col-span-2 xl:col-span-2">
             <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_sort_label')}</span>
-            <select value={sortBy} onChange={e => { setSortBy(e.target.value); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
+            <select aria-label={t('screener_sort_label')} value={sortBy} onChange={e => { setSortBy(e.target.value); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
               {availableSortOptions.map(s => <option key={s.id} value={s.id}>{t(s.labelKey)}</option>)}
             </select>
           </label>
@@ -361,7 +348,7 @@ export function Screener() {
       {/* ── Tabla ── */}
       {inspectedAsset && <section ref={inspectionRef} className="mb-4 scroll-mt-24 rounded-xl border border-sky-700/50 p-3">
         <div className="mb-3 flex items-center justify-between gap-2"><h2 translate="no" className="font-semibold">{inspectedAsset.name} · {inspectedAsset.symbol}</h2><button type="button" onClick={()=>setInspectedAsset(null)} className="min-h-10 px-3" aria-label={t('close','Cerrar')}>✕</button></div>
-        <AssetValuationCard key={`${inspectedAsset.type}:${inspectedAsset.id}`} asset={inspectedAsset} technical={analysisSnapshot?.id===inspectedAsset.id&&analysisSnapshot?.type===inspectedAsset.type?analysisSnapshot:null}/><CandleChart asset={inspectedAsset}/><AnalysisPanel key={`${inspectedAsset.type}:${inspectedAsset.id}`} asset={inspectedAsset} onAnalysis={setAnalysisSnapshot}/>
+        <AssetValuationCard key={`valuation:${inspectedAsset.type}:${inspectedAsset.id}`} asset={inspectedAsset} technical={analysisSnapshot?.id===inspectedAsset.id&&analysisSnapshot?.type===inspectedAsset.type?analysisSnapshot:null}/><CandleChart key={`chart:${inspectedAsset.type}:${inspectedAsset.id}`} asset={inspectedAsset}/><details className="mt-3 rounded-xl border border-slate-700 p-3"><summary className="min-h-8 cursor-pointer text-sm font-semibold">{t('audit_technical_details')}</summary><AnalysisPanel key={`analysis:${inspectedAsset.type}:${inspectedAsset.id}`} asset={inspectedAsset} onAnalysis={setAnalysisSnapshot}/></details>
       </section>}
       <div className="flex-1 bg-[var(--bg-card)] border border-white/[8%] rounded-xl overflow-hidden">
         {/* Header de columnas */}
@@ -433,7 +420,7 @@ export function Screener() {
       {/* Footer con total */}
       {filtered.length > 0 && (
         <p className="text-xs text-slate-600 text-center mt-3">
-          {t('screener_showing_count', { results: filtered.length, total: stats.total })}
+          {t('screener_showing_count', { results: filtered.length, total: catalogTotal })}
         </p>
       )}
     </div>

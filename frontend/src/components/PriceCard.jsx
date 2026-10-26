@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { formatQuote } from '../utils/panoramaAnalysis.js';
 
 // Logo fallback map for non-crypto assets (SVG letter avatars handled in component)
 const TYPE_COLORS = {
@@ -15,13 +16,6 @@ function fmt(n) {
   if (n >= 1e9)  return `$${(n / 1e9).toFixed(2)}B`;
   if (n >= 1e6)  return `$${(n / 1e6).toFixed(2)}M`;
   return `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-}
-
-function fmtPrice(n) {
-  if (n == null || isNaN(n)) return '—';
-  if (n >= 1000) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-  if (n >= 1)    return `$${n.toFixed(2)}`;
-  return `$${n.toFixed(4)}`;
 }
 
 function AssetLogo({ asset }) {
@@ -50,8 +44,8 @@ function AssetLogo({ asset }) {
 }
 
 export function PriceCard({ asset, isSelected, onClick }) {
-  const { t } = useTranslation();
-  const positive = asset.change24h >= 0;
+  const { t,i18n } = useTranslation();
+  const positive = Number.isFinite(asset.change24h)?asset.change24h>=0:null;
   const typeMeta = TYPE_COLORS[asset.type] ?? TYPE_COLORS.etf;
 
   return (
@@ -82,8 +76,8 @@ export function PriceCard({ asset, isSelected, onClick }) {
           </div>
 
           <div className="flex items-center justify-between mt-0.5">
-            <p className="text-sm font-semibold text-white font-mono">{fmtPrice(asset.price)}</p>
-            <span className={['text-xs font-medium', positive ? 'text-green-400' : 'text-red-400'].join(' ')}>
+            <p className="text-sm font-semibold text-white font-mono">{formatQuote(asset.price,asset.currency,i18n.language,asset.type==='forex'?5:null)}</p>
+            <span className={['text-xs font-medium',positive===null?'text-slate-400':positive ? 'text-green-400' : 'text-red-400'].join(' ')}>
               {asset.change24h != null && !isNaN(asset.change24h)
                 ? `${positive ? '+' : ''}${asset.change24h.toFixed(2)}%`
                 : '—'}
@@ -91,7 +85,7 @@ export function PriceCard({ asset, isSelected, onClick }) {
           </div>
 
           {asset.volume24h > 0 && (
-            <p className="text-xs text-slate-500 mt-0.5">{fmt(asset.volume24h)} vol</p>
+            <p className="text-xs text-slate-500 mt-0.5">{asset.type==='crypto'?fmt(asset.volume24h):asset.volume24h.toLocaleString(i18n.language,{notation:'compact',maximumFractionDigits:2})} · {t(asset.type==='crypto'?'audit_crypto_volume':'audit_traded_volume')}</p>
           )}
         </div>
       </div>

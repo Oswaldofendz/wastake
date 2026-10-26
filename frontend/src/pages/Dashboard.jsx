@@ -1,25 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { usePrices } from '../hooks/usePrices.js';
 import { PriceCard } from '../components/PriceCard.jsx';
 import { CandleChart } from '../components/PriceChart.jsx';
 import { AssetSearch } from '../components/AssetSearch.jsx';
 import { Disclaimer } from '../components/Disclaimer.jsx';
 import { AnalysisPanel } from '../components/AnalysisPanel.jsx';
 import { NewsPanel } from '../components/NewsPanel.jsx';
+import { currentSelection } from '../utils/marketConventions.js';
+import { formatQuote } from '../utils/panoramaAnalysis.js';
 
-// Timeframes disponibles: label → días para el API de análisis
-const TIMEFRAMES = [
-  { label: '1S',  days: 30,  range: '5d'  },
-  { label: '1M',  days: 60,  range: '1mo' },
-  { label: '3M',  days: 90,  range: '3mo' },
-  { label: '6M',  days: 180, range: '6mo' },
-  { label: '1A',  days: 365, range: '1y'  },
-];
+// Visible zoom only; every technical view uses the same source history.
+const TIMEFRAMES=['1S','1M','3M','6M','1A'].map(label=>({label}));
 
-export function Dashboard() {
-  const { t } = useTranslation();
-  const { allAssets, loading, error, isStale, refresh } = usePrices(60_000);
+export function Dashboard({marketData}) {
+  const { t,i18n } = useTranslation();
+  const { allAssets, loading, error, isStale, refresh } = marketData;
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [extraAssets, setExtraAssets]     = useState([]);
   const [sidebarOpen, setSidebarOpen]     = useState(false);
@@ -45,7 +40,7 @@ export function Dashboard() {
     return () => window.removeEventListener('resize', fn);
   }, []);
 
-  const chartAsset = selectedAsset ?? allAssets[0] ?? null;
+  const chartAsset = currentSelection(selectedAsset,allAssets);
 
   const displayAssets = [
     ...allAssets,
@@ -194,13 +189,13 @@ export function Dashboard() {
             <>
               {/* Stats */}
               <div className="grid grid-cols-3 gap-2 mb-3">
-                <StatCard label={`${t('price')} · ${chartAsset.currency || 'USD'}`} value={fmtPrice(chartAsset.price, chartAsset.currency || 'USD')} mono />
+                <StatCard label={`${t('price')} · ${chartAsset.currency || (chartAsset.type==='crypto'?'USD':'—')}`} value={formatQuote(chartAsset.price,chartAsset.currency||(chartAsset.type==='crypto'?'USD':null),i18n.language,chartAsset.type==='forex'?5:null)} mono />
                 <StatCard
                   label={t('change_24h')}
                   value={chartAsset.change24h != null && !isNaN(chartAsset.change24h) ? `${chartAsset.change24h >= 0 ? '+' : ''}${chartAsset.change24h.toFixed(2)}%` : '—'}
-                  positive={(chartAsset.change24h ?? 0) >= 0}
+                  positive={Number.isFinite(chartAsset.change24h)?chartAsset.change24h>=0:undefined}
                 />
-                <StatCard label={t('volume')} value={chartAsset.type === 'crypto' ? fmtCompact(chartAsset.volume24h) : chartAsset.volume24h > 0 ? chartAsset.volume24h.toLocaleString(undefined,{notation:'compact',maximumFractionDigits:2}) : '—'} />
+                <StatCard label={t(chartAsset.type==='crypto'?'audit_crypto_volume':'audit_traded_volume')} value={chartAsset.type === 'crypto' ? fmtCompact(chartAsset.volume24h) : chartAsset.volume24h > 0 ? chartAsset.volume24h.toLocaleString(undefined,{notation:'compact',maximumFractionDigits:2}) : '—'} />
               </div>
 
               {/* Timeframe selector + Chart container */}
@@ -216,7 +211,7 @@ export function Dashboard() {
               >
                 {/* Barra de timeframes */}
                 <div className="flex items-center gap-1 px-3 py-2 border-b border-slate-700/50 flex-shrink-0">
-                  <span className="text-xs text-slate-500 mr-1">Período:</span>
+                  <span className="text-xs text-slate-500 mr-1">{t('audit_visible_period')}:</span>
                   {TIMEFRAMES.map(tf => (
                     <button
                       key={tf.label}
@@ -236,12 +231,12 @@ export function Dashboard() {
 
                 {/* Chart */}
                 <div style={{ flex: 1, minHeight: 0, padding: isMobile ? '8px' : '12px' }}>
-                  <CandleChart asset={chartAsset} timeframe={activeTf.label} />
+                  <CandleChart key={`chart:${chartAsset.type}:${chartAsset.id}`} asset={chartAsset} timeframe={activeTf.label} />
                 </div>
               </div>
 
-              <AnalysisPanel asset={chartAsset} days={activeTf.days} />
-              <NewsPanel asset={chartAsset} />
+              <AnalysisPanel key={`analysis:${chartAsset.type}:${chartAsset.id}`} asset={chartAsset} />
+              <NewsPanel key={`news:${chartAsset.type}:${chartAsset.id}`} asset={chartAsset} />
             </>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '64px' }}
@@ -289,9 +284,9 @@ function StatCard({ label, value, mono = false, positive }) {
   );
 }
 
-function fmtPrice(n, currency='USD') {
+function fmtPrice(n, currency=null) {
   if (n == null || isNaN(n)) return '—';
-  if(currency!=='USD') return `${n.toLocaleString(undefined,{maximumFractionDigits:4})} ${currency}`;
+  if(currency!=='USD') return `${n.toLocaleString(undefined,{maximumFractionDigits:4})}${currency?` ${currency}`:''}`;
   if (n >= 1000) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
   if (n >= 1)    return `$${n.toFixed(2)}`;
   return `$${n.toFixed(4)}`;

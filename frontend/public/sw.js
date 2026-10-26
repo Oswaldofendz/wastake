@@ -1,4 +1,4 @@
-const CACHE = 'wastake-v5';
+const CACHE = 'wastake-v6';
 const PRECACHE = ['/', '/index.html'];
 
 // Instalación: pre-cachear el shell de la app
@@ -12,7 +12,7 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(keys => Promise.all(keys.filter(k => k.startsWith('wastake-')&&k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -20,6 +20,7 @@ self.addEventListener('activate', e => {
 // Fetch: cache-first para assets estáticos, network-first para API
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
+  if(url.pathname.startsWith('/src/')||url.pathname.startsWith('/@vite/')||url.pathname.startsWith('/node_modules/'))return;
 
   // Pasar directamente: API backend, Supabase, fonts
   if (
@@ -36,7 +37,7 @@ self.addEventListener('fetch', e => {
   if (e.request.method === 'GET') {
     // Check the app shell on the network first so a deployment becomes visible
     // on the next navigation; fall back to the cached page when offline.
-    if (e.request.mode === 'navigate') {
+    if (e.request.mode === 'navigate'||!/^\/assets\/.+-[\w-]+\.(js|css)$/.test(url.pathname)) {
       e.respondWith(
         fetch(e.request)
           .then(res => {
@@ -46,9 +47,11 @@ self.addEventListener('fetch', e => {
             }
             return res;
           })
-          .catch(async () => (await caches.match(e.request, { cacheName: CACHE }))
-            ?? (await caches.match('/index.html', { cacheName: CACHE }))
-            ?? Response.error())
+          .catch(async () => {
+            const cached=await caches.match(e.request,{cacheName:CACHE});
+            if(cached)return cached;
+            return e.request.mode==='navigate'?(await caches.match('/index.html',{cacheName:CACHE}))??Response.error():Response.error();
+          })
       );
       return;
     }

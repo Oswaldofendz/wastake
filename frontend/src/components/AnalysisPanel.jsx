@@ -4,6 +4,7 @@ import { fetchAnalysis, fetchFearGreed } from '../services/api.js';
 import { getAnalysisType } from '../data/assetCatalog.js';
 import { AssetRangeContext } from './AssetRangeContext.jsx';
 import { ScoreGauge, ComponentScore } from './TechnicalScore.jsx';
+import { ANALYSIS_DAYS } from '../utils/marketConventions.js';
 
 // ── Indicator education content ───────────────────────────────
 const INDICATOR_INFO = {
@@ -85,7 +86,7 @@ const INDICATOR_INFO = {
 
 // ── Data fetching hook ────────────────────────────────────────
 
-function useAnalysis(asset, days = 90) {
+function useAnalysis(asset, days = ANALYSIS_DAYS) {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
@@ -111,7 +112,7 @@ function useAnalysis(asset, days = 90) {
 
     load();
     return () => { cancelled = true; };
-  }, [asset?.id, days]);
+  }, [asset?.id,asset?.type,asset?.analysisType,days]);
 
   return { data, loading, error };
 }
@@ -260,7 +261,7 @@ function Skeleton() {
 
 // ── Main component ────────────────────────────────────────────
 
-export function AnalysisPanel({ asset, days = 90, onAnalysis }) {
+export function AnalysisPanel({ asset, days = ANALYSIS_DAYS, onAnalysis }) {
   const { t } = useTranslation();
   const { data, loading, error } = useAnalysis(asset, days);
   const [activeInfo, setActiveInfo]   = useState(null); // { shortName, ...INDICATOR_INFO }
@@ -274,8 +275,8 @@ export function AnalysisPanel({ asset, days = 90, onAnalysis }) {
 
   if (error) return (
     <div className="mt-3 bg-slate-800/50 border border-slate-700/30 rounded-xl p-4 space-y-1">
-      <p className="text-xs text-red-400 text-center">No se pudo cargar el análisis técnico.</p>
-      <p className="text-xs text-slate-400 text-center">Cambia a un timeframe mayor para ver el análisis.</p>
+      <p className="text-xs text-red-400 text-center">{t('audit_analysis_error')}</p>
+      <p className="text-xs text-slate-400 text-center">{t('audit_analysis_error_help')}</p>
     </div>
   );
 
@@ -349,7 +350,7 @@ export function AnalysisPanel({ asset, days = 90, onAnalysis }) {
             {t('technical_analysis_title')}
           </h3>
           <span className="text-xs text-slate-500">
-            {meta.candleCount} velas · {asset.name}
+            {t('audit_analysis_bars',{count:meta.candleCount})} · <span translate="no">{asset.name}</span>
           </span>
         </div>
 

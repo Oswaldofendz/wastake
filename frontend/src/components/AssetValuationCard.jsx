@@ -52,7 +52,7 @@ export function AssetValuationCard({asset,technical}) {
           {(company.sector||company.industry)&&<p>{tr('sector')}: <span translate="no" lang="en">{[company.sector,company.industry].filter(Boolean).join(' · ')}</span><span className="mt-1 block text-xs text-slate-400">{tr('foreignProfile')}</span></p>}
           <div className="flex flex-wrap gap-4">{company.website&&<a className={linkStyle} href={company.website} target="_blank" rel="noopener noreferrer">{tr('website')}</a>}<a className={linkStyle} href={company.sourceUrl} target="_blank" rel="noopener noreferrer">Nasdaq ↗</a></div>
         </div>}
-        <h4 className="mt-4 font-semibold">{tr('accounts')}</h4><p className="mt-1 text-xs leading-relaxed text-slate-400">{tr('periods',{year:data.yearEnd??'—',balance:data.balanceDate??'—'})}</p><p className="my-2 text-xs leading-relaxed text-amber-200">{tr('timing')}</p>
+        <details className="mt-4 rounded-lg border border-slate-700 p-3"><summary className="min-h-8 cursor-pointer font-semibold">{t('audit_full_accounts')}</summary><h4 className="mt-3 font-semibold">{tr('accounts')}</h4><p className="mt-1 text-xs leading-relaxed text-slate-400">{tr('periods',{year:data.yearEnd??'—',balance:data.balanceDate??'—'})}</p><p className="my-2 text-xs leading-relaxed text-amber-200">{tr('timing')}</p>
         <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {item('price',`${fmt(data.quote?.price)} ${data.quote?.currency??''}`)}{item('revenue',factValue(f.revenue))}{item('growth',Number.isFinite(metrics.revenueGrowth)?`${fmt(metrics.revenueGrowth)}%`:'—')}{item('earnings',factValue(f.earnings))}
           {item('fcf',Number.isFinite(metrics.fcf)?`${fmt(metrics.fcf/1e6)} M ${f.operatingCashFlow.currency}`:'—')}{item('debt',factValue(b.debt))}{item('cash',factValue(b.cash))}{item('marketCap',factValue(data.marketCap))}
@@ -67,9 +67,8 @@ export function AssetValuationCard({asset,technical}) {
           <p className="leading-relaxed">{tr('ratiosMethod')}</p>
           <dl className="space-y-2">{[...Object.entries(f),...Object.entries(b)].map(([key,fact])=><div key={key} className="grid grid-cols-1 gap-1 border-b border-slate-800 py-1 sm:grid-cols-2"><dt>{tr(key,{defaultValue:key})}</dt><dd className="break-words"><span className="tabular-nums">{fmt(fact?.value,4)} {key==='shares'?'':fact?.currency??''}</span> · {fact?.date??'—'}<span className="block text-slate-400">{fact?.tag??'—'}</span></dd></div>)}</dl>
           <div className="flex flex-wrap gap-4">{[data.financialSourceUrl,data.balanceSourceUrl,data.cashSourceUrl].map((url,i)=><a key={url} className={linkStyle} href={url} target="_blank" rel="noopener noreferrer">Yahoo Finance · {['income','balance','cash flow'][i]} ↗</a>)}<a className={linkStyle} href={`https://www.sec.gov/edgar/search/#/q=${encodeURIComponent(asset.symbol)}`} target="_blank" rel="noopener noreferrer">{tr('filings')}</a></div>
-        </div></details>
+        </div></details></details>
         <DcfScenario key={asset.id} data={data} onResult={setScenario}/>
-        <p className="mt-4 rounded-lg bg-slate-800/60 p-3 text-sm leading-relaxed text-sky-100">{tr('technical')}</p>
       </>}
     </>}
   </section></>;

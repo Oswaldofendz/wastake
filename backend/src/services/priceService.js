@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { dailyCandles } from './dailyCandles.js';
 
 const cache = new Map();
 const CG_HEADERS = process.env.COINGECKO_API_KEY
@@ -327,7 +328,7 @@ export async function getCryptoOHLCV(id, days = 90) {
       }
     );
 
-    const candles = data.map(([time, open, high, low, close]) => ({ time: Math.floor(time/1000), open, high, low, close }));
+    const candles = dailyCandles(data.map(([time, open, high, low, close]) => ({ time: Math.floor(time/1000), open, high, low, close })));
     if (candles.length < 2) throw new Error('Insufficient OHLC data');
     candles.source = 'CoinGecko OHLC'; candles.currency = 'USD';
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getAnalysisType } from '../data/assetCatalog.js';
 import { fetchAnalysis, fetchOHLCV, fetchNews, fetchAssetQuote } from '../services/api.js';
+import { ANALYSIS_DAYS } from '../utils/marketConventions.js';
 
 const pending = () => ({ loading:true, data:null, error:false, checkedAt:null, analyzing:false, analysisError:false });
 const initial = key => ({ key, analysis:pending(), history:pending(), news:pending(), quote:pending() });
@@ -15,7 +16,7 @@ export function usePanoramaData(asset, attempt) {
     const options = { signal:controller.signal };
     setState(initial(key));
     const tasks = {
-      analysis: () => fetchAnalysis(asset.id,type,90,options),
+      analysis: () => fetchAnalysis(asset.id,type,ANALYSIS_DAYS,options),
       history: () => fetchOHLCV(asset.id,type,{days:90},options),
       quote: () => fetchAssetQuote({id:asset.id,type:asset.type,analysisType:type},options),
     };

@@ -1,7 +1,7 @@
 // Confirmed swing zones, evaluated only with candles available at the cutoff.
 export function cleanCandles(input = []) {
   const byDay = new Map();
-  const byTime = new Map(input.map(c=>[c.time,c]));
+  const byTime = new Map((Array.isArray(input)?input:[]).filter(c=>c&&[c.time,c.open,c.high,c.low,c.close].every(Number.isFinite)&&c.low>0&&c.high>=Math.max(c.open,c.close)&&c.low<=Math.min(c.open,c.close)).map(c=>[c.time,c]));
   for (const c of [...byTime.values()].sort((a,b)=>a.time-b.time)) {
     if (![c.time,c.open,c.high,c.low,c.close].every(Number.isFinite) || c.low <= 0 || c.high < Math.max(c.open,c.close) || c.low > Math.min(c.open,c.close)) continue;
     const time=Math.floor(c.time/86400)*86400;
@@ -22,30 +22,54 @@ export function emaSeries(candles, period) {
   return out;
 }
 
-export function significantLevels(input, wing = 5) {
-  const candles = cleanCandles(input).slice(-120);
-  if (candles.length < wing*2+2) return [];
-  const last = candles.at(-1).close;
-  const recent = candles.slice(-15);
-  const atr = recent.slice(1).reduce((sum,c,i) => sum+Math.max(c.high-c.low,Math.abs(c.high-recent[i].close),Math.abs(c.low-recent[i].close)),0)/(recent.length-1);
-  if (!(atr>0)) return [];
-  const tolerance = Math.max(atr*0.6,last*0.001);
-  const swings = [];
-  for (let i=wing;i<candles.length-wing;i++) {
-    const c=candles[i];
-    const neighbors=candles.slice(i-wing,i+wing+1).filter((_,j)=>j!==wing);
-    if (neighbors.every(n=>n.high<c.high)) swings.push({price:c.high,kind:'resistance',index:i,amplitude:c.high-Math.min(...neighbors.map(n=>n.low))});
-    if (neighbors.every(n=>n.low>c.low)) swings.push({price:c.low,kind:'support',index:i,amplitude:Math.max(...neighbors.map(n=>n.high))-c.low});
+function meanTrueRange(candles,end) {
+  const start=Math.max(1,end-13);
+  if(end<start)return 0;
+  let sum=0;
+  for(let i=start;i<=end;i++){const c=candles[i],previous=candles[i-1].close;sum+=Math.max(c.high-c.low,Math.abs(c.high-previous),Math.abs(c.low-previous));}
+  return sum/(end-start+1);
+}
+
+export function significantLevels(input, wing = 5, now = Date.now()) {
+  const all=cleanCandles(input).filter(c=>c.time<=now/1000);
+  const today=Math.floor(now/86400000)*86400;
+  // An unfinished daily candle can locate today's price, never confirm a pivot.
+  const candles=all.filter(c=>c.time<today).slice(-120);
+  if(!Number.isInteger(wing)||wing<1||candles.length<wing*2+2)return [];
+  const last=all.at(-1).close;
+  const atr=meanTrueRange(candles,candles.length-1);
+  if(!(atr>0))return [];
+  const tolerance=Math.max(atr*.35,last*.001);
+  const breakBuffer=Math.max(atr*.25,last*.0005);
+  const swings=[];
+  for(let i=wing;i<candles.length-wing;i++){
+    const c=candles[i],left=candles.slice(i-wing,i),right=candles.slice(i+1,i+wing+1);
+    const localAtr=meanTrueRange(candles,i);
+    const add=(kind,price,amplitude)=>{
+      // A close beyond the zone invalidates that touch permanently. Recapture
+      // requires a NEW confirmed pivot; switching sides alone is not a retest.
+      const broken=candles.slice(i+1).some(bar=>kind==='support'?bar.close<price-breakBuffer:bar.close>price+breakBuffer);
+      if(!broken)swings.push({kind,price,index:i,time:c.time,confirmedAt:right.at(-1).time,amplitude,localAtr});
+    };
+    // Equal highs/lows form one plateau: only the rightmost bar can confirm.
+    if(left.every(n=>n.high<=c.high)&&right.every(n=>n.high<c.high))add('resistance',c.high,c.high-Math.max(Math.min(...left.map(n=>n.low)),Math.min(...right.map(n=>n.low))));
+    if(left.every(n=>n.low>=c.low)&&right.every(n=>n.low>c.low))add('support',c.low,Math.min(Math.max(...left.map(n=>n.high)),Math.max(...right.map(n=>n.high)))-c.low);
   }
   const groups=[];
-  for(const swing of swings.sort((a,b)=>a.price-b.price)) {
-    let group=groups.find(g=>g.kind===swing.kind && Math.abs(g.price-swing.price)<=tolerance);
-    if(!group) {group={...swing,touches:0,total:0};groups.push(group);}
-    group.total+=swing.price;group.touches++;group.price=group.total/group.touches;
-    group.amplitude=Math.max(group.amplitude,swing.amplitude);
+  for(const swing of swings.sort((a,b)=>a.time-b.time)){
+    // Fixed anchor prevents chains of nearby pivots drifting into broad bands.
+    let group=groups.find(g=>g.kind===swing.kind&&Math.abs(g.anchor-swing.price)<=tolerance);
+    if(!group){group={kind:swing.kind,anchor:swing.price,events:[]};groups.push(group);}
+    if(!group.events.length||swing.index-group.events.at(-1).index>wing)group.events.push(swing);
   }
-  const valid=groups.filter(g=>(g.touches>=2 || g.amplitude>=atr*2) && Math.abs(g.price-last)<=Math.min(atr*15,last*0.3));
-  const support=valid.filter(g=>g.kind==='support'&&g.price<last).sort((a,b)=>b.price-a.price)[0];
-  const resistance=valid.filter(g=>g.kind==='resistance'&&g.price>last).sort((a,b)=>a.price-b.price)[0];
-  return [support,resistance].filter(Boolean);
+  const valid=groups.flatMap(group=>{
+    const events=group.events,latest=events.at(-1),touches=events.length;
+    if(touches<2&&!(latest.localAtr>0&&latest.amplitude>=latest.localAtr*2))return [];
+    const prices=events.map(e=>e.price),price=group.kind==='support'?Math.min(...prices):Math.max(...prices);
+    const distance=Math.abs(price-last);
+    if(distance>Math.min(atr*8,last*.2))return [];
+    if(group.kind==='support'?price>=last:price<=last)return [];
+    return [{kind:group.kind,price,low:Math.min(...prices)-tolerance/2,high:Math.max(...prices)+tolerance/2,touches,index:latest.index,time:latest.time,confirmedAt:latest.confirmedAt,amplitude:latest.amplitude,distancePct:distance/last*100,lookback:candles.length}];
+  });
+  return ['support','resistance'].map(kind=>valid.filter(g=>g.kind===kind).sort((a,b)=>a.distancePct-b.distancePct)[0]).filter(Boolean);
 }

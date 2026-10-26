@@ -66,7 +66,8 @@ function useDynamicFavicon(allAssets) {
 }
 
 export default function App() {
-  const { lastUpdated, allAssets, isStale } = usePrices(60_000);
+  const marketData=usePrices(60_000);
+  const { lastUpdated, allAssets, isStale } = marketData;
   const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
   const { triggered, unreadCount, markRead, markAllRead } = useAlerts(user);
   const { canInstall, install, dismiss } = usePWAInstall();
@@ -144,13 +145,13 @@ export default function App() {
 
       <div className="flex-1 flex flex-col min-h-0">
         {currentPage === 'dashboard' ? (
-          <Dashboard />
+          <Dashboard marketData={marketData}/>
         ) : currentPage === 'panorama' ? (
           <Panorama />
         ) : currentPage === 'markets' ? (
           <Markets allAssets={allAssets} />
         ) : currentPage === 'screener' ? (
-          <Screener />
+          <Screener marketData={marketData}/>
         ) : currentPage === 'alerts' ? (
           !authLoading && (
             <Alerts
