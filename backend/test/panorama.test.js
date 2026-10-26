@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { summarizeNews, commonCloseComparison, formatQuote } from '../../frontend/src/utils/panoramaAnalysis.js';
+import { createSingleFlight } from '../src/services/singleFlight.js';
 
 test('news relevance cannot invert sentiment', () => {
   const positive = Array.from({length:3}, () => ({sentiment:'positive', impact:'high'}));
@@ -40,4 +41,14 @@ test('external prices preserve EUR and subunits instead of assuming dollars',()=
   assert.ok(!formatQuote(100,'EUR','en').includes('$'));
   assert.equal(formatQuote(100,'GBp','en'),'100 GBp');
   assert.equal(formatQuote(null,'USD','en'),'—');
+});
+
+test('concurrent news requests share enrichment and a failed request can be retried',async()=>{
+  const run=createSingleFlight();
+  let calls=0;
+  const task=async()=>{calls++;return ['headlines'];};
+  const values=await Promise.all([run('BTC',task),run('BTC',task),run('BTC',task)]);
+  assert.equal(calls,1);assert.deepEqual(values,[['headlines'],['headlines'],['headlines']]);
+  await assert.rejects(run('failure',async()=>{throw new Error('quota');}));
+  assert.equal(await run('failure',async()=>42),42);
 });

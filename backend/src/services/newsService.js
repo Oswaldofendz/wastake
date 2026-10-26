@@ -1,6 +1,9 @@
 import axios from 'axios';
 import Parser from 'rss-parser';
 import { callLLM } from './llmService.js';
+import { createSingleFlight } from './singleFlight.js';
+
+const enrichOnce = createSingleFlight();
 
 const rssParser = new Parser({ timeout: 10000 });
 
@@ -191,11 +194,10 @@ export async function getNewsForAsset(assetId, type = 'crypto') {
   const cached = cache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.data;
 
-  const filtered = await getRawNewsForAsset(assetId, type);
-
-  // Enriquecer con sentimiento
-  const enriched = await analyzeSentiment(filtered);
-
-  cache.set(cacheKey, { data: enriched, expiresAt: Date.now() + CACHE_TTL });
-  return enriched;
+  return enrichOnce(cacheKey, async () => {
+    const filtered = await getRawNewsForAsset(assetId, type);
+    const enriched = await analyzeSentiment(filtered);
+    cache.set(cacheKey, { data: enriched, expiresAt: Date.now() + CACHE_TTL });
+    return enriched;
+  });
 }

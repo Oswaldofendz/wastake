@@ -64,8 +64,8 @@ export const fetchNarrative = (id, type = 'crypto', lang = 'es', options = {}) =
 
 // Noticias con sentimiento (Gemini)
 export const fetchNews = (id, type = 'crypto', options = {}) => {
-  const qs = new URLSearchParams({ type }).toString();
-  return get(`/api/news/${encodeURIComponent(id)}?${qs}`, 60_000, options.signal);
+  const qs = new URLSearchParams({ type, ...(options.stage === 'headlines' ? {stage:'headlines'} : {}) }).toString();
+  return get(`/api/news/${encodeURIComponent(id)}?${qs}`, options.stage === 'headlines' ? 20_000 : 60_000, options.signal);
 };
 
 // Public news enriched by the backend with localized, evidence-linked AI analysis.

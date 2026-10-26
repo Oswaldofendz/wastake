@@ -14,6 +14,13 @@ const DEFAULT_ASSET = ANALYZABLE_CATEGORIES[0].assets[0];
 const panel = 'rounded-xl border border-slate-700/50 bg-[var(--bg-card)] p-4';
 const groups = ['trend','momentum','structure','participation'];
 
+function sourceLink(article) {
+  try {
+    const url=new URL(article.link||article.url);
+    return ['https:','http:'].includes(url.protocol)?url.href:null;
+  } catch { return null; }
+}
+
 function NewsTone({ news }) {
   const { t } = useTranslation();
   const summary = summarizeNews(news);
@@ -26,6 +33,7 @@ function NewsTone({ news }) {
     <p className="mt-3 text-xs text-slate-400">{t('pan_news_coverage',summary)} · {t('pan_high_impact',{count:summary.highImpact})}</p>
     {summary.classified<summary.total&&<p className="mt-1 text-xs text-slate-400">{t('pan_news_unknown')}: {summary.total-summary.classified}</p>}
     <p className="mt-3 text-xs leading-5 text-slate-400">{t('pan_news_method')}</p>
+    <details className="mt-3 text-xs"><summary className="cursor-pointer text-sky-300">{t('pan_news_sources')}</summary><ul className="mt-2 max-h-72 space-y-3 overflow-y-auto">{news.map((article,index)=>{const href=sourceLink(article);return <li key={article.link||article.url||index}>{href?<a translate="no" href={href} target="_blank" rel="noopener noreferrer" className="text-slate-300 underline underline-offset-2">{article.title}</a>:<span translate="no">{article.title}</span>}<p className="mt-1 text-slate-400">{article.source}</p></li>;})}</ul></details>
   </>;
 }
 
@@ -115,11 +123,11 @@ export function Panorama() {
       </div>
       <section className={panel} aria-label={t('pan_news_tone')}>
         <h2 className="text-sm font-semibold">{t('pan_news_tone')}</h2>
-        {state.news.loading?<p role="status" className="mt-4 text-sm text-slate-400">{t('pan_news_loading')}</p>:state.news.error?<p role="status" className="mt-4 text-sm text-amber-300">{t('news_error')}</p>:news.length?<NewsTone news={news}/>:<p className="mt-4 text-sm text-slate-400">{t('news_empty')}</p>}
+        {state.news.loading?<p role="status" className="mt-4 text-sm text-slate-400">{t('pan_news_loading')}</p>:state.news.error?<p role="status" className="mt-4 text-sm text-amber-300">{t('news_error')}</p>:news.length?<><NewsTone news={news}/>{state.news.analyzing&&<p role="status" className="mt-3 text-xs text-sky-300">{t('pan_news_loading')}</p>}{state.news.analysisError&&<p role="status" className="mt-3 text-xs text-amber-300">{t('pan_news_ai_missing')}</p>}</>:<p className="mt-4 text-sm text-slate-400">{t('news_empty')}</p>}
       </section>
       <section className={panel} aria-label={t('pan_ai_title')}>
         <h2 className="text-sm font-semibold">{t('pan_ai_title')}{providerLabel&&<span className="ml-2 rounded border border-slate-600 px-2 py-0.5 text-xs text-slate-400">{providerLabel}</span>}</h2>
-        {explanation.loading?<p role="status" className="mt-4 text-sm text-slate-400">{t('pan_ai_loading')}</p>:explanation.data?.narrative?<p className="mt-4 text-sm leading-6 text-slate-300">{explanation.data.narrative}</p>:<p className="mt-4 text-sm text-slate-400">{t('pan_ai_missing')}</p>}
+        {state.analysis.loading?<p role="status" className="mt-4 text-sm text-slate-400">{t('pan_ai_waiting')}</p>:explanation.loading?<p role="status" className="mt-4 text-sm text-slate-400">{t('pan_ai_loading')}</p>:explanation.data?.narrative?<p className="mt-4 text-sm leading-6 text-slate-300">{explanation.data.narrative}</p>:<p className="mt-4 text-sm text-slate-400">{t('pan_ai_missing')}</p>}
         <p className="mt-3 text-xs leading-5 text-slate-400">{t('pan_ai_note')}</p>
       </section>
       <MarketComparison asset={asset} candles={state.history.data?.candles??[]} revision={attempt}/>
