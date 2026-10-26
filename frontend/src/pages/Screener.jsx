@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { usePrices } from '../hooks/usePrices.js';
 import { useTranslation } from 'react-i18next';
 import { getAssetGroup } from '../data/assetSectors.js';
 import { AssetSearch } from '../components/AssetSearch.jsx';
 import { AnalysisPanel } from '../components/AnalysisPanel.jsx';
 import { CandleChart } from '../components/PriceChart.jsx';
+import { AssetValuationCard } from '../components/AssetValuationCard.jsx';
 
 // ─── Helpers de formato ───────────────────────────────────────────────────────
 function fmtPrice(n) {
@@ -97,7 +98,7 @@ function AssetAvatar({ asset }) {
 }
 
 // ─── Fila de la tabla ─────────────────────────────────────────────────────────
-function AssetRow({ asset, rank, t, showMarketCap }) {
+function AssetRow({ asset, rank, t, showMarketCap, onSelect }) {
   const positive = (asset.change24h ?? 0) >= 0;
   const typeColors = TYPE_COLORS[asset.type] ?? TYPE_COLORS.etf;
 
@@ -110,7 +111,7 @@ function AssetRow({ asset, rank, t, showMarketCap }) {
       <div className="flex items-center gap-2.5 flex-1 min-w-0">
         <AssetAvatar asset={asset} />
         <div className="min-w-0">
-          <p translate="no" className="text-sm font-medium text-white truncate leading-tight">{asset.name}</p>
+          <button type="button" onClick={()=>onSelect(asset)} translate="no" className="min-h-9 max-w-full truncate text-left text-sm font-medium text-sky-200 underline decoration-sky-800 underline-offset-4 hover:text-white">{asset.name}</button>
           <p translate="no" className="text-xs text-slate-500 leading-tight">{asset.symbol}</p>
         </div>
       </div>
@@ -163,6 +164,8 @@ export function Screener() {
 
   const [search, setSearch]           = useState('');
   const [inspectedAsset, setInspectedAsset] = useState(null);
+  const inspectionRef=useRef(null);
+  useEffect(()=>{ if(inspectedAsset)inspectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },[inspectedAsset]);
   const [typeFilter, setTypeFilter]   = useState('all');
   const [changeFilter, setChangeFilter] = useState('all');
   const [sortBy, setSortBy]           = useState('change_desc');
@@ -355,9 +358,9 @@ export function Screener() {
       </section>
 
       {/* ── Tabla ── */}
-      {inspectedAsset && <section className="mb-4 rounded-xl border border-sky-700/50 p-3">
+      {inspectedAsset && <section ref={inspectionRef} className="mb-4 scroll-mt-24 rounded-xl border border-sky-700/50 p-3">
         <div className="mb-3 flex items-center justify-between gap-2"><h2 translate="no" className="font-semibold">{inspectedAsset.name} · {inspectedAsset.symbol}</h2><button type="button" onClick={()=>setInspectedAsset(null)} className="min-h-10 px-3" aria-label={t('close','Cerrar')}>✕</button></div>
-        <CandleChart asset={inspectedAsset}/><AnalysisPanel asset={inspectedAsset}/>
+        <AssetValuationCard key={inspectedAsset.id} asset={inspectedAsset}/><CandleChart asset={inspectedAsset}/><AnalysisPanel asset={inspectedAsset}/>
       </section>}
       <div className="flex-1 bg-[var(--bg-card)] border border-white/[8%] rounded-xl overflow-hidden">
         {/* Header de columnas */}
@@ -417,7 +420,7 @@ export function Screener() {
                     <span className="rounded-full bg-slate-700/70 px-2 py-0.5 text-xs font-medium text-slate-300">{assets.length}</span>
                   </button>
                   {!isCollapsed && assets.map(asset => (
-                    <AssetRow key={asset.id} asset={asset} rank={filtered.findIndex(item => item.id === asset.id) + 1} t={t} showMarketCap={typeFilter === 'crypto'} />
+                    <AssetRow key={asset.id} asset={asset} rank={filtered.findIndex(item => item.id === asset.id) + 1} t={t} showMarketCap={typeFilter === 'crypto'} onSelect={setInspectedAsset}/>
                   ))}
                 </section>
               );

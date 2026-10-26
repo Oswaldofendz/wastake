@@ -80,12 +80,14 @@ marketRouter.get('/translate', async (req, res) => {
   if (to === from) return res.json({ translatedText: q });
 
   const original = String(q).slice(0, 500);
-  const protectedInput = protectFinancialNames(original);
+    let identities=[];
+    try { const parsed=JSON.parse(String(req.query.identities??'[]').slice(0,700)); if(Array.isArray(parsed))identities=parsed; }catch{ /* Generic translation protection remains active. */ }
+    const protectedInput = protectFinancialNames(original,identities);
   const acceptTranslation = candidate => {
     const restored = restoreFinancialNames(candidate, protectedInput.identities);
     return restored && isLikelyLanguage(restored, to) && preservesFinancialNumbers(original, restored) ? restored : '';
   };
-  const cacheKey = `translate_v2_${from}_${to}_${original}`;
+    const cacheKey = `translate_v3_${from}_${to}_${original}_${JSON.stringify(identities).slice(0,700)}`;
   const TTL = 24 * 60 * 60 * 1000; // 24 h — traducciones son estables
   const cached = fromCache(cacheKey, TTL);
   if (cached) return res.json(cached);

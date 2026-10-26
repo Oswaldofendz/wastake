@@ -4,6 +4,7 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 import { qualityCopy } from './qualityCopy.js';
 import { annotationCopy } from './annotationCopy.js';
 import { panoramaCopy } from './panoramaCopy.js';
+import { valuationCopy } from './valuationCopy.js';
 
 const resources = {
   en: {
@@ -728,6 +729,7 @@ const resources = {
 for (const [lang, copy] of Object.entries(qualityCopy)) Object.assign(resources[lang].translation, copy);
 for (const [lang, copy] of Object.entries(annotationCopy)) Object.assign(resources[lang].translation, copy);
 for (const [lang, copy] of Object.entries(panoramaCopy)) Object.assign(resources[lang].translation, copy);
+for (const [lang, copy] of Object.entries(valuationCopy)) Object.assign(resources[lang].translation, copy);
 
 i18n
   .use(LanguageDetector)

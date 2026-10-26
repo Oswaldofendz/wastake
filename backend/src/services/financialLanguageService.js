@@ -5,7 +5,7 @@ const NAMES = [
   'JPMorgan', 'Visa', 'Adobe', 'Salesforce', 'Shopify', 'Oracle', 'Intel', 'AMD',
   'Bitcoin', 'Ethereum', 'Solana', 'Cardano', 'Dogecoin', 'Polkadot', 'Avalanche',
   'Chainlink', 'Shiba Inu', 'Litecoin', 'Cosmos', 'Uniswap', 'NEAR Protocol',
-  'BlackRock', 'Berkshire Hathaway', 'Goldman Sachs', 'Morgan Stanley',
+  'BlackRock', 'Berkshire Hathaway', 'Goldman Sachs', 'Morgan Stanley', 'Boeing', 'Airbus',
   'Robinhood', 'Strategy', 'Strive', 'Coinbase', 'Binance', 'CoinDesk', 'CoinTelegraph',
 ];
 const TICKERS = ['AAPL', 'AMZN', 'MSFT', 'NVDA', 'TSLA', 'GOOGL', 'META', 'NFLX', 'JPM',
@@ -16,14 +16,17 @@ const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const namePattern = new RegExp(`\\b(?:${[...NAMES].sort((a, b) => b.length - a.length).map(escape).join('|')})\\b`, 'gi');
 const tickerPattern = new RegExp(`\\b(?:${TICKERS.join('|')})\\b`, 'g');
 
-export function protectFinancialNames(text) {
+export function protectFinancialNames(text, extraIdentities = []) {
   const identities = [];
   const replace = value => {
     const token = `WSTKENTITY${String(identities.length).padStart(4, '0')}TOKEN`;
     identities.push({ token, value });
     return token;
   };
-  const protectedText = String(text).replace(namePattern, replace).replace(tickerPattern, replace);
+  const extra=extraIdentities.filter(v=>typeof v==='string'&&v.trim()).slice(0,5).map(v=>v.slice(0,100)).sort((a,b)=>b.length-a.length);
+  const dynamic=extra.length?new RegExp(`(?<![\\p{L}\\p{N}_])(?:${extra.map(escape).join('|')})(?![\\p{L}\\p{N}_])`,'giu'):null;
+  const prepared=dynamic?String(text).replace(dynamic,replace):String(text);
+  const protectedText = prepared.replace(namePattern, replace).replace(tickerPattern, replace);
   return { text: protectedText, identities };
 }
 

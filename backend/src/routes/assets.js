@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { CRYPTO_ASSETS, TRADITIONAL_ASSETS } from '../services/priceService.js';
 import { discoverAssets, getCapitalizationUniverse } from '../services/assetDiscoveryService.js';
 import { getSingleQuote } from '../services/priceService.js';
+import { getCompanyResearch } from '../services/companyResearchService.js';
 
 export const assetsRouter = Router();
 
@@ -43,4 +44,12 @@ assetsRouter.get('/quote/:id', async (req, res) => {
     if (!quote) return res.status(404).json({ error: 'Quote unavailable' });
     res.json(quote);
   } catch { res.status(502).json({ error: 'Quote source unavailable' }); }
+});
+
+assetsRouter.get('/research/:id', async(req,res)=>{
+  if(!/^[A-Za-z0-9^=._-]{1,100}$/.test(req.params.id))return res.status(400).json({error:'Invalid asset'});
+  const type=typeof req.query.type==='string'?req.query.type:'stock';
+  if(!['stock','crypto','etf','bond','forex','commodity','index'].includes(type))return res.status(400).json({error:'Invalid asset type'});
+  try{res.json(await getCompanyResearch(req.params.id,type));}
+  catch{res.status(502).json({error:'Company sources unavailable'});}
 });

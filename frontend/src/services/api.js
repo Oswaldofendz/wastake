@@ -93,7 +93,9 @@ export const fetchVIX = () => get('/api/market/vix');
 export const fetchDXY = () => get('/api/market/dxy');
 
 // MyMemory translation proxy
-export const translateText = (q, to, from = 'en') => {
-  const qs = new URLSearchParams({ q, to, from }).toString();
+export const translateText = (q, to, from = 'en', identities = []) => {
+  const qs = new URLSearchParams({ q, to, from, ...(identities.length?{identities:JSON.stringify(identities)}:{}) }).toString();
   return get(`/api/market/translate?${qs}`);
 };
+
+export const fetchAssetResearch = (asset) => get(`/api/assets/research/${encodeURIComponent(asset.id)}?type=${encodeURIComponent(asset.type||'stock')}`,30_000);
