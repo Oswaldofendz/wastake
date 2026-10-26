@@ -13,6 +13,7 @@ export function AssetValuationCard({asset}) {
   const [attempt,setAttempt]=useState(0);
   const [description,setDescription]=useState(null);
   const [translating,setTranslating]=useState(false);
+  const [translationAttempt,setTranslationAttempt]=useState(0);
   useEffect(()=>{
     let active=true;setState({});setDescription(null);
     if(asset.type!=='stock')return;
@@ -27,7 +28,7 @@ export function AssetValuationCard({asset}) {
       if(active&&result.translated===true&&result.translatedText)setDescription({text:result.translatedText,lang,original});
     }).catch(()=>{}).finally(()=>{if(active)setTranslating(false);});
     return ()=>{active=false;};
-  },[state.data,lang,asset.name,asset.symbol]);
+  },[state.data,lang,asset.name,asset.symbol,translationAttempt]);
   const data=state.data;
   const fmt=(v,digits=2)=>Number.isFinite(v)?v.toLocaleString(i18n.language,{maximumFractionDigits:digits}):'—';
   const date=v=>v?new Date(v).toLocaleDateString(i18n.language,{timeZone:'UTC'}):'—';
@@ -45,7 +46,7 @@ export function AssetValuationCard({asset}) {
       {data&&<>
         {company&&<div className="my-4 space-y-2 border-b border-slate-700 pb-4 text-sm leading-relaxed">
           <h4 className="font-semibold">{tr('company')} · <span translate="no">{company.name}</span></h4>
-          {profileText&&<><p lang={description?.lang===lang?lang:'en'} translate="no">{profileText}</p>{lang!=='en'&&!description&&<p className="text-xs text-amber-200" role="status">{tr(translating?'translating':'original')}</p>}</>}
+          {profileText&&<><p lang={description?.lang===lang?lang:'en'} translate="no">{profileText}</p>{lang!=='en'&&!description&&<div className="text-xs text-amber-200" role="status"><p>{tr(translating?'translating':'original')}</p>{!translating&&<button type="button" className="min-h-10 underline" onClick={()=>setTranslationAttempt(n=>n+1)}>{tr('retryTranslation')}</button>}</div>}</>}
           {(company.sector||company.industry)&&<p>{tr('sector')}: <span translate="no" lang="en">{[company.sector,company.industry].filter(Boolean).join(' · ')}</span><span className="mt-1 block text-xs text-slate-400">{tr('foreignProfile')}</span></p>}
           <div className="flex flex-wrap gap-4">{company.website&&<a className={linkStyle} href={company.website} target="_blank" rel="noopener noreferrer">{tr('website')}</a>}<a className={linkStyle} href={company.sourceUrl} target="_blank" rel="noopener noreferrer">Nasdaq ↗</a></div>
         </div>}

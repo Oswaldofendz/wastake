@@ -1,4 +1,5 @@
 const rows = {
+ retryTranslation:['Reintentar traducción del perfil','Retry profile translation','Tentar traduzir o perfil novamente'],
  translating:['Traduciendo el perfil; se muestra el original mientras tanto.','Translating the profile; showing the original meanwhile.','A traduzir o perfil; o original é apresentado entretanto.'],
  reading:['Lectura de las cuentas disponibles','Reading the available accounts','Leitura das contas disponíveis'],
  cashStress:['Hay beneficio contable, pero la caja de operaciones menos inversiones es negativa. Revisa partidas extraordinarias, inversión y deuda antes de interpretar el PER.','Accounting earnings are positive, but operating cash flow less capital expenditure is negative. Check one-off items, investment and debt before interpreting P/E.','O lucro contabilístico é positivo, mas a caixa operacional menos investimento é negativa. Reveja itens extraordinários, investimento e dívida antes de interpretar o P/L.'],
