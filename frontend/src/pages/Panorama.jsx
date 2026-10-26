@@ -4,6 +4,7 @@ import { fetchAnalysis, fetchFearGreed, fetchNews, fetchOHLCV, fetchNarrative, f
 import { ANALYZABLE_CATEGORIES } from '../data/assetCatalog.js';
 import { usePrices } from '../hooks/usePrices.js';
 import { AssetSearch } from '../components/AssetSearch.jsx';
+import { summarizeNews } from '../utils/panoramaAnalysis.js';
 
 // Primer activo del catálogo (Bitcoin)
 const DEFAULT_ASSET = ANALYZABLE_CATEGORIES[0].assets[0];
@@ -213,26 +214,18 @@ function VolatilityWidget({ atr, currentPrice, expertMode }) {
 
 // ─── News sentiment ───────────────────────────────────────────────────────────
 function NewsSummary({ news }) {
+  const { t } = useTranslation();
   if (!Array.isArray(news) || news.length === 0) return null;
-  const highs = news.filter(n => n.impact === 'high').length;
-  const meds  = news.filter(n => n.impact === 'medium').length;
-  const total = news.length;
-  const sentiment = highs > total * 0.3 ? 'negativas' : meds > total * 0.4 ? 'mixtas' : 'mayormente neutrales';
-  const badgeColor = highs > total * 0.3
-    ? 'bg-red-900/40 text-red-400 border-red-700/30'
-    : meds > total * 0.4
-    ? 'bg-amber-900/40 text-amber-400 border-amber-700/30'
-    : 'bg-slate-700/40 text-slate-400 border-slate-600/30';
-  const sentColor = highs > total * 0.3 ? 'text-red-400' : meds > total * 0.4 ? 'text-amber-400' : 'text-slate-200';
+  const summary = summarizeNews(news);
+  const sentColor = summary.tone === 'positive' ? 'text-green-400' : summary.tone === 'negative' ? 'text-red-400' : 'text-slate-300';
 
   return (
-    <div className="flex items-center justify-between gap-3">
+    <div className="space-y-2">
       <p className="text-sm text-slate-300 flex-1">
-        Las últimas noticias son <span className={`font-semibold ${sentColor}`}>{sentiment}</span>
+        {t('pan_news_tone')}: <span className={`font-semibold ${sentColor}`}>{t(`pan_tone_${summary.tone}`)}</span>
       </p>
-      <span className={`text-xs px-2 py-0.5 rounded-full border flex-shrink-0 ${badgeColor}`}>
-        {total} artículos
-      </span>
+      <p className="text-xs text-slate-400">{t('pan_news_coverage', summary)} · {t('pan_high_impact', { count: summary.highImpact })}</p>
+      <p className="text-xs leading-5 text-slate-400">{t('pan_news_method')}</p>
     </div>
   );
 }
