@@ -25,12 +25,13 @@ export function parseExchangeBars(data,provider,now=Date.now()){
  if(!Array.isArray(rows))return [];
  return validBars(rows.map(r=>provider==='Kraken'?{time:Number(r[0]),open:Number(r[1]),high:Number(r[2]),low:Number(r[3]),close:Number(r[4]),volume:r[6]==null?undefined:Number(r[6])}:{time:Number(r[0]),low:Number(r[1]),high:Number(r[2]),open:Number(r[3]),close:Number(r[4]),volume:r[5]==null?undefined:Number(r[5])}),now);
 }
-export async function getExchangeCandles(id,interval='1d'){
+export async function getExchangeCandles(id,interval='1d',preferred='auto'){
  if(!SECONDS[interval])throw new Error('Unsupported exchange interval');
+ if(!['auto','Kraken','Coinbase'].includes(preferred))throw new Error('Unsupported exchange source');
  const pair=exchangeIdentity(id);if(!pair)throw new Error('No verified exchange identity');
- const key=id+':'+interval,hit=cache.get(key);if(hit&&hit.expires>Date.now())return hit.data;
+ const key=id+':'+interval+':'+preferred,hit=cache.get(key);if(hit&&hit.expires>Date.now())return hit.data;
  return once(key,async()=>{
-  for(const provider of ['Kraken','Coinbase']){
+  for(const provider of preferred==='auto'?['Kraken','Coinbase']:[preferred]){
    try{
     const kraken=provider==='Kraken',seconds=SECONDS[interval];
     const {data}=await axios.get(kraken?'https://api.kraken.com/0/public/OHLC':`https://api.exchange.coinbase.com/products/${pair[1]}/candles`,{params:kraken?{pair:pair[0],interval:seconds/60}:{granularity:interval==='4h'?3600:seconds},timeout:7000,headers:{'User-Agent':'WaStake/1.0'}});

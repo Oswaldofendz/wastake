@@ -1,5 +1,5 @@
 // Rankings describe only the quoted catalogue, never the whole market.
-export function marketLeaders(assets = [], limit = 3) {
+export function marketLeaders(assets = [], limit = 5) {
   const unique=[...new Map(assets.filter(a=>a?.id).map(a=>[`${a.type}:${a.id}`,a])).values()];
   const cap=type=>unique.filter(a=>a.type===type&&Number.isFinite(a.marketCap)&&a.marketCap>0&&(a.currency==='USD'||a.type==='crypto')).sort((a,b)=>b.marketCap-a.marketCap).slice(0,limit);
   // Do not mix forex, yields and indices with investable company/token moves.
