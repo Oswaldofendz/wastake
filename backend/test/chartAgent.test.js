@@ -60,6 +60,7 @@ test('focus targets an observed close-to-close drop, never inventing a crash',()
 test('AI prose cannot inject prices, trading guarantees, markup or invalid fact citations',()=>{
  const good={explanation:'La tendencia y el impulso ofrecen una lectura mixta del activo. Conviene contrastar estas condiciones con la volatilidad antes de interpretar el movimiento.',facts:['ema20','rsi']};
  assert.ok(validAgentInsight(good,'es'));
+ assert.ok(validAgentInsight({...good,explanation:good.explanation+' No garantiza resultados futuros.'},'es'));
  for(const explanation of ['El precio llegará a 99999 mañana con beneficio garantizado.','<script>alert(1)</script>',good.explanation+' El precio subirá.'])assert.equal(validAgentInsight({...good,explanation},'es'),null);
  assert.equal(validAgentInsight({...good,facts:['madeUpPrice']},'es'),null);
  assert.equal(validAgentInsight({explanation:'La lectura es alcista y muestra una tendencia fuerte en este activo. El impulso acompaña a las medias observadas.',facts:['score']},'es',{score:2}),null);
