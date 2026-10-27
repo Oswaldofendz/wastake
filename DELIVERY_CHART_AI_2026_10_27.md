@@ -31,6 +31,7 @@ Presupuesto temporal de IA de 22 segundos, límite de ocho consultas por minuto 
 - Compilación de producción correcta; la sección se carga por separado. Permanece el aviso preexistente sobre el tamaño del paquete principal.
 - Comprobación visual local: Bitcoin y Apple, cambio de idioma sin traducir nombres propios, EMA 200, RSI con explicación, deshacer, línea manual, limpiar/restaurar e intervalo de cuatro horas.
 - Servicio publicado: respuesta de datos real de Bitcoin y explicación contextual válida mediante Gemini comprobadas. El primer intento activó correctamente la alternativa por reglas; una validación demasiado estricta de la frase «no garantiza» se corrigió y quedó cubierta por prueba.
+- Revisión de calidad de IA: se detectó y añadió rechazo para una relación incorrecta entre volatilidad y media de volumen. Se aclaró la definición de ATR/cierre en la solicitud al modelo y se cubrió ese caso con prueba. La prosa sigue siendo interpretación experimental, no una auditoría financiera automática.
 - Sin cuenta CMC ni acceso a sus funciones privadas. No se verificó la descarga mediante el navegador automatizado: su evento de descarga no fue recibido; no se presenta como prueba superada.
 - La comprobación de tamaño móvil del navegador no fue fiable; los estilos adaptativos están implementados, pero no se afirma una prueba real en teléfono ni en Chrome nativo.
 
