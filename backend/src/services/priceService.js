@@ -3,6 +3,7 @@ import { dailyCandles } from './dailyCandles.js';
 import { universe,extraInstruments,getBulkStockQuotes } from './catalogueService.js';
 import { createSingleFlight } from './singleFlight.js';
 import { resolveYahooCrypto } from './cryptoIdentityService.js';
+import { getExchangeCandles } from './publicMarketSources.js';
 const pricesOnce=createSingleFlight();
 
 const cache = new Map();
@@ -354,7 +355,9 @@ export async function getCryptoOHLCV(id, days = 90) {
     toCache(key, candles, CACHE_TTL.ohlcv);
     return candles;
   } catch (err) {
-    throw err;
+    const result=await getExchangeCandles(id,'1d');
+    const candles=result.candles.slice(-days);candles.source=result.source;candles.currency=result.currency;
+    toCache(key,candles,CACHE_TTL.ohlcv);return candles;
   }
 }
 
@@ -500,6 +503,6 @@ export async function getSingleQuote(id, type = 'stock') {
   const q = prices[id];
   if (!q) return null;
   const value = { id, price: q.price, change24h: q.change, volume24h: q.volume, currency: q.currency, quoteAsOf: q.quoteAsOf, source: q.source };
-  toCache(key, value, CACHE_TTL.price);
+  toCache(key, value, 60_000);
   return value;
 }

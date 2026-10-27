@@ -4,8 +4,16 @@ import axios from 'axios';
 import { callLLM } from '../services/llmService.js';
 import { protectFinancialNames, restoreFinancialNames, isLikelyLanguage, preservesFinancialNumbers } from '../services/financialLanguageService.js';
 import { getEconomicCalendar } from '../services/economicCalendarService.js';
+import {getReferenceRates,getExchangeCandles} from '../services/publicMarketSources.js';
 
 export const marketRouter = Router();
+marketRouter.get('/reference-rates',async(_req,res)=>{try{res.json(await getReferenceRates());}catch{res.status(502).json({error:'Reference rates unavailable'});}});
+marketRouter.get('/exchange-reference/:id',async(req,res)=>{try{
+ const data=await getExchangeCandles(req.params.id,'15m');
+ const candle=data.candles.filter(c=>c.time+900<=Date.now()/1000).at(-1);
+ if(!candle)throw new Error('No completed candle');
+ res.json({...data,candles:undefined,price:candle.close,candleStart:new Date(candle.time*1000).toISOString(),closedAt:new Date((candle.time+900)*1000).toISOString()});
+}catch{res.status(502).json({error:'No verified exchange reference available'});}});
 
 const cache = new Map();
 function fromCache(key, ttlMs) {

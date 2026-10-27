@@ -1,4 +1,5 @@
 // Confirmed swing zones, evaluated only with candles available at the cutoff.
+import {timedCandles} from './timedCandles.js';
 export function cleanCandles(input = []) {
   const byDay = new Map();
   const byTime = new Map((Array.isArray(input)?input:[]).filter(c=>c&&[c.time,c.open,c.high,c.low,c.close].every(Number.isFinite)&&c.low>0&&c.high>=Math.max(c.open,c.close)&&c.low<=Math.min(c.open,c.close)).map(c=>[c.time,c]));
@@ -30,15 +31,15 @@ function meanTrueRange(candles,end) {
   return sum/(end-start+1);
 }
 
-export function significantLevels(input, wing = null, now = Date.now()) {
+export function significantLevels(input, wing = null, now = Date.now(),intervalSeconds=86400) {
   if(wing===null){
-    const candidates=[...significantLevels(input,2,now),...significantLevels(input,5,now)];
+    const candidates=[...significantLevels(input,2,now,intervalSeconds),...significantLevels(input,5,now,intervalSeconds)];
     return ['support','resistance'].map(kind=>candidates.filter(l=>l.kind===kind).sort((a,b)=>a.distancePct-b.distancePct)[0]).filter(Boolean);
   }
-  const all=cleanCandles(input).filter(c=>c.time<=now/1000);
-  const today=Math.floor(now/86400000)*86400;
+  const all=(intervalSeconds===86400?cleanCandles(input):timedCandles(input)).filter(c=>c.time<=now/1000);
+  const today=now/1000;
   // An unfinished daily candle can locate today's price, never confirm a pivot.
-  const candles=all.filter(c=>c.time<today).slice(-120);
+  const candles=all.filter(c=>intervalSeconds===86400?c.time<Math.floor(now/86400000)*86400:c.time+intervalSeconds<=today).slice(-120);
   if(!Number.isInteger(wing)||wing<1||candles.length<Math.max(14,wing*2+2))return [];
   const last=all.at(-1).close;
   const atr=meanTrueRange(candles,candles.length-1);

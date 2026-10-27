@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { CRYPTO_ASSETS } from '../services/priceService.js';
 import { catalogueMeta } from '../services/catalogueService.js';
+import {getIntradayCandles} from '../services/intradayService.js';
 import {
   getCryptoPrices,
   getCryptoOHLCV,
@@ -69,15 +70,17 @@ priceRouter.get('/ohlcv/:id', async (req, res) => {
   const { id } = req.params;
   const { type = 'crypto', days = '7', interval = '1d', range = '3mo' } = req.query;
   if (!/^[A-Za-z0-9^=._-]{1,100}$/.test(id)) return res.status(400).json({ error: 'Invalid asset' });
+  if(!['1d','4h','15m'].includes(interval))return res.status(400).json({error:'Unsupported candle interval'});
 
   try {
+    if(interval!=='1d')return res.json({id,...await getIntradayCandles(id,type,interval)});
     let candles;
     if (type === 'crypto') {
       candles = await getCryptoOHLCV(id, Math.max(30,Math.min(365,parseInt(days)||90)));
     } else {
       candles = await getTraditionalOHLCV(id, interval, range);
     }
-    res.json({ id, candles, source: candles.source ?? 'Yahoo Finance / Stooq', currency: candles.currency ?? null });
+    res.json({ id, candles, source: candles.source ?? 'Yahoo Finance / Stooq', currency: candles.currency ?? null,interval:'1d',intervalSeconds:86400 });
   } catch (err) {
     res.status(502).json({ error: err.message });
   }
