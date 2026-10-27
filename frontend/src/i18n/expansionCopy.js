@@ -1,4 +1,6 @@
 const rows={
+ whales_empty:['No hay operaciones de al menos 5 BTC en esta muestra','No transactions of at least 5 BTC in this sample','Não há transações de pelo menos 5 BTC nesta amostra'],
+ whales_empty_help:['La muestra no abarca toda la red. Si la fuente falla, reintenta la consulta.','This sample does not cover the entire network. Retry if the source is unavailable.','Esta amostra não abrange toda a rede. Tente novamente se a fonte estiver indisponível.'],
  crypto_returns_limited:['Este respaldo no permite verificar las variaciones de 30 días y 1 año; se omiten, en lugar de presentarlas como un 0% real.','This fallback does not let us verify 30-day and 1-year changes; they are omitted instead of being shown as a real 0%.','Esta fonte alternativa não permite verificar as variações de 30 dias e 1 ano; são omitidas em vez de apresentadas como um 0% real.'],
  screener_type_bond:['Renta fija (ETF)','Fixed income (ETF)','Renda fixa (ETF)'],
  catalogue_advanced:['Ordenar y filtrar movimiento','Sort and filter price changes','Ordenar e filtrar movimento'],
