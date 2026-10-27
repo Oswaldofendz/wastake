@@ -22,13 +22,13 @@ La selección es una fotografía fechada en `backend/src/data/marketUniverse.jso
 1. **Cripto dentro y fuera del catálogo.** Ficha con descripción del proveedor, fuente y hora, capitalización, FDV, oferta, volumen, evolución temporal y enlaces al proyecto. FDV/capitalización y volumen/capitalización incluyen interpretación y límites. No se finge un valor intrínseco ni se convierte un precio unitario bajo en una oportunidad de compra.
 2. **Identidad e histórico.** CoinGecko se prioriza para identificar las criptomonedas. Yahoo se usa para ampliar el histórico solo al encontrar el mismo nombre y tipo de instrumento; no basta un ticker parecido. HYPE tiene su símbolo desambiguado verificado. Se mantienen los límites de cobertura si no hay histórico suficiente.
 3. **Explorar compacto.** Siete clases cerradas inicialmente, filtro de sector para empresas, filtros secundarios desplegables y 25 filas por bloque. La ficha abierta sustituye la lista y dispone de regreso al catálogo. Los activos sin precio siguen siendo consultables.
-4. **Fuentes gratuitas.** Cotizaciones de acciones estadounidenses en lote; resto por lotes de seis, con carga progresiva y caché de quince minutos. Cripto con caché de cinco minutos y respaldo de CoinPaprika por identidad exacta. La ficha se consulta bajo demanda y conserva caché de treinta minutos. No se interpreta la ausencia como cero.
+4. **Fuentes gratuitas.** Cotizaciones de acciones estadounidenses en lote; resto por lotes de seis, con carga progresiva y caché de quince minutos. Cripto con caché de cinco minutos y respaldo de CoinPaprika por identidad exacta. La ficha se consulta bajo demanda y conserva caché de treinta minutos. No se interpreta la ausencia como cero. En la ficha de respaldo se omiten las variaciones de 30 días y un año que no se pueden verificar, evitando presentar ceros de relleno como retornos reales.
 5. **BTC.** Se elimina el precio fijo de 85.000 USD. Una conversión sin fuente válida queda ausente; BTC permanece visible. Se distingue entre pendientes y confirmadas, se deduplican operaciones y se prioriza la confirmación si aparecen en ambas fuentes. La suma de salidas se explica: puede contener cambio y no es una medida de compra/venta o flujo neto de inversión. Las horas desconocidas no se inventan.
 6. **Resumen.** La cotización no toma prestada la fecha de un cierre histórico distinto. ATR/precio conserva la base del análisis diario y las cantidades pequeñas no se redondean a cero en el resumen.
 
 ## Comprobaciones
 
-- 55 pruebas automáticas correctas, incluidos catálogo sin precios inventados, identidad cripto, faltantes, sector, fórmulas y transacciones.
+- 56 pruebas automáticas correctas, incluidos catálogo sin precios inventados, identidad cripto, faltantes, sector, fórmulas y transacciones.
 - Compilación de producción correcta. Sigue pendiente dividir el paquete grande de gráficos/páginas; no se afirma que haya desaparecido el aviso de tamaño.
 - HYPE: ficha real y 364 velas diarias de Yahoo en la comprobación local.
 - Hyperlane: búsqueda fuera del catálogo, ficha y análisis técnico de la fuente identificada.

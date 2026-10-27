@@ -1,4 +1,5 @@
 const rows={
+ crypto_returns_limited:['Este respaldo no permite verificar las variaciones de 30 días y 1 año; se omiten, en lugar de presentarlas como un 0% real.','This fallback does not let us verify 30-day and 1-year changes; they are omitted instead of being shown as a real 0%.','Esta fonte alternativa não permite verificar as variações de 30 dias e 1 ano; são omitidas em vez de apresentadas como um 0% real.'],
  screener_type_bond:['Renta fija (ETF)','Fixed income (ETF)','Renda fixa (ETF)'],
  catalogue_advanced:['Ordenar y filtrar movimiento','Sort and filter price changes','Ordenar e filtrar movimento'],
  catalogue_return:['Volver al catálogo','Back to catalogue','Voltar ao catálogo'],

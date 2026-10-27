@@ -25,6 +25,10 @@ export async function getCryptoResearch(id){
    const [{data:p},{data:q}]=await Promise.all([axios.get(`https://api.coinpaprika.com/v1/coins/${pap.id}`,{timeout:6000}),axios.get(`https://api.coinpaprika.com/v1/tickers/${pap.id}`,{timeout:6000})]);
    const m=q.quotes?.USD??{},maximum=num(q.max_supply)>0?q.max_supply:null;
    normalized=normalizeCryptoResearch({id:coin,name:p.name,symbol:p.symbol,description:{en:p.description},links:{homepage:p.links?.website,whitepaper:p.whitepaper?.link},last_updated:q.last_updated,market_cap_rank:q.rank,market_data:{current_price:{usd:m.price},market_cap:{usd:m.market_cap},fully_diluted_valuation:{usd:maximum&&Number.isFinite(m.price)?maximum*m.price:null},total_volume:{usd:m.volume_24h},circulating_supply:q.circulating_supply,total_supply:q.total_supply,max_supply:maximum,price_change_percentage_24h:m.percent_change_24h,price_change_percentage_7d:m.percent_change_7d,price_change_percentage_30d:m.percent_change_30d,price_change_percentage_1y:m.percent_change_1y}});
+   // The free fallback can expose placeholder zeros for long horizons. Do not
+   // present those as flat returns without an independently verified series.
+   normalized.changes.month=null;normalized.changes.year=null;
+   normalized.limitedReturns=true;
    normalized.source='CoinPaprika';normalized.sourceUrl=`https://coinpaprika.com/coin/${pap.id}/`;normalized.fdvMethod='price_times_max_supply';
   }
   if(cache.size>200)cache.delete(cache.keys().next().value);cache.set(id,{at:Date.now(),data:normalized});return normalized;

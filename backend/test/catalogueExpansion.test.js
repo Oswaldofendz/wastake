@@ -2,13 +2,22 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { universe,extraInstruments,normalizeBulkRows } from '../src/services/catalogueService.js';
 import { normalizeWhales } from '../src/services/whaleService.js';
-import { normalizeCryptoResearch } from '../src/services/cryptoResearchService.js';
+import { normalizeCryptoResearch,getCryptoResearch } from '../src/services/cryptoResearchService.js';
 import { matchingYahooCrypto } from '../src/services/cryptoIdentityService.js';
 import { getAssetGroup } from '../../frontend/src/data/assetSectors.js';
 import { quoteView } from '../../frontend/src/utils/marketConventions.js';
 import axios from 'axios';
 import { getCryptoPrices } from '../src/services/priceService.js';
 import { isCryptoResearch } from '../../frontend/src/utils/cryptoResearch.js';
+test('fallback profile does not turn unverifiable long-horizon zeros into observed flat returns',async()=>{
+ const original=axios.get;axios.get=async url=>{
+  if(url.includes('coingecko'))throw Error('fixture primary unavailable');
+  if(url.includes('/search'))return {data:{currencies:[{id:'fixture-horizon',name:'Fixture Horizon',symbol:'FXH'}]}};
+  if(url.includes('/coins/'))return {data:{name:'Fixture Horizon',symbol:'FXH',links:{}}};
+  return {data:{quotes:{USD:{price:2,market_cap:20,volume_24h:1,percent_change_24h:0,percent_change_30d:0,percent_change_1y:0}},max_supply:20}};
+ };
+ try{const data=await getCryptoResearch('fixture-horizon');assert.equal(data.source,'CoinPaprika');assert.equal(data.changes.day,0);assert.equal(data.changes.month,null);assert.equal(data.changes.year,null);assert.equal(data.limitedReturns,true);}finally{axios.get=original;}
+});
 test('an older unsupported research response cannot be rendered as a crypto profile during deployment',()=>{
  assert.equal(isCryptoResearch({supported:false,type:'crypto'}),false);
  assert.equal(isCryptoResearch(normalizeCryptoResearch({id:'fixture',name:'Fixture'})),true);
