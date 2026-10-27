@@ -1,5 +1,9 @@
 import axios from 'axios';
 import { dailyCandles } from './dailyCandles.js';
+import { universe,extraInstruments,getBulkStockQuotes } from './catalogueService.js';
+import { createSingleFlight } from './singleFlight.js';
+import { resolveYahooCrypto } from './cryptoIdentityService.js';
+const pricesOnce=createSingleFlight();
 
 const cache = new Map();
 const CG_HEADERS = process.env.COINGECKO_API_KEY
@@ -31,6 +35,16 @@ const CC_SYMBOL_MAP = {
   'internet-computer': 'ICP',
 };
 
+async function fetchPaprikaPrices(ids){
+ const rows=await pricesOnce('paprika-tickers',async()=>{
+  const hit=fromCache('paprika-tickers');if(hit)return hit;
+  const {data}=await axios.get('https://api.coinpaprika.com/v1/tickers',{timeout:9000,maxContentLength:8_000_000});
+  if(!Array.isArray(data))throw Error('No crypto tickers');toCache('paprika-tickers',data,CACHE_TTL.price);return data;
+ });
+ const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+ return Object.fromEntries(ids.flatMap(id=>{const meta=CRYPTO_ASSETS[id];if(!meta)return [];const matches=rows.filter(c=>norm(c.name)===norm(meta.name)&&c.symbol?.toUpperCase()===meta.symbol);if(matches.length!==1)return [];const c=matches[0],q=c.quotes?.USD;if(!(q?.price>0))return [];return [[id,{...meta,id,type:'crypto',price:q.price,change24h:Number.isFinite(q.percent_change_24h)?q.percent_change_24h:null,volume24h:q.volume_24h??null,marketCap:q.market_cap??null,currency:'USD',source:'CoinPaprika',quoteAsOf:c.last_updated||null,updatedAt:Date.now()}]];}));
+}
+
 async function fetchCryptoComparePrices(ids) {
   try {
     const fsyms = ids.map(id => CC_SYMBOL_MAP[id]).filter(Boolean).join(',');
@@ -55,9 +69,9 @@ async function fetchCryptoComparePrices(ids) {
         symbol:    meta?.symbol ?? sym,
         image:     meta?.image  ?? null,
         price,
-        change24h: d.CHANGEPCT24HOUR  ?? 0,
-        volume24h: d.VOLUME24HOURTO   ?? 0,
-        marketCap: d.MKTCAP           ?? 0,
+        change24h: d.CHANGEPCT24HOUR  ?? null,
+        volume24h: d.VOLUME24HOURTO   ?? null,
+        marketCap: d.MKTCAP           ?? null,
         type:      'crypto',
         updatedAt: Date.now(),
         source:    'cryptocompare',
@@ -76,7 +90,7 @@ async function fetchCryptoComparePrices(ids) {
 function fromCache(key) {
   const entry = cache.get(key);
   if (!entry) return null;
-  if (Date.now() - entry.ts > entry.ttl) { cache.delete(key); return null; }
+  if (Date.now() - entry.ts > entry.ttl) return null;
   return entry.data;
 }
 // Returns stale data regardless of TTL (used as API failure fallback)
@@ -188,11 +202,13 @@ export const TRADITIONAL_ASSETS = {
 };
 
 // ─── Yahoo Finance — precio actual (soporta stocks, ETFs, forex, índices, bonos y commodities) ──
+Object.assign(CRYPTO_ASSETS,Object.fromEntries(universe.crypto.map(a=>[a.id,{...CRYPTO_ASSETS[a.id],...a}])));
+for(const a of [...universe.stocks,...extraInstruments]) TRADITIONAL_ASSETS[a.id]={...TRADITIONAL_ASSETS[a.id],...a};
 
 async function fetchYahooPrices(symbols) {
   const result = {};
-  // Procesar en lotes de 20 para evitar saturar Yahoo Finance con demasiadas requests concurrentes
-  const BATCH = 20;
+  // Procesar en lotes de 6 para evitar saturar Yahoo Finance con demasiadas requests concurrentes
+  const BATCH = 6;
   for (let i = 0; i < symbols.length; i += BATCH) {
     const batch = symbols.slice(i, i + BATCH);
     await Promise.all(batch.map(async (sym) => {
@@ -257,15 +273,16 @@ export async function getCryptoPrices(ids = Object.keys(CRYPTO_ASSETS)) {
 
     const result = {};
     for (const [id, raw] of Object.entries(data)) {
+      if(!(Number.isFinite(raw?.usd)&&raw.usd>0))continue;
       result[id] = {
         id,
         name:      CRYPTO_ASSETS[id]?.name  ?? id,
         symbol:    CRYPTO_ASSETS[id]?.symbol ?? id.toUpperCase(),
         image:     CRYPTO_ASSETS[id]?.image  ?? null,
         price:     raw.usd,
-        change24h: raw.usd_24h_change ?? 0,
-        volume24h: raw.usd_24h_vol    ?? 0,
-        marketCap: raw.usd_market_cap ?? 0,
+        change24h: Number.isFinite(raw.usd_24h_change)?raw.usd_24h_change:null,
+        volume24h: Number.isFinite(raw.usd_24h_vol)?raw.usd_24h_vol:null,
+        marketCap: Number.isFinite(raw.usd_market_cap)?raw.usd_market_cap:null,
         source: 'CoinGecko',
         currency: 'USD',
         quoteAsOf: Number.isFinite(raw.last_updated_at) ? new Date(raw.last_updated_at*1000).toISOString() : null,
@@ -288,6 +305,8 @@ export async function getCryptoPrices(ids = Object.keys(CRYPTO_ASSETS)) {
       return { ...stale, _isStale: true, _staleTs: staleEntry?.ts ?? Date.now() };
     }
 
+    // Bulk fallback keeps the expanded catalogue useful without per-coin calls.
+    try{const paprika=await fetchPaprikaPrices(ids);if(Object.keys(paprika).length){toCache(key,paprika,CACHE_TTL.price);return paprika;}}catch{/* Next independent free source. */}
     // 2. Sin caché (reinicio del servidor + 429): usar CryptoCompare
     console.warn('[PriceService] No stale cache — trying CryptoCompare fallback');
     const cc = await fetchCryptoComparePrices(ids);
@@ -308,9 +327,9 @@ export async function getCryptoOHLCV(id, days = 90) {
   if (cached) return cached;
 
   try {
-    const symbol = CC_SYMBOL_MAP[id];
+    const symbol = await resolveYahooCrypto(id,CRYPTO_ASSETS[id],CC_SYMBOL_MAP[id]);
     if (symbol) {
-      const actual = await getTraditionalOHLCV(`${symbol}-USD`);
+      const actual = await getTraditionalOHLCV(symbol);
       if (actual.length >= 30) {
         const candles = actual.slice(-Math.max(30, Math.min(365, days)));
         candles.source = 'Yahoo Finance'; candles.currency = 'USD';
@@ -346,32 +365,39 @@ export async function getTraditionalPrices() {
   const cached = fromCache(key);
   if (cached) return cached;
 
-  const symbols = Object.keys(TRADITIONAL_ASSETS);
+  return pricesOnce(key,async()=>{
 
   try {
-    const yahooPrices = await fetchYahooPrices(symbols);
+    const yahooPrices = await getBulkStockQuotes();
 
     const result = {};
     for (const [id, meta] of Object.entries(TRADITIONAL_ASSETS)) {
       const yahoo = yahooPrices[id];
       result[id] = {
-        id,
+        ...meta,id,
         name:      meta.name,
         symbol:    meta.symbol ?? id,
         type:      meta.type,
         image:     meta.image ?? null,
         price:     yahoo?.price    ?? null,
         change24h: yahoo?.change   ?? null,
-        volume24h: yahoo?.volume   ?? 0,
-        marketCap: yahoo?.marketCap ?? 0,
+        volume24h: yahoo?.volume   ?? null,
+        marketCap: yahoo?.marketCap ?? null,
         currency: yahoo?.currency ?? null,
         quoteAsOf: yahoo?.quoteAsOf ?? null,
         source: yahoo?.source ?? null,
+        retrievedAt:yahoo?.retrievedAt??null,
+        sector:meta.sector||yahoo?.sector||null,
+        isStale:yahoo?.isStale??false,
         updatedAt: Date.now(),
       };
     }
 
-    toCache(key, result, CACHE_TTL.price);
+    toCache(key, result, 15*60_000);
+    // Bulk covers US listings. Missing international/instrument quotes load in
+    // bounded batches in the background, so the catalogue is immediately usable.
+    const missing=Object.keys(result).filter(id=>!(result[id].price>0));
+    fetchYahooPrices(missing).then(quotes=>{for(const [id,q] of Object.entries(quotes)){result[id]={...result[id],price:q.price,change24h:q.change,volume24h:q.volume,marketCap:q.currency==='USD'&&q.marketCap>0?q.marketCap:null,currency:q.currency,quoteAsOf:q.quoteAsOf,source:q.source,retrievedAt:new Date().toISOString()};}}).catch(()=>{});
     return result;
   } catch (err) {
     // Stale cache fallback — igual que en crypto
@@ -385,6 +411,7 @@ export async function getTraditionalPrices() {
     }
     throw err;
   }
+  });
 }
 
 // ─── Traditional OHLCV — Yahoo Finance + Stooq fallback ──────────────────────

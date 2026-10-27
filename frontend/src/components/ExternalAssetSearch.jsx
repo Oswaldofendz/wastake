@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ALL_ASSETS } from '../data/assetCatalog.js';
 import { searchAssets, fetchAssetQuote } from '../services/api.js';
 
-export function AssetSearch({ onSelect, query, onQueryChange }) {
+export function AssetSearch({ onSelect, query, onQueryChange, catalogueAssets=ALL_ASSETS }) {
   const { t }=useTranslation();
   const id=useId();
   const wrapper=useRef(null);
@@ -28,7 +28,7 @@ export function AssetSearch({ onSelect, query, onQueryChange }) {
     const q=value.trim().toLowerCase();
     setActive(-1);setPartial(false);setQuoteError(false);
     selectVersion.current++;setSelecting(false);
-    const local=ALL_ASSETS.filter(a=>!q||[a.name,a.symbol,a.id].some(s=>s?.toLowerCase().includes(q))).slice(0,12);
+    const local=catalogueAssets.filter(a=>!q||[a.name,a.symbol,a.id].some(s=>s?.toLowerCase().includes(q))).slice(0,12);
     setResults(local);
     if(!q){setLoading(false);return;}
     setLoading(true);
@@ -37,7 +37,7 @@ export function AssetSearch({ onSelect, query, onQueryChange }) {
         .catch(()=>{if(!cancelled)setPartial(true);}).finally(()=>{if(!cancelled)setLoading(false);});
     },400);
     return ()=>{cancelled=true;clearTimeout(timer);};
-  },[value]);
+  },[value,catalogueAssets]);
   async function choose(asset){
     const version=++selectVersion.current;
     setSelecting(true);setQuoteError(false);

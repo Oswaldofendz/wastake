@@ -3,6 +3,8 @@ import { CRYPTO_ASSETS, TRADITIONAL_ASSETS } from '../services/priceService.js';
 import { discoverAssets, getCapitalizationUniverse } from '../services/assetDiscoveryService.js';
 import { getSingleQuote } from '../services/priceService.js';
 import { getCompanyResearch } from '../services/companyResearchService.js';
+import { getCryptoResearch } from '../services/cryptoResearchService.js';
+import { catalogueMeta } from '../services/catalogueService.js';
 
 export const assetsRouter = Router();
 
@@ -20,7 +22,7 @@ assetsRouter.get('/', (req, res) => {
     ...meta,
   }));
 
-  res.json({ crypto, traditional });
+  res.json({ crypto, traditional,meta:catalogueMeta });
 });
 
 // GET /api/assets/search?q=bitcoin
@@ -50,6 +52,6 @@ assetsRouter.get('/research/:id', async(req,res)=>{
   if(!/^[A-Za-z0-9^=._-]{1,100}$/.test(req.params.id))return res.status(400).json({error:'Invalid asset'});
   const type=typeof req.query.type==='string'?req.query.type:'stock';
   if(!['stock','crypto','etf','bond','forex','commodity','index'].includes(type))return res.status(400).json({error:'Invalid asset type'});
-  try{res.json(await getCompanyResearch(req.params.id,type));}
+  try{res.json(await (type==='crypto'?getCryptoResearch(req.params.id):getCompanyResearch(req.params.id,type)));}
   catch{res.status(502).json({error:'Company sources unavailable'});}
 });

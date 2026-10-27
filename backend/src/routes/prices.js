@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { CRYPTO_ASSETS } from '../services/priceService.js';
+import { catalogueMeta } from '../services/catalogueService.js';
 import {
   getCryptoPrices,
   getCryptoOHLCV,
@@ -35,7 +37,8 @@ priceRouter.get('/all', async (req, res) => {
   const { _isStale, _staleTs, ...crypto } = cryptoRaw;
   const isStale = _isStale ?? (cryptoResult.status === 'rejected') ?? false;
 
-  res.json({ crypto, traditional, ts: Date.now(), isStale, staleTs: _staleTs ?? null });
+  const completeCrypto=Object.fromEntries(Object.entries(CRYPTO_ASSETS).map(([id,meta])=>[id,{...meta,id,type:'crypto',price:null,change24h:null,...crypto[id]}]));
+  res.json({ crypto:completeCrypto, traditional, catalogue:catalogueMeta, ts: Date.now(), isStale, staleTs: _staleTs ?? null });
 });
 
 // GET /api/prices/crypto — solo crypto

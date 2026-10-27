@@ -44,7 +44,7 @@ export async function discoverAssets(query) {
       type: 'crypto', analysisType: 'crypto', source: 'CoinGecko', exchange: 'CoinGecko', external: true,
     })).filter(c => /^[a-z0-9-]{1,100}$/.test(c.id)) : [];
     const seen = new Set();
-    const results = [...local, ...quotes, ...coins].filter(a => {
+    const results = [...local, ...coins, ...quotes].filter(a => {
       const key = `${a.analysisType}:${a.id}`;
       if (seen.has(key)) return false;
       seen.add(key); return true;
@@ -65,7 +65,7 @@ export async function getCapitalizationUniverse() {
   return cached('caps', 30 * 60_000, async () => {
     const [nasdaq, cg] = await Promise.allSettled([
       axios.get('https://api.nasdaq.com/api/screener/stocks', { params: { tableonly: true, download: true, limit: 10000 }, headers, timeout: 12000, maxContentLength: 8_000_000 }),
-      axios.get('https://api.coingecko.com/api/v3/coins/markets', { params: { vs_currency: 'usd', order: 'market_cap_desc', per_page: 50, page: 1, sparkline: false }, headers, timeout: 9000 }),
+      axios.get('https://api.coingecko.com/api/v3/coins/markets', { params: { vs_currency: 'usd', order: 'market_cap_desc', per_page: 100, page: 1, sparkline: false }, headers, timeout: 9000 }),
     ]);
     const stocks = nasdaq.status === 'fulfilled' ? normalizeNasdaqRows(nasdaq.value.data.data?.rows ?? []) : [];
     let crypto = cg.status === 'fulfilled' && Array.isArray(cg.value.data) ? cg.value.data.map(c => ({
@@ -82,9 +82,9 @@ export async function getCapitalizationUniverse() {
       } catch { /* Explicit partial coverage, without fixed values. */ }
     }
     // Keep coverage explicit: these are securities returned by Nasdaq, not a global company census.
-    const stockTop = [...stocks].sort((a,b) => b.marketCap-a.marketCap).slice(0, 60);
+    const stockTop = [...stocks].sort((a,b) => b.marketCap-a.marketCap).slice(0, 200);
     const ids = new Set(stockTop.map(a => a.id));
     return { stocks: [...stockTop, ...stocks.filter(a => TRADITIONAL_ASSETS[a.id] && !ids.has(a.id))], crypto,
-      fetchedAt: new Date().toISOString(), stockCoverage: stocks.length, cryptoCoverage: fullCryptoCoverage ? 'market_top_50' : 'catalog_fallback', partial: !stocks.length || !fullCryptoCoverage };
+      fetchedAt: new Date().toISOString(), stockCoverage: stocks.length, cryptoCoverage: fullCryptoCoverage ? 'market_top_100' : 'catalog_fallback', partial: !stocks.length || !fullCryptoCoverage };
   });
 }

@@ -27,6 +27,7 @@ const TYPE_GROUPS = {
 
 export function getAssetGroup(asset) {
   const symbol = String(asset?.symbol ?? asset?.id ?? '').toUpperCase();
-  if (asset?.type === 'stock') return STOCK_SECTORS[symbol] ?? 'unclassified';
+  const sectors={technology:'technology',communicationservices:'communication',telecommunications:'communication',consumerdiscretionary:'discretionary',consumercyclical:'discretionary',finance:'financials',financialservices:'financials',financials:'financials',healthcare:'healthcare',consumerstaples:'staples',consumerdefensive:'staples',industrials:'industrials',energy:'energy',basicmaterials:'materials',materials:'materials',utilities:'utilities',realestate:'real_estate'};
+  if (asset?.type === 'stock') return STOCK_SECTORS[symbol]??sectors[String(asset.sector||'').toLowerCase().replace(/[^a-z]/g,'')]??'unclassified';
   return SYMBOL_GROUPS[symbol] ?? TYPE_GROUPS[asset?.type] ?? 'other';
 }

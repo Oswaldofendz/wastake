@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { getWhales } from '../services/whaleService.js';
 import axios from 'axios';
 import { callLLM } from '../services/llmService.js';
 import { protectFinancialNames, restoreFinancialNames, isLikelyLanguage, preservesFinancialNumbers } from '../services/financialLanguageService.js';
@@ -143,61 +144,7 @@ marketRouter.get('/translate', async (req, res) => {
 
 // ── Whale Alerts (BTC mempool grandes txs) ────────────────────
 // Usa mempool.space que es completamente gratuito y sin API key.
-marketRouter.get('/whale-alerts', async (_req, res) => {
-  const TTL = 60 * 1000; // 1 min
-  const cached = fromCache('whale_alerts', TTL);
-  if (cached) return res.json(cached);
-
-  try {
-    const btcPrice = await axios.get('https://mempool.space/api/v1/prices', { timeout: 5000 })
-      .then(r => r.data?.USD ?? 85000)
-      .catch(() => 85000); // fallback actualizado — precio aproximado actual
-
-    const BTC_THRESHOLD = 5;
-    const SATOSHI = 100_000_000;
-
-    const [recent, blocks] = await Promise.allSettled([
-      fetch('https://mempool.space/api/mempool/recent').then(r => r.json()),
-      fetch('https://mempool.space/api/v1/blocks').then(r => r.json())
-        .then(async blks => {
-          if (!blks?.length) return [];
-          const txids = await fetch(`https://mempool.space/api/block/${blks[0].id}/txids`).then(r => r.json()).catch(() => []);
-          const sample = txids.slice(0, 50);
-          const txs = await Promise.all(sample.map(id =>
-            fetch(`https://mempool.space/api/tx/${id}`).then(r => r.json()).catch(() => null)
-          ));
-          return txs.filter(Boolean);
-        }),
-    ]);
-
-    const allTxs = [
-      ...(recent.status === 'fulfilled' ? recent.value : []),
-      ...(blocks.status === 'fulfilled' ? blocks.value : []),
-    ];
-
-    const whales = allTxs
-      .filter(tx => tx && (tx.value ?? tx.vout?.reduce((s, o) => s + (o.value ?? 0), 0) ?? 0) / SATOSHI >= BTC_THRESHOLD)
-      .slice(0, 20)
-      .map(tx => {
-        const valueSat = tx.value ?? tx.vout?.reduce((s, o) => s + (o.value ?? 0), 0) ?? 0;
-        const btcAmount = valueSat / SATOSHI;
-        return {
-          txid:  tx.txid,
-          btc:   parseFloat(btcAmount.toFixed(4)),
-          usd:   Math.round(btcAmount * btcPrice),
-          url:   `https://mempool.space/tx/${tx.txid}`,
-          time:  tx.firstSeen ?? tx.status?.block_time ?? Date.now() / 1000,
-        };
-      })
-      .sort((a, b) => b.btc - a.btc);
-
-    const result = { whales, btcPrice, updatedAt: Date.now() };
-    if (whales.length) toCache('whale_alerts', result);
-    res.json(result);
-  } catch (err) {
-    res.status(502).json({ error: err.message });
-  }
-});
+marketRouter.get('/whale-alerts',async(_req,res)=>{try{res.json(await getWhales());}catch{res.status(502).json({error:'Transaction sources unavailable'});}});
 
 // ── Helper: fetch Yahoo Finance con timeout usando axios ──────────────────────
 async function fetchYahooMeta(symbol) {

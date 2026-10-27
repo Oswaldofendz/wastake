@@ -108,7 +108,7 @@ export function Dashboard({marketData}) {
             }}
           >
             <div style={{ marginBottom: '12px', paddingTop: '12px' }}>
-              <AssetSearch onSelect={handleSearch} />
+              <AssetSearch onSelect={handleSearch} catalogueAssets={displayAssets} />
             </div>
 
             {loading && !displayAssets.length ? (
@@ -128,11 +128,8 @@ export function Dashboard({marketData}) {
             ) : (
               <div className="flex flex-col gap-1">
                 {CATALOG_CATEGORIES.map(cat => {
-                  const catAssets = cat.ids.map(id => {
-                    // El backend ahora retorna todos los activos — si no existe, aún está cargando
-                    const live = displayAssets.find(a => a.id === id);
-                    return live ?? null;
-                  }).filter(Boolean);
+                  const kinds={stocks:"stock",etfs:"etf",bonds:"bond",commodities:"commodity",indices:"index",forex:"forex",crypto:"crypto"};
+                  const catAssets=displayAssets.filter(a=>a.type===kinds[cat.id]);
                   if (!catAssets.length) return null;
                   const isOpen = !!expandedCats[cat.id];
                   return (

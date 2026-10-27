@@ -35,7 +35,7 @@ async function get(path, timeoutMs = 20_000, signal) {
 }
 
 // Todos los precios de una vez (crypto + traditional)
-export const fetchAllPrices = () => get('/api/prices/all');
+export const fetchAllPrices = () => get('/api/prices/all',60_000);
 
 // Velas OHLCV para el gráfico
 export const fetchOHLCV = (id, type = 'crypto', params = {}, options = {}) => {

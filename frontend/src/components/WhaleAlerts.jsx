@@ -59,7 +59,7 @@ export function WhaleAlerts() {
           <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
             {t('whales_title')}
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">{t('whales_description')}</p>
+          <p className="text-xs text-slate-500 mt-0.5">{t('whale_note')}</p>
         </div>
         <button
           onClick={load}
@@ -72,6 +72,7 @@ export function WhaleAlerts() {
         </button>
       </div>
 
+      <p className="px-4 pt-2 text-xs leading-relaxed text-slate-400">{data?.btcPrice>0?t('whale_price',{price:fmt(data.btcPrice),date:new Date(data.priceRetrievedAt).toLocaleString()}):t('whale_usd_missing')}</p>
       {loading ? (
         <div className="p-4 space-y-2 animate-pulse">
           {[...Array(4)].map((_, i) => (
@@ -95,13 +96,13 @@ export function WhaleAlerts() {
               >
                 {/* Time */}
                 <span className="text-xs text-slate-500 w-8 flex-shrink-0 font-mono">
-                  {timeAgo(w.time)}
+                  {w.time?timeAgo(w.time):t('whale_observed')}
                 </span>
 
                 {/* Amount */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-mono font-bold text-white">{fmt(w.usd ?? w.usdAmount)}</p>
-                  <SizeIndicator btc={w.btc ?? w.btcAmount} />
+                  <p className="text-sm font-mono font-bold text-white">{Number.isFinite(w.usd)?fmt(w.usd):t('whale_usd_missing')}</p>
+                  <SizeIndicator btc={w.btc ?? w.btcAmount} /><span className="ml-2 text-xs text-slate-300">{t(w.status==='confirmed'?'whale_confirmed':'whale_pending')}</span>
                 </div>
 
                 {/* Link icon */}
