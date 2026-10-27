@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Navbar }    from './components/Navbar.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
+import {ReleaseNotice} from './components/ReleaseNotice.jsx';
 import { Portfolio } from './pages/Portfolio.jsx';
 import { Alerts }    from './pages/Alerts.jsx';
 import { Markets }   from './pages/Markets.jsx';
@@ -115,6 +116,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen text-white flex flex-col" style={{ background: 'var(--bg-primary)' }}>
+      <ReleaseNotice/>
       <Navbar
         lastUpdated={lastUpdated}
         currentPage={currentPage}

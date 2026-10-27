@@ -2,6 +2,7 @@ import { useEffect,useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchAssetResearch,translateText } from '../services/api.js';
 import { isCryptoResearch } from '../utils/cryptoResearch.js';
+import {SourceReferences} from './SourceReferences.jsx';
 export function CryptoResearchCard({asset}){
  const {t,i18n}=useTranslation(),lang=(i18n.resolvedLanguage||i18n.language).split('-')[0];
  const [data,setData]=useState(null),[error,setError]=useState(false),[attempt,setAttempt]=useState(0),[description,setDescription]=useState(null);
@@ -25,5 +26,6 @@ export function CryptoResearchCard({asset}){
   <p className="mt-3 text-xs leading-relaxed text-slate-400">{t('crypto_asof',{source:data.source,date:when(data.dataAsOf),retrieved:when(data.retrievedAt)})}</p>
   <div className="mt-3 flex flex-wrap gap-4 text-sm text-sky-300 underline"><a href={data.sourceUrl} target="_blank" rel="noopener noreferrer">{data.source} ↗</a>{data.website&&<a href={data.website} target="_blank" rel="noopener noreferrer">{t('crypto_sources')}</a>}{data.whitepaper&&<a href={data.whitepaper} target="_blank" rel="noopener noreferrer">Whitepaper ↗</a>}</div>
   </>}
+ <SourceReferences asset={asset}/>
  </section>;
 }

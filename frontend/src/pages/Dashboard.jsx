@@ -7,11 +7,12 @@ import { Disclaimer } from '../components/Disclaimer.jsx';
 import { AnalysisPanel } from '../components/AnalysisPanel.jsx';
 import { NewsPanel } from '../components/NewsPanel.jsx';
 import { MarketLeaders } from '../components/MarketLeaders.jsx';
+import {useSelectedQuote} from '../hooks/useSelectedQuote.js';
 import { currentSelection } from '../utils/marketConventions.js';
 import { formatQuote } from '../utils/panoramaAnalysis.js';
 
 // Visible zoom only; every technical view uses the same source history.
-const TIMEFRAMES=['1S','1M','3M','6M','1A'].map(label=>({label}));
+const TIMEFRAMES=['1D','1S','1M','3M','6M','1A'].map(label=>({label}));
 
 export function Dashboard({marketData}) {
   const { t,i18n } = useTranslation();
@@ -20,7 +21,8 @@ export function Dashboard({marketData}) {
   const [extraAssets, setExtraAssets]     = useState([]);
   const [sidebarOpen, setSidebarOpen]     = useState(false);
   const [expandedCats, setExpandedCats]   = useState({});
-  const [activeTf, setActiveTf]           = useState(TIMEFRAMES[2]); // 3M por defecto
+  const [activeTf, setActiveTf]           = useState(TIMEFRAMES.find(t=>t.label==='3M'));
+  const [candleInterval,setCandleInterval]=useState('1d');
 
   // IDs deben coincidir exactamente con las claves de TRADITIONAL_ASSETS en el backend
   const CATALOG_CATEGORIES = [
@@ -41,7 +43,7 @@ export function Dashboard({marketData}) {
     return () => window.removeEventListener('resize', fn);
   }, []);
 
-  const chartAsset = currentSelection(selectedAsset,allAssets);
+  const chartAsset = useSelectedQuote(currentSelection(selectedAsset,allAssets));
 
   const displayAssets = [
     ...allAssets,
@@ -57,7 +59,7 @@ export function Dashboard({marketData}) {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="mx-auto flex h-full w-full max-w-[1680px] flex-col">
       <Disclaimer />
       <MarketLeaders marketData={marketData} onSelect={handleSearch}/>
 
@@ -196,6 +198,7 @@ export function Dashboard({marketData}) {
                 />
                 <StatCard label={t(chartAsset.type==='crypto'?'audit_crypto_volume':'audit_traded_volume')} value={chartAsset.type === 'crypto' ? fmtCompact(chartAsset.volume24h) : chartAsset.volume24h > 0 ? chartAsset.volume24h.toLocaleString(undefined,{notation:'compact',maximumFractionDigits:2}) : '—'} />
               </div>
+              <p className="mb-3 text-xs leading-5 text-slate-400"><span translate="no">{chartAsset.source}</span>{chartAsset.quoteAsOf&&` · ${new Date(chartAsset.quoteAsOf).toLocaleString(i18n.language)}`}</p>
 
               {/* Timeframe selector + Chart container */}
               <div
@@ -209,7 +212,7 @@ export function Dashboard({marketData}) {
                 }}
               >
                 {/* Barra de timeframes */}
-                <div className="flex items-center gap-1 px-3 py-2 border-b border-slate-700/50 flex-shrink-0">
+                <div className="flex flex-wrap items-center gap-1 px-3 py-2 border-b border-slate-700/50 flex-shrink-0">
                   <span className="text-xs text-slate-500 mr-1">{t('audit_visible_period')}:</span>
                   {TIMEFRAMES.map(tf => (
                     <button
@@ -226,11 +229,13 @@ export function Dashboard({marketData}) {
                     </button>
                   ))}
                 </div>
+                <div className="flex flex-wrap items-center gap-2 px-3 pt-3" role="group" aria-label={t('candle_interval')}><span className="text-xs text-slate-400">{t('candle_interval')}:</span>{[['15m','15 min'],['4h','4 h'],['1d','1 día']].map(([value,label])=><button key={value} type="button" aria-pressed={candleInterval===value} onClick={()=>{setCandleInterval(value);setActiveTf(TIMEFRAMES.find(tf=>tf.label===(value==='15m'?'1S':value==='4h'?'1M':'3M')));}} className={`min-h-10 rounded-lg border px-3 text-sm ${candleInterval===value?'border-sky-400 bg-sky-900/30 text-sky-100':'border-slate-700 text-slate-300'}`}>{value==='1d'?t('candle_daily'):label}</button>)}</div>
+                <p className="px-3 pt-2 text-xs leading-5 text-slate-400">{t('interval_explanation')}</p>
                 <p className="px-3 pt-2 text-[11px] leading-4 text-slate-500">{t('chart_default_studies_note')}</p>
 
                 {/* Chart */}
                 <div style={{ flex: 1, minHeight: 0, padding: isMobile ? '8px' : '12px' }}>
-                  <CandleChart key={`chart:${chartAsset.type}:${chartAsset.id}`} asset={chartAsset} timeframe={activeTf.label} />
+                  <CandleChart key={`chart:${chartAsset.type}:${chartAsset.id}`} asset={chartAsset} timeframe={activeTf.label} interval={candleInterval}/>
                 </div>
               </div>
 

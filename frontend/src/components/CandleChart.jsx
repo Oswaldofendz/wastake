@@ -100,6 +100,7 @@ const TV_MAP = {
 
 // Mapeo de timeframe → intervalo de TradingView
 const TF_TO_TV_RANGE = {
+  '1D': '1D',
   '1S': '5D',
   '1M': '1M',
   '3M': '3M',
@@ -131,7 +132,7 @@ function loadTVScript() {
 
 let idCounter = 0;
 
-export function TradingViewChart({ asset, timeframe = '3M' }) {
+export function TradingViewChart({ asset, timeframe = '3M',interval='1d' }) {
   const { i18n, t } = useTranslation();
   const [unavailable, setUnavailable] = useState(false);
   const wrapperRef     = useRef(null);
@@ -168,7 +169,7 @@ export function TradingViewChart({ asset, timeframe = '3M' }) {
       new window.TradingView.widget({
         autosize:            true,
         symbol,
-        interval: 'D',
+        interval: interval==='4h'?'240':interval==='15m'?'15':'D',
         range,
         timezone:            'Etc/UTC',
         theme:               'dark',
@@ -191,7 +192,7 @@ export function TradingViewChart({ asset, timeframe = '3M' }) {
       alive = false;
       if (wrapperRef.current) wrapperRef.current.innerHTML = '';
     };
-  }, [asset?.id, asset?.tvSymbol, timeframe, i18n.language]);
+  }, [asset?.id, asset?.tvSymbol, timeframe, interval, i18n.language]);
 
   return (
     <>

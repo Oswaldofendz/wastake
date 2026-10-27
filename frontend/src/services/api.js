@@ -1,5 +1,6 @@
 import { ANALYSIS_DAYS } from '../utils/marketConventions.js';
 const BASE = import.meta.env.VITE_API_URL ?? '';
+export const fetchSourceReference=id=>get(id?`/api/market/exchange-reference/${encodeURIComponent(id)}`:'/api/market/reference-rates',25_000);
 
 function timeoutMessage() {
   let language = 'en';

@@ -7,6 +7,7 @@ import { WhaleAlerts }       from '../components/WhaleAlerts.jsx';
 import { EconomicCalendar }  from '../components/EconomicCalendar.jsx';
 import { MacroRatesTable }   from '../components/MacroRatesTable.jsx';
 import { EventCalendarChart } from '../components/EventCalendarChart.jsx';
+import {SourceReferences} from '../components/SourceReferences.jsx';
 
 const TABS = [
   { id: 'overview', key: 'markets_tab_overview' },
@@ -57,6 +58,7 @@ export function Markets({ allAssets }) {
 
             <EconomicCalendar />
             <MacroRatesTable />
+            <SourceReferences />
 
             <details className="rounded-xl border border-white/[8%] bg-[var(--bg-card)]">
               <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-200">

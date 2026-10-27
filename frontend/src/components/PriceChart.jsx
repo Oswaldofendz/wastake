@@ -5,11 +5,13 @@ import { TradingViewChart,getTVSymbol } from './CandleChart.jsx';
 import { fetchOHLCV } from '../services/api.js';
 import { getAnalysisType } from '../data/assetCatalog.js';
 import { cleanCandles, emaSeries, significantLevels } from '../utils/chartLevels.js';
+import {timedCandles} from '../utils/timedCandles.js';
 
-const DAYS = { '1S': 7, '1M': 30, '3M': 90, '6M': 180, '1A': 365 };
-export function CandleChart({ asset, timeframe = '3M' }) {
+const DAYS = { '1D':1,'1S': 7, '1M': 30, '3M': 90, '6M': 180, '1A': 365 };
+export function CandleChart({ asset, timeframe = '3M',interval='1d' }) {
   const { t, i18n } = useTranslation();
   const ref = useRef(null);
+  const savedRange=useRef(null);
   const [advanced, setAdvanced] = useState(false);
   const isFuture=asset.id.endsWith('=F');
   const showAdvanced=advanced&&!isFuture;
@@ -18,19 +20,24 @@ export function CandleChart({ asset, timeframe = '3M' }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshFailed,setRefreshFailed]=useState(false);
   const [retry, setRetry] = useState(0);
-  const levels=useMemo(()=>significantLevels(result?.candles??[]),[result]);
+  const seconds=interval==='15m'?900:interval==='4h'?14400:86400;
+  const levels=useMemo(()=>significantLevels(result?.candles??[],null,Date.now(),seconds),[result,seconds]);
   useEffect(() => {
     let cancelled=false;
-    setLoading(true);setResult(null);setError(false);
-    fetchOHLCV(asset.id,getAnalysisType(asset),{days:365}).then(r=>{
+    setLoading(true);setResult(null);setError(false);setRefreshFailed(false);
+    const load=(initial=false)=>fetchOHLCV(asset.id,getAnalysisType(asset),{days:365,interval}).then(r=>{
       if(cancelled)return;
-      const candles=cleanCandles(r.candles);
+      if(interval!=='1d'&&r.interval!==interval)throw new Error('Requested intraday interval unavailable');
+      const candles=interval==='1d'?cleanCandles(r.candles):timedCandles(r.candles);
       if(candles.length<2)throw new Error('No candles');
-      setResult({...r,candles});
-    }).catch(()=>{if(!cancelled)setError(true);}).finally(()=>{if(!cancelled)setLoading(false);});
-    return ()=>{cancelled=true;};
-  },[asset.id,asset.analysisType,asset.type,retry]);
+      setResult({...r,candles});setRefreshFailed(false);setError(false);
+    }).catch(()=>{if(!cancelled){if(initial)setError(true);else setRefreshFailed(true);}}).finally(()=>{if(!cancelled)setLoading(false);});
+    load(true);
+    const timer=interval==='1d'?null:setInterval(()=>{if(document.visibilityState==='visible')load();},60000);
+    return ()=>{cancelled=true;clearInterval(timer);};
+  },[asset.id,asset.analysisType,asset.type,interval,retry]);
   useEffect(()=>{
     if(showAdvanced || loading || !ref.current || !result)return;
     const all=result.candles;
@@ -41,7 +48,7 @@ export function CandleChart({ asset, timeframe = '3M' }) {
     const chart=createChart(ref.current,{autoSize:true,layout:{background:{type:ColorType.Solid,color:background},textColor:text,fontFamily:'Inter, sans-serif'},
       grid:{vertLines:{visible:false},horzLines:{color:'rgba(128,128,128,0.12)'}},
       rightPriceScale:{borderVisible:false,scaleMargins:{top:0.12,bottom:0.1}},
-      timeScale:{borderVisible:false,timeVisible:false},localization:{locale:i18n.language}});
+      timeScale:{borderVisible:false,timeVisible:interval!=='1d',secondsVisible:false},localization:{locale:i18n.language}});
     const close=all.at(-1).close;
     const precision=close>=1?2:Math.min(8,Math.max(4,-Math.floor(Math.log10(close))+2));
     const series=chart.addCandlestickSeries({upColor:'#16b981',downColor:'#f05262',borderVisible:false,wickUpColor:'#16b981',wickDownColor:'#f05262',priceFormat:{type:'price',precision,minMove:10**(-precision)}});
@@ -56,14 +63,16 @@ export function CandleChart({ asset, timeframe = '3M' }) {
       [level.low,level.price,level.high].forEach((price,index)=>{
         const centre=index===1;
         const line=chart.addLineSeries({color:centre?color:color+'55',lineWidth:1,lineStyle:centre?LineStyle.Dashed:LineStyle.Dotted,priceLineVisible:false,lastValueVisible:centre,crosshairMarkerVisible:false,title:centre?t(`chart_${level.kind}`):'',priceFormat:{type:'price',precision,minMove:10**(-precision)}});
-        line.setData([{time:start,value:price},{time:Math.max(all.at(-1).time,start+86400),value:price}]);
+        line.setData([{time:start,value:price},{time:Math.max(all.at(-1).time,start+seconds),value:price}]);
       });
     });
-    chart.timeScale().fitContent();
-    return ()=>chart.remove();
-  },[result,levels,loading,timeframe,showAdvanced,levelsOn,emaOn,i18n.language]);
+    const key=`${asset.type}:${asset.id}:${interval}:${timeframe}`;
+    if(savedRange.current?.key===key&&savedRange.current.range)chart.timeScale().setVisibleLogicalRange(savedRange.current.range);
+    else chart.timeScale().fitContent();
+    return ()=>{savedRange.current={key,range:chart.timeScale().getVisibleLogicalRange()};chart.remove();};
+  },[result,levels,loading,timeframe,interval,showAdvanced,levelsOn,emaOn,i18n.language]);
   const fmt=n=>n.toLocaleString(i18n.language,{maximumFractionDigits:n>=1?2:8});
-  const date=time=>new Date(time*1000).toLocaleDateString(i18n.language,{timeZone:'UTC'});
+  const date=time=>interval==='1d'?new Date(time*1000).toLocaleDateString(i18n.language,{timeZone:'UTC'}):new Date(time*1000).toLocaleString(i18n.language,{timeZone:'UTC',dateStyle:'short',timeStyle:'short'});
   return <div className="w-full min-w-0">
     <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
       <button type="button" aria-pressed={!showAdvanced} onClick={()=>setAdvanced(false)} className={`min-h-9 rounded border px-3 ${!showAdvanced?'border-sky-500 text-sky-300':'border-slate-600'}`}>{t('chart_clean')}</button>
@@ -71,18 +80,20 @@ export function CandleChart({ asset, timeframe = '3M' }) {
       {!showAdvanced && <><label className="flex items-center gap-1"><input type="checkbox" checked={levelsOn} onChange={e=>setLevelsOn(e.target.checked)}/>{t('chart_levels')}</label><label className="flex items-center gap-1"><input type="checkbox" checked={emaOn} onChange={e=>setEmaOn(e.target.checked)}/><span className="text-sky-400">EMA 20</span> / <span className="text-violet-400">50</span></label></>}
     </div>
     {isFuture&&<p className="mb-2 text-xs leading-5 text-amber-200"><span translate="no">{asset.id}</span> · {t('audit_futures_note')} {t('audit_futures_external')}</p>}
-    {showAdvanced?<TradingViewChart asset={asset} timeframe={timeframe}/>:loading?<p role="status" className="p-10 text-center text-sm text-slate-400">{t('loading')}</p>:error?<div role="alert" className="p-8 text-center text-sm"><p>{t('chart_error')}</p><button className="mt-3 underline" onClick={()=>setRetry(n=>n+1)}>{t('retry')}</button></div>:<>
-      <div ref={ref} style={{height:330,width:'100%'}} aria-label={`${asset.name} · ${timeframe}`} role="img"/>
+    {showAdvanced?<TradingViewChart asset={asset} timeframe={timeframe} interval={interval}/>:loading?<p role="status" className="p-10 text-center text-sm text-slate-400">{t('loading')}</p>:error?<div role="alert" className="p-8 text-center text-sm"><p>{t(interval==='1d'?'chart_error':'intraday_error')}</p><button className="mt-3 underline" onClick={()=>setRetry(n=>n+1)}>{t('retry')}</button></div>:<>
+      <div ref={ref} style={{height:'clamp(340px, 36vw, 500px)',width:'100%'}} aria-label={`${asset.name} · ${timeframe}`} role="img"/>
       <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-400" aria-live="polite">
         <span translate="no">{asset.symbol} · {result?.currency || asset.currency || '—'} · {result?.source}</span>
         {levelsOn && !levels.length && <span>{t('chart_no_levels')}</span>}
       </div>
-      <p className="mt-2 text-[11px] leading-5 text-slate-400">{t('chart_daily_context',{date:date(result.candles.at(-1).time)})}</p>
+      <p className="mt-2 text-xs leading-5 text-slate-400">{t(interval==='1d'?'chart_daily_context':'intraday_context',{interval,date:date(result.candles.at(-1).time)})}</p>
+      <p className="mt-1 text-xs leading-5 text-slate-400">{t('chart_available_history',{count:result.candles.length,from:date(result.candles[0].time),to:date(result.candles.at(-1).time)})}</p>
+      {interval!=='1d'&&<p role="status" className={`mt-1 text-xs leading-5 ${refreshFailed?'text-amber-300':'text-slate-400'}`}>{t(refreshFailed?'intraday_refresh_failed':'intraday_refresh')}{result.retrievedAt&&` · ${new Date(result.retrievedAt).toLocaleTimeString(i18n.language)}`}</p>}
       <p className="mt-1 text-[11px] leading-5 text-slate-400">{t('chart_close',{price:`${fmt(result.candles.at(-1).close)} ${result.currency??''}`,date:date(result.candles.at(-1).time)})}</p>
       {levelsOn&&<p className="mt-1 text-[11px] leading-5 text-slate-400">{t('chart_zone_hint')}</p>}
-      <p className="mt-1 text-[11px] leading-5 text-slate-400">{t('audit_history_cache')}</p>
+      {interval==='1d'&&<p className="mt-1 text-[11px] leading-5 text-slate-400">{t('audit_history_cache')}</p>}
       {levelsOn&&<div className="mt-2 grid gap-2 sm:grid-cols-2">{levels.map(l=><div key={l.kind} className={`rounded-lg border p-2 text-xs ${l.kind==='support'?'border-emerald-800/50 text-emerald-300':'border-rose-800/50 text-rose-300'}`}><p className="font-semibold">{t(`chart_${l.kind}`)}: {fmt(l.low)}–{fmt(l.high)} {result?.currency??''}</p><p className="mt-1 text-[11px] text-slate-400">{t('chart_level_evidence',{count:l.touches,date:date(l.confirmedAt),distance:l.distancePct.toLocaleString(i18n.language,{maximumFractionDigits:2})})}</p>{result.candles.at(-1).close>=l.low&&result.candles.at(-1).close<=l.high&&<p className="mt-1 text-[11px] text-amber-300">{t('chart_testing')}</p>}</div>)}</div>}
-      <details className="mt-2 text-[11px] text-slate-400"><summary className="cursor-pointer">{t('chart_levels')} · {t('methodology','Método')}</summary><p className="mt-1 leading-5">{t('chart_method')}</p></details>
+      <details className="mt-2 text-[11px] text-slate-400"><summary className="cursor-pointer">{t('chart_levels')} · {t('methodology','Método')}</summary><p className="mt-1 leading-5">{t(interval==='1d'?'chart_method':'intraday_method')}</p></details>
       <p className="mt-1 text-[10px] text-slate-500">TradingView Lightweight Charts™ · Copyright © 2023 TradingView, Inc. <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer" className="underline">TradingView</a></p>
     </>}
   </div>;

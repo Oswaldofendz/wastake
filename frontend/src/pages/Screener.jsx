@@ -5,6 +5,7 @@ import { AssetSearch } from '../components/AssetSearch.jsx';
 import { AnalysisPanel } from '../components/AnalysisPanel.jsx';
 import { CandleChart } from '../components/PriceChart.jsx';
 import { AssetValuationCard } from '../components/AssetValuationCard.jsx';
+import { MarketLeaders } from '../components/MarketLeaders.jsx';
 import { ImportantNews } from '../components/ImportantNews.jsx';
 import { formatQuote } from '../utils/panoramaAnalysis.js';
 import { marketStats,currentSelection } from '../utils/marketConventions.js';
@@ -113,7 +114,7 @@ function AssetRow({ asset, rank, t, showMarketCap, onSelect }) {
       </div>
 
       {/* Tipo */}
-      <span className={`hidden sm:inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border flex-shrink-0 ${typeColors}`}>
+      <span className={`asset-type hidden sm:inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border flex-shrink-0 ${typeColors}`}>
         {TYPE_LABELS[asset.type] ? t(TYPE_LABELS[asset.type]) : asset.type}
       </span>
 
@@ -135,7 +136,7 @@ function AssetRow({ asset, rank, t, showMarketCap, onSelect }) {
       )}
 
       {/* Barra visual de variación */}
-      <div className="hidden md:flex items-center w-20 flex-shrink-0">
+      <div className="asset-move-bar hidden md:flex items-center w-20 flex-shrink-0">
         <div className="relative w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
           <div
             className={`absolute top-0 h-full rounded-full transition-all ${positive ? 'bg-green-500' : 'bg-red-500'}`}
@@ -327,16 +328,17 @@ export function Screener({marketData}) {
 
 
       <div className="mt-4 mb-3 border-t border-slate-700/50 pt-4"><h3 className="text-sm font-semibold">{t('browse_catalogue')} · {filtered.length}</h3><p className="mt-1 text-xs leading-5 text-slate-400">{t('browse_help')}</p></div>
-      <div className="flex-1 bg-[var(--bg-card)] border border-white/[8%] rounded-xl overflow-hidden">
+      <div className="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-2">
+      <div className="catalogue-table min-w-0 bg-[var(--bg-card)] border border-white/[8%] rounded-xl overflow-hidden">
         {/* Header de columnas */}
         <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 text-xs text-slate-500 border-b border-slate-700/40 bg-slate-800/60">
           <span className="hidden sm:block w-6" />
           <span className="flex-1">{t('screener_column_asset')}</span>
-          <span className="hidden sm:block w-20">{t('screener_column_type')}</span>
+          <span className="asset-type hidden sm:block w-20">{t('screener_column_type')}</span>
           <span className="w-20 sm:w-24 text-right">{t('price')}</span>
           <span className="w-16 sm:w-20 text-right">{t('change_24h')}</span>
-          {(typeFilter === 'crypto'||typeFilter==='stock') && <span className="hidden lg:block w-24 text-right">{t('market_cap')}</span>}
-          <span className="hidden md:block w-20 text-center">{t('screener_column_change')}</span>
+
+          <span className="asset-move-bar hidden md:block w-20 text-center">{t('screener_column_change')}</span>
         </div>
 
         {loading && !allAssets.length ? (
@@ -386,7 +388,7 @@ export function Screener({marketData}) {
                     <span className="rounded-full bg-slate-700/70 px-2 py-0.5 text-xs font-medium text-slate-300">{assets.length}</span>
                   </button>
                   {!isCollapsed && assets.slice(0,shown).map(asset => (
-                    <AssetRow key={asset.id} asset={asset} rank={filtered.findIndex(item => item.id === asset.id) + 1} t={t} showMarketCap={typeFilter==='crypto'||typeFilter==='stock'} onSelect={setInspectedAsset}/>
+                    <AssetRow key={asset.id} asset={asset} rank={filtered.findIndex(item => item.id === asset.id) + 1} t={t} showMarketCap={false} onSelect={setInspectedAsset}/>
                   ))}
                   {!isCollapsed&&assets.length>shown&&<button type="button" onClick={()=>setVisibleCounts(v=>({...v,[id]:shown+25}))} className="min-h-11 w-full border-t border-slate-700 text-sm text-sky-300">{t('catalogue_more',{remaining:assets.length-shown})}</button>}
                 </section>
@@ -394,6 +396,8 @@ export function Screener({marketData}) {
             })}
           </div>
         )}
+      </div>
+      <MarketLeaders compact marketData={marketData} onSelect={setInspectedAsset}/>
       </div>
 
       {/* Footer con total */}

@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* The explorer catalogue sits beside rankings: keep essential columns readable. */
+.catalogue-table .asset-type, .catalogue-table .asset-move-bar { display: none; }
+
 :root {
   /* ── Fondos — neutros cálidos sin tinte azul ── */
   --bg-primary:    #09090a;
