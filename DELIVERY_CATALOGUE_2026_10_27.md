@@ -28,7 +28,7 @@ La selección es una fotografía fechada en `backend/src/data/marketUniverse.jso
 
 ## Comprobaciones
 
-- 54 pruebas automáticas correctas, incluidos catálogo sin precios inventados, identidad cripto, faltantes, sector, fórmulas y transacciones.
+- 55 pruebas automáticas correctas, incluidos catálogo sin precios inventados, identidad cripto, faltantes, sector, fórmulas y transacciones.
 - Compilación de producción correcta. Sigue pendiente dividir el paquete grande de gráficos/páginas; no se afirma que haya desaparecido el aviso de tamaño.
 - HYPE: ficha real y 364 velas diarias de Yahoo en la comprobación local.
 - Hyperlane: búsqueda fuera del catálogo, ficha y análisis técnico de la fuente identificada.

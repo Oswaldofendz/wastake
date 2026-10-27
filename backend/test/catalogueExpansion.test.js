@@ -8,6 +8,11 @@ import { getAssetGroup } from '../../frontend/src/data/assetSectors.js';
 import { quoteView } from '../../frontend/src/utils/marketConventions.js';
 import axios from 'axios';
 import { getCryptoPrices } from '../src/services/priceService.js';
+import { isCryptoResearch } from '../../frontend/src/utils/cryptoResearch.js';
+test('an older unsupported research response cannot be rendered as a crypto profile during deployment',()=>{
+ assert.equal(isCryptoResearch({supported:false,type:'crypto'}),false);
+ assert.equal(isCryptoResearch(normalizeCryptoResearch({id:'fixture',name:'Fixture'})),true);
+});
 test('primary crypto quotes distinguish a missing daily move from a real zero',async()=>{
  const original=axios.get;axios.get=async()=>({data:{'fixture-missing':{usd:10},'fixture-zero':{usd:10,usd_24h_change:0},'fixture-invalid':{usd:null}}});
  try{const p=await getCryptoPrices(['fixture-missing','fixture-zero','fixture-invalid']);assert.equal(p['fixture-missing'].change24h,null);assert.equal(p['fixture-zero'].change24h,0);assert.equal(p['fixture-invalid'],undefined);}finally{axios.get=original;}

@@ -1,10 +1,11 @@
 import { useEffect,useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchAssetResearch,translateText } from '../services/api.js';
+import { isCryptoResearch } from '../utils/cryptoResearch.js';
 export function CryptoResearchCard({asset}){
  const {t,i18n}=useTranslation(),lang=(i18n.resolvedLanguage||i18n.language).split('-')[0];
  const [data,setData]=useState(null),[error,setError]=useState(false),[attempt,setAttempt]=useState(0),[description,setDescription]=useState(null);
- useEffect(()=>{let active=true;setData(null);setError(false);fetchAssetResearch(asset).then(d=>{if(active)setData(d);}).catch(()=>{if(active)setError(true);});return()=>{active=false;};},[asset.id,attempt]);
+ useEffect(()=>{let active=true;setData(null);setError(false);fetchAssetResearch(asset).then(d=>{if(active){if(isCryptoResearch(d))setData(d);else setError(true);}}).catch(()=>{if(active)setError(true);});return()=>{active=false;};},[asset.id,attempt]);
  useEffect(()=>{let active=true;setDescription(null);if(data?.description&&lang!=='en')translateText(data.description,lang,'en',[data.name,data.symbol]).then(r=>{if(active&&r.translated)setDescription(r.translatedText);}).catch(()=>{});return()=>{active=false;};},[data,lang]);
  const fmt=(n,style)=>Number.isFinite(n)?new Intl.NumberFormat(i18n.language,{maximumFractionDigits:2,...style}).format(n):'—';
  const compact=n=>fmt(n,{notation:'compact'}),when=v=>v?new Date(v).toLocaleString(i18n.language):'—';
