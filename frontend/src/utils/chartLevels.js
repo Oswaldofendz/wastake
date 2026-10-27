@@ -30,12 +30,16 @@ function meanTrueRange(candles,end) {
   return sum/(end-start+1);
 }
 
-export function significantLevels(input, wing = 5, now = Date.now()) {
+export function significantLevels(input, wing = null, now = Date.now()) {
+  if(wing===null){
+    const candidates=[...significantLevels(input,2,now),...significantLevels(input,5,now)];
+    return ['support','resistance'].map(kind=>candidates.filter(l=>l.kind===kind).sort((a,b)=>a.distancePct-b.distancePct)[0]).filter(Boolean);
+  }
   const all=cleanCandles(input).filter(c=>c.time<=now/1000);
   const today=Math.floor(now/86400000)*86400;
   // An unfinished daily candle can locate today's price, never confirm a pivot.
   const candles=all.filter(c=>c.time<today).slice(-120);
-  if(!Number.isInteger(wing)||wing<1||candles.length<wing*2+2)return [];
+  if(!Number.isInteger(wing)||wing<1||candles.length<Math.max(14,wing*2+2))return [];
   const last=all.at(-1).close;
   const atr=meanTrueRange(candles,candles.length-1);
   if(!(atr>0))return [];
@@ -64,12 +68,13 @@ export function significantLevels(input, wing = 5, now = Date.now()) {
   }
   const valid=groups.flatMap(group=>{
     const events=group.events,latest=events.at(-1),touches=events.length;
-    if(touches<2&&!(latest.localAtr>0&&latest.amplitude>=latest.localAtr*2))return [];
-    const prices=events.map(e=>e.price),price=group.kind==='support'?Math.min(...prices):Math.max(...prices);
+    if(touches<2&&!(latest.localAtr>0&&latest.amplitude>=latest.localAtr*1.5))return [];
+    const prices=events.map(e=>e.price).sort((a,b)=>a-b),middle=Math.floor(prices.length/2);
+    const price=prices.length%2?prices[middle]:(prices[middle-1]+prices[middle])/2;
     const distance=Math.abs(price-last);
     if(distance>Math.min(atr*8,last*.2))return [];
     if(group.kind==='support'?price>=last:price<=last)return [];
-    return [{kind:group.kind,price,low:Math.min(...prices)-tolerance/2,high:Math.max(...prices)+tolerance/2,touches,index:latest.index,time:latest.time,confirmedAt:latest.confirmedAt,amplitude:latest.amplitude,distancePct:distance/last*100,lookback:candles.length}];
+    return [{kind:group.kind,price,low:Math.min(...prices)-tolerance/2,high:Math.max(...prices)+tolerance/2,touches,index:latest.index,time:latest.time,confirmedAt:latest.confirmedAt,wing,amplitude:latest.amplitude,distancePct:distance/last*100,lookback:candles.length}];
   });
   return ['support','resistance'].map(kind=>valid.filter(g=>g.kind===kind).sort((a,b)=>a.distancePct-b.distancePct)[0]).filter(Boolean);
 }

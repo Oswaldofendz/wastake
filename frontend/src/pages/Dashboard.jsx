@@ -6,6 +6,7 @@ import { AssetSearch } from '../components/AssetSearch.jsx';
 import { Disclaimer } from '../components/Disclaimer.jsx';
 import { AnalysisPanel } from '../components/AnalysisPanel.jsx';
 import { NewsPanel } from '../components/NewsPanel.jsx';
+import { MarketLeaders } from '../components/MarketLeaders.jsx';
 import { currentSelection } from '../utils/marketConventions.js';
 import { formatQuote } from '../utils/panoramaAnalysis.js';
 
@@ -58,6 +59,7 @@ export function Dashboard({marketData}) {
   return (
     <div className="flex flex-col h-full">
       <Disclaimer />
+      <MarketLeaders marketData={marketData} onSelect={handleSearch}/>
 
       {/* Layout: column on mobile, row on desktop */}
       <div

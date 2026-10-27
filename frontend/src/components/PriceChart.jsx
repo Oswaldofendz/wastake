@@ -52,8 +52,12 @@ export function CandleChart({ asset, timeframe = '3M' }) {
     });
     if(levelsOn)levels.forEach(level=>{
       const start=Math.max(level.confirmedAt,visible[0].time);
-      const line=chart.addLineSeries({color:level.kind==='support'?'#34d399':'#fb7185',lineWidth:1,lineStyle:LineStyle.Dashed,priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false,title:t(`chart_${level.kind}`),priceFormat:{type:'price',precision,minMove:10**(-precision)}});
-      line.setData([{time:start,value:level.price},{time:Math.max(all.at(-1).time,start+86400),value:level.price}]);
+      const color=level.kind==='support'?'#34d399':'#fb7185';
+      [level.low,level.price,level.high].forEach((price,index)=>{
+        const centre=index===1;
+        const line=chart.addLineSeries({color:centre?color:color+'55',lineWidth:1,lineStyle:centre?LineStyle.Dashed:LineStyle.Dotted,priceLineVisible:false,lastValueVisible:centre,crosshairMarkerVisible:false,title:centre?t(`chart_${level.kind}`):'',priceFormat:{type:'price',precision,minMove:10**(-precision)}});
+        line.setData([{time:start,value:price},{time:Math.max(all.at(-1).time,start+86400),value:price}]);
+      });
     });
     chart.timeScale().fitContent();
     return ()=>chart.remove();
@@ -74,6 +78,8 @@ export function CandleChart({ asset, timeframe = '3M' }) {
         {levelsOn && !levels.length && <span>{t('chart_no_levels')}</span>}
       </div>
       <p className="mt-2 text-[11px] leading-5 text-slate-400">{t('chart_daily_context',{date:date(result.candles.at(-1).time)})}</p>
+      <p className="mt-1 text-[11px] leading-5 text-slate-400">{t('chart_close',{price:`${fmt(result.candles.at(-1).close)} ${result.currency??''}`,date:date(result.candles.at(-1).time)})}</p>
+      {levelsOn&&<p className="mt-1 text-[11px] leading-5 text-slate-400">{t('chart_zone_hint')}</p>}
       <p className="mt-1 text-[11px] leading-5 text-slate-400">{t('audit_history_cache')}</p>
       {levelsOn&&<div className="mt-2 grid gap-2 sm:grid-cols-2">{levels.map(l=><div key={l.kind} className={`rounded-lg border p-2 text-xs ${l.kind==='support'?'border-emerald-800/50 text-emerald-300':'border-rose-800/50 text-rose-300'}`}><p className="font-semibold">{t(`chart_${l.kind}`)}: {fmt(l.low)}–{fmt(l.high)} {result?.currency??''}</p><p className="mt-1 text-[11px] text-slate-400">{t('chart_level_evidence',{count:l.touches,date:date(l.confirmedAt),distance:l.distancePct.toLocaleString(i18n.language,{maximumFractionDigits:2})})}</p>{result.candles.at(-1).close>=l.low&&result.candles.at(-1).close<=l.high&&<p className="mt-1 text-[11px] text-amber-300">{t('chart_testing')}</p>}</div>)}</div>}
       <details className="mt-2 text-[11px] text-slate-400"><summary className="cursor-pointer">{t('chart_levels')} · {t('methodology','Método')}</summary><p className="mt-1 leading-5">{t('chart_method')}</p></details>

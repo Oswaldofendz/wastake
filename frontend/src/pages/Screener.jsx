@@ -5,6 +5,7 @@ import { AssetSearch } from '../components/AssetSearch.jsx';
 import { AnalysisPanel } from '../components/AnalysisPanel.jsx';
 import { CandleChart } from '../components/PriceChart.jsx';
 import { AssetValuationCard } from '../components/AssetValuationCard.jsx';
+import { ImportantNews } from '../components/ImportantNews.jsx';
 import { formatQuote } from '../utils/panoramaAnalysis.js';
 import { marketStats,currentSelection } from '../utils/marketConventions.js';
 
@@ -241,7 +242,7 @@ export function Screener({marketData}) {
           <div>
             <h1 className="text-xl font-bold text-white">{t('screener_title')}</h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              {!inspectedAsset&&t('screener_results_count', { total: catalogTotal, results: filtered.length })}
+              {t('screener_results_count', { total: catalogTotal, results: filtered.length })}
               {(isStale || error) && <span className="ml-2 text-amber-500">⚠ {t('screener_stale_data')}</span>}
             </p>
             <p className="text-sm text-slate-400 mt-2">{t('screener_intro')}</p>
@@ -325,14 +326,8 @@ export function Screener({marketData}) {
         </div>
 
 
-      </section>
-
-      {/* ── Tabla ── */}
-      {inspectedAsset && <section ref={inspectionRef} className="mb-4 scroll-mt-24 rounded-xl border border-sky-700/50 p-3">
-        <div className="mb-3 flex items-center justify-between gap-2"><h2 translate="no" className="font-semibold">{inspectedAsset.name} · {inspectedAsset.symbol}</h2><button type="button" onClick={()=>{setInspectedAsset(null);resetFilters();}} className="min-h-10 px-3" aria-label={t('catalogue_return')}>← {t('catalogue_return')}</button></div>
-        <AssetValuationCard key={`valuation:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)} technical={analysisSnapshot?.id===inspectedAsset.id&&analysisSnapshot?.type===inspectedAsset.type?analysisSnapshot:null}/><CandleChart key={`chart:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)}/><details className="mt-3 rounded-xl border border-slate-700 p-3"><summary className="min-h-8 cursor-pointer text-sm font-semibold">{t('audit_technical_details')}</summary><AnalysisPanel key={`analysis:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)} onAnalysis={setAnalysisSnapshot}/></details>
-      </section>}
-      {!inspectedAsset&&<div className="flex-1 bg-[var(--bg-card)] border border-white/[8%] rounded-xl overflow-hidden">
+      <div className="mt-4 mb-3 border-t border-slate-700/50 pt-4"><h3 className="text-sm font-semibold">{t('browse_catalogue')} · {filtered.length}</h3><p className="mt-1 text-xs leading-5 text-slate-400">{t('browse_help')}</p></div>
+      <div className="flex-1 bg-[var(--bg-card)] border border-white/[8%] rounded-xl overflow-hidden">
         {/* Header de columnas */}
         <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 text-xs text-slate-500 border-b border-slate-700/40 bg-slate-800/60">
           <span className="hidden sm:block w-6" />
@@ -399,14 +394,20 @@ export function Screener({marketData}) {
             })}
           </div>
         )}
-      </div>}
+      </div>
 
       {/* Footer con total */}
-      {!inspectedAsset&&filtered.length > 0 && (
+      {filtered.length > 0 && (
         <p className="text-xs text-slate-600 text-center mt-3">
           {t('screener_showing_count', { results: filtered.length, total: catalogTotal })}
         </p>
       )}
+      </section>
+      {inspectedAsset && <section ref={inspectionRef} className="mb-4 scroll-mt-24 rounded-xl border border-sky-700/50 p-3">
+        <div className="mb-3 flex items-center justify-between gap-2"><h2 translate="no" className="font-semibold">{inspectedAsset.name} · {inspectedAsset.symbol}</h2><button type="button" onClick={()=>{setInspectedAsset(null);resetFilters();}} className="min-h-10 px-3" aria-label={t('catalogue_return')}>← {t('catalogue_return')}</button></div>
+        <AssetValuationCard key={`valuation:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)} technical={analysisSnapshot?.id===inspectedAsset.id&&analysisSnapshot?.type===inspectedAsset.type?analysisSnapshot:null}/><CandleChart key={`chart:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)}/><details className="mt-3 rounded-xl border border-slate-700 p-3"><summary className="min-h-8 cursor-pointer text-sm font-semibold">{t('audit_technical_details')}</summary><AnalysisPanel key={`analysis:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)} onAnalysis={setAnalysisSnapshot}/></details>
+        <ImportantNews key={`news:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)}/>
+      </section>}
     </div>
   );
 }

@@ -27,7 +27,7 @@ test('support/resistance needs confirmed swings and returns at most one level on
   const levels=significantLevels(candles);
   assert.ok(levels.length>0&&levels.length<=2);
   assert.equal(new Set(levels.map(l=>l.kind)).size,levels.length);
-  assert.ok(levels.every(l=>l.index<=94));
+  assert.ok(levels.every(l=>l.index+l.wing<candles.length&&l.confirmedAt===candles[l.index+l.wing].time));
   assert.deepEqual(significantLevels(candles.slice(0,10)),[]);
 });
 test('missing portfolio quotes never become losses; concentration aggregates lots by asset',()=>{
