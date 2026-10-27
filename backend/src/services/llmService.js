@@ -56,7 +56,7 @@ function isGeminiDailyQuota(err) {
 
 // ─── Provider calls ──────────────────────────────────────────────────────────
 
-async function callGroq(prompt, { jsonMode, maxTokens, temperature, model }) {
+async function callGroq(prompt, { jsonMode, maxTokens, temperature, model, signal }) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error('No GROQ_API_KEY');
 
@@ -74,6 +74,7 @@ async function callGroq(prompt, { jsonMode, maxTokens, temperature, model }) {
   const RETRY_DELAYS_MS = [0, 1000, 2500];
   let lastErr = null;
   for (let attempt = 0; attempt < RETRY_DELAYS_MS.length; attempt++) {
+    signal?.throwIfAborted();
     if (RETRY_DELAYS_MS[attempt] > 0) {
       await new Promise(r => setTimeout(r, RETRY_DELAYS_MS[attempt]));
     }
@@ -83,6 +84,7 @@ async function callGroq(prompt, { jsonMode, maxTokens, temperature, model }) {
         body,
         {
           timeout: 15000,
+          signal,
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${apiKey}`,
@@ -136,7 +138,8 @@ function markKeyExhausted(name) {
   geminiKeyCooldowns.set(name, tomorrowUtc05());
 }
 
-async function callGeminiSingleKey(prompt, key, { jsonMode, maxTokens, temperature }) {
+async function callGeminiSingleKey(prompt, key, { jsonMode, maxTokens, temperature, signal }) {
+  signal?.throwIfAborted();
   const body = {
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
@@ -149,7 +152,7 @@ async function callGeminiSingleKey(prompt, key, { jsonMode, maxTokens, temperatu
   const res = await axios.post(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${key}`,
     body,
-    { timeout: 20000 }
+    { timeout: 20000, signal }
   );
 
   const text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -166,6 +169,7 @@ async function callGemini(prompt, opts) {
 
   let lastErr = null;
   for (const { name, value } of keys) {
+    opts.signal?.throwIfAborted();
     if (isKeyOnCooldown(name)) {
       console.log(`[gemini] skipping ${name} (on cooldown)`);
       continue;
@@ -211,8 +215,10 @@ export async function callLLM(prompt, opts = {}) {
     temperature = 0.6,
     tag         = '[llm]',
     model       = null,
+    signal      = undefined,
   } = opts;
-  const callOpts = { jsonMode, maxTokens, temperature, model };
+  signal?.throwIfAborted();
+  const callOpts = { jsonMode, maxTokens, temperature, model, signal };
 
   const groqOnCooldown = groqQuotaExhausted && Date.now() < groqQuotaResetAt;
 
@@ -241,6 +247,7 @@ export async function callLLM(prompt, opts = {}) {
   }
 
   // ── Fallback: Gemini (multi-key rotation) ─────────────────────────────────
+  signal?.throwIfAborted();
   // callGemini internally rotates through all auto-discovered GEMINI_API_KEY*
   // env vars. Each key has its own per-day quota; sticky cooldown marks
   // exhausted keys until the 00:05 UTC reset.
