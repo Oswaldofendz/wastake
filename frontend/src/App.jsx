@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Navbar }    from './components/Navbar.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
 import {ReleaseNotice} from './components/ReleaseNotice.jsx';
@@ -13,6 +13,7 @@ import { useAuth }   from './hooks/useAuth.js';
 import { useAlerts } from './hooks/useAlerts.js';
 import { useBrowserNotifications } from './hooks/useBrowserNotifications.js';
 import { usePWAInstall }           from './hooks/usePWAInstall.js';
+const AgentCharts=lazy(()=>import('./pages/AgentCharts.jsx'));
 
 // ── Hook: favicon dinámico con variación de BTC ───────────────────────────────
 function useDynamicFavicon(allAssets) {
@@ -78,14 +79,14 @@ export default function App() {
 
   const [currentPage, setCurrentPage] = useState(() => {
     const hash = window.location.hash.replace('#', '');
-    const valid = ['dashboard', 'panorama', 'markets', 'portfolio', 'alerts', 'screener', 'fundamentals'];
+    const valid = ['dashboard', 'panorama', 'markets', 'portfolio', 'alerts', 'screener', 'fundamentals', 'chart-ai'];
     return valid.includes(hash) ? hash : 'dashboard';
   });
 
   useEffect(() => {
     const sync = () => {
       const route = window.location.hash.slice(1);
-      if (['dashboard', 'panorama', 'markets', 'portfolio', 'alerts', 'screener', 'fundamentals'].includes(route)) setCurrentPage(route);
+      if (['dashboard', 'panorama', 'markets', 'portfolio', 'alerts', 'screener', 'fundamentals', 'chart-ai'].includes(route)) setCurrentPage(route);
     };
     window.addEventListener('hashchange', sync);
     return () => window.removeEventListener('hashchange', sync);
@@ -148,6 +149,8 @@ export default function App() {
       <div className="flex-1 flex flex-col min-h-0">
         {currentPage === 'dashboard' ? (
           <Dashboard marketData={marketData}/>
+        ) : currentPage === 'chart-ai' ? (
+          <Suspense fallback={<p role="status" className="p-6 text-slate-400">…</p>}><AgentCharts marketData={marketData}/></Suspense>
         ) : currentPage === 'panorama' ? (
           <Panorama />
         ) : currentPage === 'markets' ? (

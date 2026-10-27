@@ -15,6 +15,7 @@ const NAV_GROUPS = [
     { id: 'screener', labelKey: 'nav_screener', icon: '🔍' },
   ] },
   { id: 'analyze', titleKey: 'nav_group_analyze', items: [
+    { id: 'chart-ai', labelKey: 'chart_ai', icon: '✦' },
     { id: 'panorama', labelKey: 'nav_panorama', icon: '🚦' },
     { id: 'fundamentals', labelKey: 'nav_fundamentals', icon: '🧭' },
   ] },
@@ -93,7 +94,7 @@ export function Navbar({
           </button>
 
           {/* Desktop nav — hidden below lg */}
-          <nav className="hidden lg:flex items-center gap-1">
+          <nav className="hidden xl:flex items-center gap-1">
             {NAV_GROUPS.map((group, groupIndex) => (
               <div key={group.id} className={`flex items-center gap-0.5 ${groupIndex ? 'ml-1 border-l border-slate-700/70 pl-1' : ''}`}>
                 {group.items.map(item => (
@@ -118,7 +119,7 @@ export function Navbar({
         {/* Right side */}
         <div className="flex items-center gap-2 flex-shrink-0">
           {lastUpdated && (
-            <div className="hidden xl:flex items-center gap-1.5 text-xs whitespace-nowrap">
+            <div className="hidden 2xl:flex items-center gap-1.5 text-xs whitespace-nowrap">
               {isStale ? (
                 <span
                   className="flex items-center gap-1 text-amber-400"
@@ -177,7 +178,7 @@ export function Navbar({
           {/* Hamburger — visible below lg */}
           <button
             onClick={() => setMenuOpen(o => !o)}
-            className="lg:hidden px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors min-h-[44px] flex items-center justify-center gap-2"
+            className="xl:hidden px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors min-h-[44px] flex items-center justify-center gap-2"
             aria-label={t(menuOpen ? 'nav_close_menu' : 'nav_open_menu')}
             aria-expanded={menuOpen}
             aria-controls="mobile-main-navigation"
@@ -193,7 +194,7 @@ export function Navbar({
 
       {/* Mobile dropdown menu */}
       {menuOpen && (
-        <div className="lg:hidden fixed inset-0 z-30 top-[72px]" onClick={() => setMenuOpen(false)}>
+        <div className="xl:hidden fixed inset-0 z-30 top-[72px]" onClick={() => setMenuOpen(false)}>
           <div className="absolute inset-0 bg-black/50" />
           <div className="absolute top-0 left-0 right-0 bg-slate-900 border-b border-slate-700/50 shadow-2xl" onClick={e => e.stopPropagation()}>
             <nav id="mobile-main-navigation" className="px-4 py-3 space-y-3" aria-label={t('nav_label')}>

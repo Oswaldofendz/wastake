@@ -13,6 +13,9 @@ test('chart commands are explicit, multilingual, bounded and never evaluate arbi
  assert.deepEqual(chartActions('Añade EMA 50 y 200'),[{type:'ema',period:50,enabled:true},{type:'ema',period:200,enabled:true}]);
  assert.deepEqual(chartActions('Add RSI and show volume'),[{type:'rsi',enabled:true},{type:'volume',enabled:true}]);
  assert.deepEqual(chartActions('Mudar velas para 4 horas'),[{type:'interval',value:'4h'}]);
+ assert.deepEqual(chartActions('Limpa o gráfico'),[{type:'clear'}]);
+ assert.deepEqual(chartActions('Foca a maior queda'),[{type:'focus',value:'drop'}]);
+ assert.deepEqual(chartActions('Não adiciona EMA 50'),[]);
  assert.deepEqual(chartActions('Oculta soportes y resistencias'),[{type:'levels',enabled:false}]);
  assert.deepEqual(chartActions('No añadas EMA 50'),[]);assert.deepEqual(chartActions('What does RSI mean?'),[]);
  assert.deepEqual(chartActions('fetch secrets; execute javascript'),[]);

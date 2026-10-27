@@ -14,12 +14,12 @@ const intervals={'15m':900,'4h':14400,'1d':86400};
 const normalize=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 export function chartActions(message){
  const q=normalize(message),actions=[];
- if(/\b(no|not|don't|nao)\s+(add|show|pon|muestra|agrega|anad\w*|mostr\w*)\b/.test(q))return [];
+ if(/\b(no|not|don't|nao)\s+(add|show|pon|muestra|agrega|adicion\w*|anad\w*|mostr\w*)\b/.test(q))return [];
  const add=/\b(add|show|mark|draw|plot|pon|anade|agrega|muestra|marca|dibuja|traza|activar|activa|adiciona|mostra|marque|desenha|coloca)\b/.test(q);
  const remove=/\b(remove|hide|delete|quita|oculta|elimina|borra|desactiva|remova|ocultar|tira)\b/.test(q);
  if(/\b(undo|deshacer|deshaz|desfazer)\b/.test(q))return [{type:'undo'}];
  if(/\b(reset|restablece|restaurar|reinicia|reiniciar)\b/.test(q))return [{type:'reset'}];
- if(/\b(limpia|limpiar|limpar|clean|clear)\b|(?:quita|borra|elimina|remove) (?:todo|everything|all)/.test(q))return [{type:'clear'}];
+ if(/\b(limpia|limpiar|limpa|limpar|clean|clear)\b|(?:quita|borra|elimina|remove) (?:todo|everything|all)/.test(q))return [{type:'clear'}];
  if((add||remove)&&/soporte|resistencia|support|resistance|niveles|levels|niveis/.test(q))actions.push({type:'levels',enabled:!remove});
  if((add||remove)&&/\b(ema|emas|media|medias|moving average)\b/.test(q)){
   const periods=[...new Set((q.match(/\b(?:20|50|200)\b/g)??[]).map(Number))];
@@ -33,7 +33,7 @@ export function chartActions(message){
   else if(/\b4\s*(h|horas|hours)\b/.test(q))actions.push({type:'interval',value:'4h'});
   else if(/\b1\s*(d|dia|day)\b|diari|daily/.test(q))actions.push({type:'interval',value:'1d'});
  }
- if(/zoom|acerca|enfoca|foco|amplia|focus/.test(q)){
+ if(/zoom|acerca|enfoca|foca|foco|amplia|focus/.test(q)){
   if(/caida|drop|crash|bajada|queda/.test(q))actions.push({type:'focus',value:'drop'});
   else actions.push({type:'focus',value:'recent'});
  }
