@@ -1,4 +1,5 @@
 const rows={
+ impact_ticker_title:['Última hora','Market news','Última hora'],impact_pause:['Pausar noticias','Pause news','Pausar notícias'],impact_resume:['Reanudar noticias','Resume news','Retomar notícias'],impact_details:['Abrir o cerrar detalles de las alertas','Open or close alert details','Abrir ou fechar detalhes dos alertas'],
  impact_context:['Por qué importa y cómo interpretarlo','Why it matters and how to read it','Porque importa e como interpretar'],
  impact_title:['Alertas de mercado','Market alerts','Alertas de mercado'],
  impact_refresh:['Comprobar noticias','Check news','Consultar notícias'],

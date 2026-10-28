@@ -1,3 +1,4 @@
+import {rememberPublicNews} from '../utils/publicNewsCache.js';
 import { ANALYSIS_DAYS } from '../utils/marketConventions.js';
 export const fetchOpportunities=()=>get('/api/market/opportunities',45000);
 export const fetchMarketImpactAlerts=signal=>get('/api/market/impact-alerts',65000,signal);
@@ -81,11 +82,12 @@ export const fetchNews = (id, type = 'crypto', options = {}) => {
 };
 
 // Public news enriched by the backend with localized, evidence-linked AI analysis.
-export const fetchFundamentalsNews = (asset, type = 'crypto', lang = 'es', stage = 'analysis') => {
-  const qs = new URLSearchParams({ type, name: asset.name ?? '', symbol: asset.symbol ?? '', lang, stage });
-  // The backend may read and analyze several public articles; bound the wait
-  // so transient provider delays cannot leave the Fundamentals view loading forever.
-  return get(`/api/fundamentals/${encodeURIComponent(asset.id)}?${qs}`, stage === 'headlines' ? 20_000 : 60_000);
+export const fetchFundamentalsNews = async(asset,type='crypto',lang='es',stage='analysis')=>{
+ const qs=new URLSearchParams({type,name:asset.name??'',symbol:asset.symbol??'',lang,stage});
+ const read=async()=>{const result=await get(`/api/fundamentals/${encodeURIComponent(asset.id)}?${qs}`,65000);rememberPublicNews(asset,type,lang,result);return result;};
+ let result=await read();
+ if(stage==='analysis'){const deadline=Date.now()+55000;while(result.revalidating&&Date.now()<deadline){await new Promise(resolve=>setTimeout(resolve,5000));result=await read();}}
+ return result;
 };
 
 // Fear & Greed Index (alternative.me)

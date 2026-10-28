@@ -23,7 +23,7 @@ test('chart commands are explicit, multilingual, bounded and never evaluate arbi
  assert.deepEqual(chartActions('fetch secrets; execute javascript'),[]);
 });
 test('chart reducer ignores unapproved actions and clear/undo history can preserve the original settings',()=>{
- const start=initialWorkspace(),next=applyChartActions(start,[{type:'ema',period:200,enabled:true},{type:'eval',code:'bad'},{type:'interval',value:'5m'}]);
+ const start=initialWorkspace(),next=applyChartActions(start,[{type:'ema',period:200,enabled:true},{type:'eval',code:'bad'},{type:'interval',value:'7m'}]);
  assert.deepEqual(start.ema,[20,50]);assert.deepEqual(next.ema,[20,50,200]);assert.equal(next.interval,'1d');
  const clear=applyChartActions(next,[{type:'clear'}]);assert.deepEqual(clear.ema,[]);assert.equal(clear.levels,false);
  assert.ok(applyChartActions(start,[{type:'focus',value:'recent'}]).focusToken>start.focusToken);

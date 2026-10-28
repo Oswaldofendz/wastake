@@ -1,3 +1,4 @@
+import {expandedStudies} from '../utils/expandedChartMath.js';
 import {atrAdxPoints,stochasticPoints,obvPoints,vwapPoints} from '../utils/advancedChartMath.js';
 import {forwardRef,useEffect,useMemo,useImperativeHandle,useRef,useState} from 'react';
 import {createChart,ColorType,LineStyle} from 'lightweight-charts';
@@ -10,7 +11,7 @@ import {DrawingOverlay} from './ChartDrawings.jsx';
 export const AgentCanvas=forwardRef(function AgentCanvas({snapshot,asset,workspace,comparison,tool,setTool,onDrawings,selectedId,onSelect},ref){
  const main=useRef(null),surface=useRef(null),rsi=useRef(null),macd=useRef(null),api=useRef(null),panes=useRef([]),saved=useRef(null);
  const advancedNodes=useRef({});
- const advanced=useMemo(()=>{const closed=snapshot.candles.filter(c=>c.time<=snapshot.asOf),a=atrAdxPoints(closed);return {...a,stoch:stochasticPoints(closed),obv:obvPoints(closed),vwap:vwapPoints(closed,snapshot.intervalSeconds)};},[snapshot]);
+ const advanced=useMemo(()=>{const closed=snapshot.candles.filter(c=>c.time<=snapshot.asOf),a=atrAdxPoints(closed);return {...a,...expandedStudies(closed),stoch:stochasticPoints(closed),obv:obvPoints(closed),vwap:vwapPoints(closed,snapshot.intervalSeconds)};},[snapshot]);
  const [handle,setHandle]=useState(null);
  const {t,i18n}=useTranslation();
  const performance=comparison?sharedPerformance(snapshot.candles.filter(c=>c.time<=snapshot.asOf),comparison.candles.filter(c=>c.time<=comparison.asOf)):null;
@@ -33,12 +34,12 @@ export const AgentCanvas=forwardRef(function AgentCanvas({snapshot,asset,workspa
    ctx.fillStyle='#94a3b8';ctx.font=`${10*scale}px system-ui`;ctx.fillText(`${snapshot.source} · ${new Date(snapshot.asOf*1000).toISOString()} · ${t('agent_limits')}`,16*scale,canvas.height-16*scale,canvas.width-32*scale);
    canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob),a=document.createElement('a');a.download=`WaStake-${asset.symbol}-${snapshot.interval}.png`;a.href=url;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);},'image/png');
  }}),[snapshot,asset,i18n.language,compareMode]);
- const studiesKey=JSON.stringify([workspace.ema,workspace.sma,workspace.rsi,workspace.macd,workspace.volume,workspace.bollinger,workspace.focus,workspace.focusToken,workspace.atr,workspace.adx,workspace.stoch,workspace.obv,workspace.vwap]);
+ const studiesKey=JSON.stringify([workspace.ema,workspace.sma,workspace.rsi,workspace.macd,workspace.volume,workspace.bollinger,workspace.focus,workspace.focusToken,workspace.atr,workspace.adx,workspace.stoch,workspace.obv,workspace.vwap,workspace.cci,workspace.mfi,workspace.williams,workspace.roc,workspace.cmf,workspace.donchian,workspace.keltner]);
  useEffect(()=>{
    if(!main.current||!snapshot?.candles?.length)return;
    const all=snapshot.candles,closed=all.filter(c=>c.time<=snapshot.asOf);
    const text=getComputedStyle(main.current).getPropertyValue('--text-primary').trim()||'#cbd5e1',background=getComputedStyle(main.current).getPropertyValue('--bg-card').trim()||'#111318';
-   const common={autoSize:false,layout:{background:{type:ColorType.Solid,color:background},textColor:text,fontFamily:'Inter, system-ui, sans-serif',fontSize:11},grid:{vertLines:{color:'#64748b0b'},horzLines:{color:'#64748b12'}},timeScale:{borderVisible:false,timeVisible:snapshot.interval!=='1d',secondsVisible:false},localization:{locale:i18n.language}};
+   const common={autoSize:false,layout:{background:{type:ColorType.Solid,color:background},textColor:text,fontFamily:'Inter, system-ui, sans-serif',fontSize:11},grid:{vertLines:{color:'#64748b0b'},horzLines:{color:'#64748b12'}},timeScale:{borderVisible:false,timeVisible:snapshot.intervalSeconds<86400,secondsVisible:false},localization:{locale:i18n.language}};
    const observers=[];
    const makeChart=(node,options)=>{const instance=createChart(node,{...common,width:node.clientWidth,height:node.clientHeight,...options});const observer=new ResizeObserver(()=>{const range=instance.timeScale().getVisibleLogicalRange();instance.resize(node.clientWidth,node.clientHeight);if(range)instance.timeScale().setVisibleLogicalRange(range);});observer.observe(node);observers.push(observer);return instance;};
    const chart=makeChart(main.current,{rightPriceScale:{borderVisible:false,scaleMargins:{top:.10,bottom:workspace.volume&&!compareMode ? .22 : .10}}});api.current=chart;
@@ -54,6 +55,7 @@ export const AgentCanvas=forwardRef(function AgentCanvas({snapshot,asset,workspa
      for(const period of workspace.ema){const line=chart.addLineSeries({color:({20:'#38bdf8',50:'#a78bfa',200:'#fbbf24'})[period],lineWidth:1,title:`EMA ${period}`,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,priceFormat});line.setData(emaSeries(closed,period));}
      for(const period of workspace.sma??[]){const line=chart.addLineSeries({color:'#fb923c',lineWidth:1,lineStyle:LineStyle.Dashed,title:`SMA ${period}`,priceLineVisible:false,lastValueVisible:false,priceFormat});line.setData(smaPoints(closed,period));}
      if(workspace.bollinger)for(const key of ['upper','middle','lower']){const line=chart.addLineSeries({color:key==='middle'?'#94a3b8':'#38bdf85c',lineWidth:1,lineStyle:LineStyle.Dotted,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});line.setData(bollingerPoints(closed).map(b=>({time:b.time,value:b[key]})));}
+     for(const kind of ['donchian','keltner'])if(workspace[kind])for(const field of ['upper','middle','lower']){const line=chart.addLineSeries({color:kind==='donchian'?'#fbbf24aa':'#fb923caa',lineWidth:1,lineStyle:LineStyle.Dashed,title:kind==='donchian'?'Donchian 20':'Keltner 20/10/2',priceLineVisible:false,lastValueVisible:false,priceFormat});line.setData(advanced[kind].map(p=>({time:p.time,value:p[field]})));}
      if(workspace.vwap&&advanced.vwap.length){const v=chart.addLineSeries({color:'#fbbf24',lineWidth:2,title:'VWAP · UTC',priceLineVisible:false,priceFormat});v.setData(advanced.vwap);}
      if(workspace.volume){const volume=chart.addHistogramSeries({priceScaleId:'volume',priceFormat:{type:'volume'},priceLineVisible:false,lastValueVisible:false});volume.priceScale().applyOptions({scaleMargins:{top:.84,bottom:0}});volume.setData(all.filter(c=>Number.isFinite(c.volume)).map(c=>({time:c.time,value:c.volume,color:c.close>=c.open?'#20c99738':'#fb718538'})));}
      setHandle({id:crypto.randomUUID(),chart,series,candles:all});
@@ -73,12 +75,13 @@ export const AgentCanvas=forwardRef(function AgentCanvas({snapshot,asset,workspa
      pane.addLineSeries({color:'#38bdf8',lineWidth:1,priceLineVisible:false,lastValueVisible:false}).setData(data.line);
      pane.addLineSeries({color:'#fbbf24',lineWidth:1,priceLineVisible:false,lastValueVisible:false}).setData(data.signal);oscillators.push({chart:pane,label:'MACD 12/26/9'});
    }
-   for(const key of ['atr','adx','stoch','obv'])if(!compareMode&&workspace[key]&&advancedNodes.current[key]&&advanced[key].length){
+   for(const key of ['atr','adx','stoch','obv','cci','mfi','williams','roc','cmf'])if(!compareMode&&workspace[key]&&advancedNodes.current[key]&&advanced[key].length){
      const pane=makeChart(advancedNodes.current[key],{handleScroll:false,handleScale:false,rightPriceScale:{borderVisible:false,scaleMargins:{top:.15,bottom:.15}}});
-     const bounded=['stoch','adx'].includes(key),opts={priceLineVisible:false,lastValueVisible:true,lineWidth:1,...(bounded?{autoscaleInfoProvider:()=>({priceRange:{minValue:0,maxValue:100}})}:{}),...(key==='obv'?{priceFormat:{type:'volume'}}:{})};
+     const bounded=['stoch','adx','mfi','williams','cmf'].includes(key),opts={priceLineVisible:false,lastValueVisible:true,lineWidth:1,...(bounded?{autoscaleInfoProvider:()=>({priceRange:{minValue:key==='williams'?-100:key==='cmf'?-1:0,maxValue:key==='williams'?0:key==='cmf'?1:100}})}:{}),...(key==='obv'?{priceFormat:{type:'volume'}}:{})};
      pane.addLineSeries({...opts,color:'#38bdf8',title:key.toUpperCase()}).setData(advanced[key].map(p=>({time:p.time,value:p.value})));
      if(key==='adx')for(const [field,color] of [['pdi','#34d399'],['mdi','#fb7185']])pane.addLineSeries({...opts,color,title:field==='pdi'?'+DI':'−DI',lastValueVisible:false}).setData(advanced.adx.map(p=>({time:p.time,value:p[field]})));
      if(key==='stoch')pane.addLineSeries({...opts,color:'#fbbf24',title:'%D',lastValueVisible:false}).setData(advanced.stoch.filter(p=>Number.isFinite(p.signal)).map(p=>({time:p.time,value:p.signal})));
+     for(const price of (key==='mfi'?[20,80]:key==='williams'?[-80,-20]:key==='cci'?[-100,100]:[]))pane.addLineSeries({color:'#64748b66',lineWidth:1,lineStyle:LineStyle.Dotted,priceLineVisible:false,lastValueVisible:false}).setData([{time:closed[0].time,value:price},{time:closed.at(-1).time,value:price}]);
      oscillators.push({chart:pane,label:key.toUpperCase()});
    }
    panes.current=oscillators;
@@ -90,7 +93,7 @@ export const AgentCanvas=forwardRef(function AgentCanvas({snapshot,asset,workspa
    <div ref={surface} className="relative min-h-[230px] flex-1"><div ref={main} role="img" aria-label={`${asset.symbol} · ${snapshot.interval} · ${t('chart_ai')}`} className="absolute inset-0"/>{!compareMode&&<DrawingOverlay handle={handle} drawings={workspace.drawings??[]} onChange={onDrawings} tool={tool} setTool={setTool} selectedId={selectedId} onSelect={onSelect}/>}</div>
    {!compareMode&&workspace.rsi&&<div className="shrink-0 border-t border-slate-700/40"><p className="px-2 pt-1 text-[10px] text-violet-300">RSI 14 · 30 / 70</p><div ref={rsi} role="img" aria-label={`RSI · ${asset.symbol}`} style={{height:95}}/></div>}
    {!compareMode&&workspace.macd&&<div className="shrink-0 border-t border-slate-700/40"><p className="px-2 pt-1 text-[10px] text-sky-300">MACD 12/26/9</p><div ref={macd} role="img" aria-label={`MACD · ${asset.symbol}`} style={{height:95}}/></div>}
-   {!compareMode&&['atr','adx','stoch','obv'].filter(key=>workspace[key]).map(key=><div key={key} className="shrink-0 border-t border-slate-700/40"><p className="px-2 pt-1 text-[10px] text-sky-300">{key.toUpperCase()}{key==='atr'?` · ${snapshot.currency??''}`:key==='adx'?' / +DI / −DI':key==='stoch'?' 14 / 3':''}</p>{advanced[key].length?<div ref={node=>{advancedNodes.current[key]=node;}} role="img" aria-label={`${key.toUpperCase()} · ${asset.symbol}`} style={{height:95}}/>:<p role="status" className="p-2 text-xs text-amber-200">{t('ui_indicator_missing')}</p>}</div>)}
+   {!compareMode&&['atr','adx','stoch','obv','cci','mfi','williams','roc','cmf'].filter(key=>workspace[key]).map(key=><div key={key} className="shrink-0 border-t border-slate-700/40"><p className="px-2 pt-1 text-[10px] text-sky-300">{key.toUpperCase()}{key==='atr'?` · ${snapshot.currency??''}`:key==='adx'?' / +DI / −DI':key==='stoch'?' 14 / 3':''}</p>{advanced[key].length?<div ref={node=>{advancedNodes.current[key]=node;}} role="img" aria-label={`${key.toUpperCase()} · ${asset.symbol}`} style={{height:95}}/>:<p role="status" className="p-2 text-xs text-amber-200">{t('ui_indicator_missing')}</p>}</div>)}
    {!compareMode&&workspace.vwap&&<p className="px-2 py-1 text-[10px] text-amber-200">{t(advanced.vwap.length?'ui_vwap_method':'ui_vwap_missing')}</p>}
    {comparison&&<p role="status" className="shrink-0 px-2 py-1 text-[10px] leading-4 text-slate-400">{t(compareMode?'studio_compare_note':'studio_compare_missing')}{compareMode&&` · ${performance.count} · ${new Date(performance.from*1000).toISOString().slice(0,10)}`}</p>}
    <p className="shrink-0 px-2 py-1 text-[9px] text-slate-500">TradingView Lightweight Charts™ · <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer" className="underline">TradingView</a></p>

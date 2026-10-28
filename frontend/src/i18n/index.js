@@ -1,3 +1,4 @@
+import {cycleCopy} from './cycleCopy.js';
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
@@ -747,6 +748,8 @@ for (const [lang, copy] of Object.entries(studioCopy)) Object.assign(resources[l
 
 for (const [lang, copy] of Object.entries(reorganizationCopy)) Object.assign(resources[lang].translation, copy);
 for (const [lang, copy] of Object.entries(impactCopy)) Object.assign(resources[lang].translation, copy);
+
+for (const [lang,copy] of Object.entries(cycleCopy)) Object.assign(resources[lang].translation,copy);
 
 i18n
   .use(LanguageDetector)

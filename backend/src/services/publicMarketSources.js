@@ -5,7 +5,7 @@ const cache=new Map(),once=createSingleFlight();
 const PAIRS={bitcoin:['XBTUSD','BTC-USD'],ethereum:['ETHUSD','ETH-USD'],solana:['SOLUSD','SOL-USD'],ripple:['XRPUSD','XRP-USD'],cardano:['ADAUSD','ADA-USD'],dogecoin:['XDGUSD','DOGE-USD'],litecoin:['LTCUSD','LTC-USD'],'bitcoin-cash':['BCHUSD','BCH-USD'],chainlink:['LINKUSD','LINK-USD'],polkadot:['DOTUSD','DOT-USD'],'avalanche-2':['AVAXUSD','AVAX-USD'],stellar:['XLMUSD','XLM-USD'],uniswap:['UNIUSD','UNI-USD'],near:['NEARUSD','NEAR-USD']};
 const ALIASES=Object.fromEntries(Object.entries(PAIRS).map(([id,pairs])=>[pairs[1],id]));
 export const exchangeIdentity=id=>PAIRS[ALIASES[id]??id]??null;
-const SECONDS={'15m':900,'4h':14400,'1d':86400};
+const SECONDS={'1m':60,'5m':300,'15m':900,'30m':1800,'1h':3600,'4h':14400,'1d':86400,'1w':604800};
 export function validBars(input=[],now=Date.now()){
  return [...new Map(input.filter(c=>[c.time,c.open,c.high,c.low,c.close].every(Number.isFinite)&&c.time<=now/1000&&c.time>0&&c.low>0&&c.high>=Math.max(c.open,c.close)&&c.low<=Math.min(c.open,c.close)).map(c=>[c.time,c])).values()].sort((a,b)=>a.time-b.time);
 }
@@ -33,7 +33,7 @@ export async function getExchangeCandles(id,interval='1d',preferred='auto'){
  return once(key,async()=>{
   for(const provider of preferred==='auto'?['Kraken','Coinbase']:[preferred]){
    try{
-    const kraken=provider==='Kraken',seconds=SECONDS[interval];
+    const kraken=provider==='Kraken',seconds=SECONDS[interval];if(!kraken&&['30m','1w'].includes(interval))continue;
     const {data}=await axios.get(kraken?'https://api.kraken.com/0/public/OHLC':`https://api.exchange.coinbase.com/products/${pair[1]}/candles`,{params:kraken?{pair:pair[0],interval:seconds/60}:{granularity:interval==='4h'?3600:seconds},timeout:7000,headers:{'User-Agent':'WaStake/1.0'}});
     let candles=parseExchangeBars(data,provider);
     if(!kraken&&interval==='4h')candles=aggregateHours(candles.slice(-300));

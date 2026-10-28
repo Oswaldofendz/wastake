@@ -1,3 +1,5 @@
+import {liquidityZones} from '../../../frontend/src/utils/expandedChartMath.js';
+import {intervalInfo} from '../../../frontend/src/utils/chartIntervals.js';
 import {fairValueGaps} from '../../../frontend/src/utils/advancedChartMath.js';
 import crypto from 'node:crypto';
 
@@ -9,15 +11,16 @@ export function requestedTools(message){
  const removing=/quita|remove|elimina|oculta|hide|remov|retira/.test(q);
  if(/\bimbalance\b|desequilibri|\bfvg\b|fair value gap/.test(q)&&!negatesChartAction(message)){if(removing)return [{name:'removeFvg'}];tools.push({name:'draw',drawing:'fvg'});}
  if(negatesChartAction(message))return [];
+ if(/liquidez|liquidity|liquidez/.test(q)){if(removing)return [{name:'removeLiquidity'}];tools.push({name:'draw',drawing:'liquidity'});}
  const draw=/dibuj|draw|mark|marca|traz|trac|plot|pon |coloca|muestra|mostra|anade|adiciona|\badd\b|\bshow\b|estructura actual|current (setup|structure)|estrutura atual/.test(q);
  if(draw){
   if(/soporte|resistencia|support|resistance|niveles|levels|niveis|estructura actual|current (setup|structure)|estrutura atual/.test(q))tools.push({name:'draw',drawing:'levels'});
   if(/canal|channel/.test(q))tools.push({name:'draw',drawing:'channel'});
   else if(/tendencia|trend|tendencia|estructura actual|current (setup|structure)|estrutura atual/.test(q))tools.push({name:'draw',drawing:'trend'});
   if(/fibonac|retroces|retrac/.test(q))tools.push({name:'draw',drawing:'fib'});
-  if((/rango|range|consolidac/.test(q)||(/zona/.test(q)&&!tools.some(t=>t.drawing==='fvg')))&&!/fibonac/.test(q))tools.push({name:'draw',drawing:'range'});
+  if((/rango|range|consolidac/.test(q)||(/zona/.test(q)&&!tools.some(t=>['fvg','liquidity'].includes(t.drawing))))&&!/fibonac/.test(q))tools.push({name:'draw',drawing:'range'});
  }
- if(/\b(atr|adx|stoch|stochastic|estocastico|obv|vwap)\b/.test(q))for(const [pattern,indicator] of [[/\batr\b/,'atr'],[/\badx\b/,'adx'],[/stoch|estocastico/,'stoch'],[/\bobv\b/,'obv'],[/\bvwap\b/,'vwap']])if(pattern.test(q))tools.push({name:'indicator',indicator,enabled:!removing});
+ if(/\b(atr|adx|stoch|stochastic|estocastico|obv|vwap|cci|mfi|williams|roc|cmf|donchian|keltner)\b/.test(q))for(const [pattern,indicator] of [[/\batr\b/,'atr'],[/\badx\b/,'adx'],[/stoch|estocastico/,'stoch'],[/\bobv\b/,'obv'],[/\bvwap\b/,'vwap'],...['cci','mfi','williams','roc','cmf','donchian','keltner'].map(k=>[new RegExp('\\b'+k+'\\b'),k])])if(pattern.test(q))tools.push({name:'indicator',indicator,enabled:!removing});
  if(/\b(sma|ma)\s*(50|200)\b/.test(q)&&draw)for(const m of q.matchAll(/\b(?:sma|ma)\s*(50|200)\b/g))tools.push({name:'indicator',indicator:'sma',period:Number(m[1]),enabled:true});
  if(draw&&/macd/.test(q))tools.push({name:'indicator',indicator:'macd',enabled:true});
  if(/compar|superpon|overlay|sobrepo|\bvs\b/.test(q)&&!/\bema|\bsma|\brsi|medias|averages/.test(q)){
@@ -34,15 +37,15 @@ export function validateToolPlan(input,context={}){
  const tools=[];
  for(const value of input.slice(0,8)){
   if(!value||typeof value!=='object')continue;
-  if(value.name==='draw'&&['levels','trend','channel','fib','range','fvg'].includes(value.drawing))tools.push({name:'draw',drawing:value.drawing});
-  else if(value.name==='indicator'&&['ema','sma','rsi','bollinger','volume','macd','atr','adx','stoch','obv','vwap'].includes(value.indicator)&&typeof value.enabled==='boolean'){
+  if(value.name==='draw'&&['levels','trend','channel','fib','range','fvg','liquidity'].includes(value.drawing))tools.push({name:'draw',drawing:value.drawing});
+  else if(value.name==='indicator'&&['ema','sma','rsi','bollinger','volume','macd','atr','adx','stoch','obv','vwap','cci','mfi','williams','roc','cmf','donchian','keltner'].includes(value.indicator)&&typeof value.enabled==='boolean'){
     if(['ema','sma'].includes(value.indicator)&&![20,50,200].includes(value.period))continue;
     tools.push({name:'indicator',indicator:value.indicator,...(['ema','sma'].includes(value.indicator)?{period:value.period}:{}),enabled:value.enabled});
   }
   else if(value.name==='focus'&&['recent','drop','all'].includes(value.mode))tools.push({name:'focus',mode:value.mode});
-  else if(value.name==='interval'&&['1d','4h','15m'].includes(value.value))tools.push({name:'interval',value:value.value});
+  else if(value.name==='interval'&&Boolean(intervalInfo(value.value)))tools.push({name:'interval',value:value.value});
   else if(value.name==='remove'&&context.drawings?.some(d=>d.id===value.id))tools.push({name:'remove',id:value.id});
-  else if(value.name==='removeFvg')tools.push({name:'removeFvg'});
+  else if(['removeFvg','removeLiquidity'].includes(value.name))tools.push({name:value.name});
   else if(value.name==='clear')tools.push({name:'clear'});
   else if(value.name==='compare'&&['Kraken','Coinbase'].includes(value.venue))tools.push({name:'compare',venue:value.venue});
   else if(value.name==='compare'&&typeof value.query==='string'&&/^[A-Za-z0-9^=._-]{2,30}$/.test(value.query))tools.push({name:'compare',query:value.query});
@@ -76,6 +79,7 @@ export function executeTools(snapshot,input,context={},lang='es'){
  for(const tool of tools){
   if(tool.name==='draw'){
    drawingTool=tool.drawing;
+   if(tool.drawing==='liquidity'){actions.push({type:'liquidity',enabled:true});for(const z of liquidityZones(closed)){const label=lang==='es'?`Liquidez potencial · ${z.kind==='high'?'máximos':'mínimos'}`:lang==='pt'?`Liquidez potencial · ${z.kind==='high'?'máximos':'mínimos'}`:`Potential liquidity · ${z.kind==='high'?'highs':'lows'}`;const reason=lang==='es'?'Agrupa al menos dos giros independientes confirmados con precios próximos. Se retira si el precio atraviesa la zona. Es una referencia basada en precios: no son órdenes observadas ni liquidaciones.':lang==='pt'?'Agrupa pelo menos duas viragens independentes confirmadas e próximas. Retira-se se o preço atravessar a zona. Não são ordens observadas nem liquidações.':'Groups at least two confirmed independent nearby swings. Retires if price crosses the zone. This price proxy is not observed orders or liquidations.';add('box',[{time:z.formedAt,price:z.lower},{time:closed.at(-1).time,price:z.upper}],label,reason,'#fbbf24');}}
    if(tool.drawing==='fvg')actions.push({type:'fvg',enabled:true});
    if(tool.drawing==='fvg')for(const z of fairValueGaps(closed,snapshot.intervalSeconds)){
     const label=`FVG ${z.direction==='bullish'?'↑':'↓'}`;
@@ -98,11 +102,11 @@ export function executeTools(snapshot,input,context={},lang='es'){
     const rows=closed.slice(-20);if(rows.length<5)continue;
     add('box',[{time:rows[0].time,price:Math.min(...rows.map(c=>c.low))},{time:rows.at(-1).time,price:Math.max(...rows.map(c=>c.high))}],w.range,w.rangeWhy,'#38bdf8');
    }
-  }else if(tool.name==='indicator'){if(tool.enabled&&['atr','adx','stoch','obv','vwap'].includes(tool.indicator)&&!Number.isFinite(snapshot.facts?.[tool.indicator]))unavailableIndicators.push(tool.indicator);else actions.push({type:tool.indicator,...(tool.period?{period:tool.period}:{}),enabled:tool.enabled});}
+  }else if(tool.name==='indicator'){if(tool.enabled&&['atr','adx','stoch','obv','vwap','cci','mfi','williams','roc','cmf','donchian','keltner'].includes(tool.indicator)&&!Number.isFinite(snapshot.facts?.[tool.indicator]))unavailableIndicators.push(tool.indicator);else actions.push({type:tool.indicator,...(tool.period?{period:tool.period}:{}),enabled:tool.enabled});}
   else if(tool.name==='focus')actions.push({type:'focus',value:tool.mode});
   else if(tool.name==='interval')actions.push({type:'interval',value:tool.value});
   else if(tool.name==='remove')actions.push({type:'removeDrawing',id:tool.id});
-  else if(tool.name==='removeFvg')actions.push({type:'removeFvg'});
+  else if(['removeFvg','removeLiquidity'].includes(tool.name))actions.push({type:tool.name});
   else if(tool.name==='clear')actions.push({type:'clear'});
   else if(tool.name==='compare')actions.push({type:'compare',...(tool.query?{query:tool.query}:{venue:tool.venue})});
   else if(tool.name==='uncompare')actions.push({type:'uncompare'});

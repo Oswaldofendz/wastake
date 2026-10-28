@@ -1,3 +1,4 @@
+import {intervalInfo} from '../../../frontend/src/utils/chartIntervals.js';
 import { Router } from 'express';
 import { CRYPTO_ASSETS } from '../services/priceService.js';
 import { catalogueMeta } from '../services/catalogueService.js';
@@ -70,7 +71,7 @@ priceRouter.get('/ohlcv/:id', async (req, res) => {
   const { id } = req.params;
   const { type = 'crypto', days = '7', interval = '1d', range = '3mo' } = req.query;
   if (!/^[A-Za-z0-9^=._-]{1,100}$/.test(id)) return res.status(400).json({ error: 'Invalid asset' });
-  if(!['1d','4h','15m'].includes(interval))return res.status(400).json({error:'Unsupported candle interval'});
+  if(!intervalInfo(interval))return res.status(400).json({error:'Unsupported candle interval'});
 
   try {
     if(interval!=='1d')return res.json({id,...await getIntradayCandles(id,type,interval)});

@@ -1,3 +1,4 @@
+import {cachedPublicNews} from '../utils/publicNewsCache.js';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ALL_ASSETS, getAnalysisType } from '../data/assetCatalog.js';
@@ -77,6 +78,7 @@ export function Fundamentals() {
   const [analyzing, setAnalyzing] = useState(false);
   const [newsError, setNewsError] = useState('');
   const [priceError, setPriceError] = useState('');
+  const [newsAsOf,setNewsAsOf]=useState(null),[cachedView,setCachedView]=useState(false);
 
   const asset = assets.find(item => item.id === assetId) ?? assets[0];
   const selectedWindow = WINDOWS.find(window => window.id === periodId) ?? WINDOWS[0];
@@ -86,49 +88,27 @@ export function Fundamentals() {
     if (!asset) return undefined;
     let cancelled = false;
 
+    let timer;
     async function load() {
-      setLoading(true);
-      setAnalyzing(false);
-      setArticles([]);
-      setCandles([]);
-      setNewsError('');
-      setPriceError('');
-      const type = getAnalysisType(asset);
-      // Price history and headlines render independently; AI never blocks either.
-      fetchOHLCV(asset.id, type, { days: 90, interval: '1d', range: '3mo' })
-        .then(result => { if (!cancelled) setCandles(Array.isArray(result?.candles) ? result.candles : []); })
-        .catch(() => { if (!cancelled) setPriceError(translate('fundamentals_price_error')); });
-      let baseline;
-      try {
-        baseline = await fetchFundamentalsNews(asset, type, lang, 'headlines');
-        if (cancelled) return;
-        setArticles(Array.isArray(baseline?.news) ? baseline.news : []);
-      } catch {
-        if (cancelled) return;
-        setNewsError(translate('fundamentals_news_error'));
-        setLoading(false);
-        return;
-      }
-      setLoading(false);
-      if (!baseline?.news?.length) return;
-      setAnalyzing(true);
-      try {
-        const result = await fetchFundamentalsNews(asset, type, lang);
-        if (cancelled) return;
-        setArticles(Array.isArray(result?.news) ? result.news : baseline.news);
-      } catch {
-        if (cancelled) return;
-      } finally {
-        if (!cancelled) setAnalyzing(false);
-      }
+      const type=getAnalysisType(asset),cached=cachedPublicNews(asset,type,lang);
+      setLoading(!cached);setAnalyzing(true);setArticles(cached?.news??[]);setCachedView(Boolean(cached));setNewsAsOf(cached?.checkedAt??null);setCandles([]);setNewsError('');setPriceError('');
+      fetchOHLCV(asset.id,type,{days:90,interval:'1d',range:'3mo'}).then(result=>{if(!cancelled)setCandles(result?.candles??[]);}).catch(()=>{if(!cancelled)setPriceError(translate('fundamentals_price_error'));});
+      const read=async()=>{
+        try{const result=await fetchFundamentalsNews(asset,type,lang,'snapshot');if(cancelled)return;
+          setArticles(current=>JSON.stringify(current)===JSON.stringify(result.news)?current:result.news??[]);setNewsAsOf(result.checkedAt);setCachedView(result.stale);setLoading(false);setAnalyzing(result.revalidating);
+          setNewsError(result.sourceStatus==='unavailable'?translate('cycle_news_stale'):'');
+          if(result.revalidating)timer=setTimeout(read,5000);
+        }catch{if(!cancelled){setLoading(false);setAnalyzing(false);setNewsError(translate('fundamentals_news_error'));}}
+      };
+      await read();
     }
 
     load();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [asset?.id, refreshKey, lang]);
 
   useEffect(() => {
-    const pending = articles.filter(article => article.title && lang !== 'en'
+    const pending = articles.filter(article => article.title && !translatedTitles[`${lang}:${articleKey(article)}`] && lang !== 'en'
       && (!article.localizedTitle || article.localizedTitle.trim() === article.title.trim()));
     if (!pending.length) return undefined;
     let cancelled = false;
@@ -187,6 +167,7 @@ export function Fundamentals() {
       <p className="mt-4 text-xs leading-6 text-sky-200">{translate('ui_fund_steps')}</p>
     </header>
     <section aria-label={t.asset} className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-slate-700 bg-slate-900/40 p-3"><label htmlFor="fundamentals-asset" className="text-xs text-slate-400">🔎 {t.asset}</label><select id="fundamentals-asset" value={assetId} onChange={e=>setAssetId(e.target.value)} className="min-h-11 min-w-0 flex-[1_1_12rem] rounded-lg border border-slate-600 bg-slate-800 px-3 text-sm">{assetGroups.map(([category,items])=><optgroup key={category} label={category}>{items.map(item=><option translate="no" key={item.id} value={item.id}>{assetLabel(item)}</option>)}</optgroup>)}</select><div role="group" aria-label={t.period} className="flex rounded-xl border border-slate-700 p-1">{WINDOWS.map(window=><button type="button" key={window.id} onClick={()=>setPeriodId(window.id)} aria-pressed={window.id===periodId} className={`min-h-10 rounded-lg px-3 text-xs ${window.id===periodId?'bg-sky-900 text-sky-100':'text-slate-400'}`}>{window.label[lang]}</button>)}</div></section>
+    {newsAsOf&&<p className="mb-3 text-xs text-slate-400">{translate(cachedView?'cycle_cached_news':'cycle_news_asof')}: {formatDate(newsAsOf,lang)}{analyzing?` · ${translate('cycle_background')}`:''}</p>}
     {(newsError||priceError)&&<p role="status" className="mb-4 rounded-xl border border-amber-800 p-3 text-sm text-amber-200">{[newsError,priceError].filter(Boolean).join(' ')}</p>}
     <section className="mb-5 grid gap-3 sm:grid-cols-3" aria-label={translate('ui_fund_reviewed')}>
       <div className="rounded-xl border border-teal-800/50 bg-teal-950/15 p-4"><p className="text-xs text-teal-200">🧠 {translate('ui_fund_reviewed')}</p><p className="mt-2 text-2xl font-semibold">{assessed.length}<span className="text-sm font-normal text-slate-400"> / {periodArticles.length}</span></p><p className="mt-1 text-xs leading-5 text-slate-400">{translate('ui_fund_coverage',{assessed:assessed.length,total:periodArticles.length})}</p></div>

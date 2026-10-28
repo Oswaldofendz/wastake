@@ -1,3 +1,4 @@
+import {AssetLogo as AssetAvatar} from '../components/AssetLogo.jsx';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getAssetGroup } from '../data/assetSectors.js';
@@ -74,26 +75,6 @@ const GROUP_ORDER = [
   'staples', 'industrials', 'energy', 'growth', 'broad_market', 'crypto',
   'bonds', 'commodities', 'forex', 'indices', 'unclassified', 'other',
 ];
-
-function AssetAvatar({ asset }) {
-  if (asset.image) {
-    return (
-      <img
-        src={asset.image}
-        alt={asset.symbol}
-        className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-        onError={e => { e.target.style.display = 'none'; e.target.nextElementSibling?.style.removeProperty('display'); }}
-      />
-    );
-  }
-  const colors = TYPE_COLORS[asset.type] ?? TYPE_COLORS.etf;
-  const initials = (asset.symbol ?? asset.name ?? '?').slice(0, 2).toUpperCase();
-  return (
-    <div className={`w-8 h-8 rounded-full border flex items-center justify-center flex-shrink-0 ${colors}`}>
-      <span className="text-xs font-bold">{initials}</span>
-    </div>
-  );
-}
 
 // ─── Fila de la tabla ─────────────────────────────────────────────────────────
 function AssetRow({ asset, rank, t, showMarketCap, onSelect }) {
@@ -342,7 +323,6 @@ export function Screener({marketData}) {
       <div className="explorer-workspace">
         <aside className="explorer-sidebar" aria-label={t('browse_catalogue')}><h2 className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold"><span>📂 {t('ui_catalogue_short')}</span><span className="rounded-full bg-slate-800 px-2 py-1 text-xs text-slate-400">{filtered.length}</span></h2><p className="mb-3 text-xs leading-5 text-slate-400">{t('ui_catalogue_help')}</p>{catalogue}</aside>
         <div className="min-w-0">
-          {!inspectedAsset&&<OpportunityPanel embedded/>}
       {/* ── Panel de búsqueda y filtros ── */}
       <section className="mb-4 rounded-xl border border-white/[8%] bg-[var(--bg-card)] p-3 sm:p-4" aria-labelledby="screener-filters-title">
         <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
@@ -399,15 +379,16 @@ export function Screener({marketData}) {
         </p>
       )}
       </section>
+      </div></div>
+      {!inspectedAsset&&<OpportunityPanel embedded/>}
       {!inspectedAsset&&<MarketLeaders compact marketData={marketData} onSelect={setInspectedAsset}/>}
       {inspectedAsset && <section ref={inspectionRef} className="mb-4 scroll-mt-24 rounded-xl border border-sky-700/50 p-3">
-        <div className="mb-3 flex items-center justify-between gap-2"><h2 translate="no" className="font-semibold">{inspectedAsset.name} · {inspectedAsset.symbol}</h2><button type="button" onClick={()=>{setInspectedAsset(null);resetFilters();}} className="min-h-10 px-3" aria-label={t('catalogue_return')}>← {t('catalogue_return')}</button></div>
+        <div className="mb-3 flex items-center justify-between gap-2"><h2 translate="no" className="flex items-center gap-2 font-semibold"><AssetAvatar asset={inspectedAsset}/>{inspectedAsset.name} · {inspectedAsset.symbol}</h2><button type="button" onClick={()=>{setInspectedAsset(null);resetFilters();}} className="min-h-10 px-3" aria-label={t('catalogue_return')}>← {t('catalogue_return')}</button></div>
         <OpportunityPanel asset={inspectedAsset}/>
         <ImportantNews key={`news:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)}/>
         <AssetValuationCard key={`valuation:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)} technical={analysisSnapshot?.id===inspectedAsset.id&&analysisSnapshot?.type===inspectedAsset.type?analysisSnapshot:null}/><CandleChart key={`chart:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)}/><details className="mt-3 rounded-xl border border-slate-700 p-3"><summary className="min-h-8 cursor-pointer text-sm font-semibold">{t('audit_technical_details')}</summary><AnalysisPanel key={`analysis:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)} onAnalysis={setAnalysisSnapshot}/></details>
         <AnalysisNarrative key={`narrative:${inspectedAsset.type}:${inspectedAsset.id}`} asset={inspectedAsset}/>
       </section>}
-      </div></div>
     </div>
   );
 }

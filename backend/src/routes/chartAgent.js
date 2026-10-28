@@ -1,8 +1,9 @@
+import {intervalInfo} from '../../../frontend/src/utils/chartIntervals.js';
 import {Router} from 'express';
 import rateLimit from 'express-rate-limit';
 import {getChartSnapshot,askChartAgent} from '../services/chartAgentService.js';
 export const chartAgentRouter=Router();
-const valid=(id,type,interval)=>typeof id==='string'&&/^[A-Za-z0-9^=._-]{1,100}$/.test(id)&&['stock','crypto'].includes(type)&&['15m','4h','1d'].includes(interval);
+const valid=(id,type,interval)=>typeof id==='string'&&/^[A-Za-z0-9^=._-]{1,100}$/.test(id)&&['stock','crypto'].includes(type)&&Boolean(intervalInfo(interval));
 chartAgentRouter.get('/:id',async(req,res)=>{
  const {id}=req.params,{type='crypto',interval='1d',venue='auto'}=req.query;
  if(!valid(id,type,interval)||!['auto','Kraken','Coinbase'].includes(venue)||(type!=='crypto'&&venue!=='auto'))return res.status(400).json({error:'Invalid chart context'});

@@ -1,7 +1,5 @@
 import { Router } from 'express';
-import { getRawNewsForAsset } from '../services/newsService.js';
-import { scoreHeadline } from '../services/fundamentalScoringService.js';
-import { enrichFundamentalsNews } from '../services/fundamentalsAnalysisService.js';
+import {getNewsSnapshot} from '../services/newsSnapshotService.js';
 
 export const fundamentalsRouter = Router();
 
@@ -20,13 +18,8 @@ fundamentalsRouter.get('/:id', async (req, res) => {
   }
 
   try {
-    const headlines = await getRawNewsForAsset(id, type, aliases);
-    const baseline = headlines.map(scoreHeadline);
-    if (req.query.stage === 'headlines') {
-      return res.json({ id, type, lang, count: baseline.length, news: baseline, aiStatus: 'pending', analyzedCount: 0 });
-    }
-    const analysis = await enrichFundamentalsNews(baseline, lang, {id,type,aliases});
-    res.json({ id, type, lang, count: analysis.news.length, scoringVersion: 'keyword-rules-v1', ...analysis });
+    res.set('Cache-Control','no-store');
+    res.json(await getNewsSnapshot({id,type,aliases},lang,req.query.stage!=='headlines'));
   } catch (err) {
     console.error('[fundamentals route]', err.message);
     res.status(502).json({ error: 'Error al obtener titulares para Fundamentales' });

@@ -13,7 +13,7 @@ import { currentSelection } from '../utils/marketConventions.js';
 import { formatQuote } from '../utils/panoramaAnalysis.js';
 
 // Visible zoom only; every technical view uses the same source history.
-const TIMEFRAMES=['1D','1S','1M','3M','6M','1A'].map(label=>({label}));
+const TIMEFRAMES=['1S','1M','3M','6M','1A'].map(label=>({label}));
 
 export function Dashboard({marketData}) {
   const { t,i18n } = useTranslation();
@@ -213,26 +213,11 @@ export function Dashboard({marketData}) {
                   flexDirection: 'column',
                 }}
               >
-                {/* Barra de timeframes */}
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700/50 px-3 py-2">
-                 <div className="flex flex-wrap items-center gap-1" role="group" aria-label={t('audit_visible_period')}>
-                  <span className="text-xs text-slate-500 mr-1">{t('audit_visible_period')}:</span>
-                  {TIMEFRAMES.map(tf => (
-                    <button
-                      key={tf.label}
-                      onClick={() => setActiveTf(tf)}
-                      className={[
-                        'px-2.5 py-1 rounded-md text-xs font-semibold transition-colors',
-                        activeTf.label === tf.label
-                          ? 'bg-brand-500/20 text-brand-300 border border-brand-500/40'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-800',
-                      ].join(' ')}
-                    >
-                      {tf.label}
-                    </button>
-                  ))}
-                 </div>
-                 <label className="flex items-center gap-2 text-xs text-slate-400">{t('candle_interval')}<select value={candleInterval} onChange={e=>{const value=e.target.value;setCandleInterval(value);setActiveTf(TIMEFRAMES.find(tf=>tf.label===(value==='15m'?'1S':value==='4h'?'1M':'3M')));}} className="min-h-10 rounded-lg border border-slate-600 bg-slate-800 px-2 text-sm text-slate-100"><option value="15m">15 min</option><option value="4h">4 h</option><option value="1d">{t('candle_daily')}</option></select></label>
+                <div className="chart-time-strip" role="group" aria-label={t('cycle_times')}>
+                  <span className="text-xs text-slate-400">{t('cycle_times')}</span>
+                  {[['15m','15 min'],['4h','4 h'],['1d','1D']].map(([value,label])=><button key={value} type="button" aria-pressed={candleInterval===value} title={t('cycle_candle',{label})} onClick={()=>setCandleInterval(value)} className={candleInterval===value?'selected-candle':''}>{label}</button>)}
+                  <span aria-hidden="true" className="chart-time-divider"/>
+                  {TIMEFRAMES.map(tf=><button key={tf.label} type="button" aria-pressed={activeTf.label===tf.label} title={t('cycle_range',{label:tf.label})} onClick={()=>setActiveTf(tf)} className={activeTf.label===tf.label?'selected-range':''}>{tf.label}</button>)}
                 </div>
                 <p className="px-3 pt-2 text-[11px] leading-5 text-slate-400">{t('chart_time_controls_note')}</p>
 

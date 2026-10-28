@@ -1,4 +1,5 @@
 import axios from 'axios';
+import {intervalInfo,calendarBarTime} from '../../../frontend/src/utils/chartIntervals.js';
 import {getExchangeCandles,validBars,aggregateHours} from './publicMarketSources.js';
 import {resolveYahooCrypto} from './cryptoIdentityService.js';
 import {createSingleFlight} from './singleFlight.js';
@@ -22,20 +23,21 @@ export function sessionFourHours(input,now=Date.now()){
  });});
 }
 export async function getIntradayCandles(id,type,interval){
- if(!['15m','4h'].includes(interval))throw new Error('Unsupported interval');
+ const info=intervalInfo(interval);if(!info||interval==='1d')throw new Error('Unsupported interval');
  const key=`${type}:${id}:${interval}`,hit=cache.get(key);if(hit&&hit.expires>Date.now())return hit.data;
  return once(key,async()=>{
   let result;
   if(type==='crypto'){try{result=await getExchangeCandles(id,interval);}catch{/* An exact Yahoo identity can cover assets not listed at these exchanges. */}}
   if(!result){
    const symbol=type==='crypto'?await resolveYahooCrypto(id):id;if(!symbol)throw new Error('No verified intraday identity');
-   const {data}=await axios.get(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`,{params:{interval:interval==='4h'?'60m':'15m',range:interval==='4h'?'3mo':'5d',includePrePost:false},headers:{'User-Agent':'Mozilla/5.0 (WaStake)'},timeout:12000});
+   const {data}=await axios.get(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`,{params:{interval:info.yahoo,range:info.range,includePrePost:false},headers:{'User-Agent':'Mozilla/5.0 (WaStake)'},timeout:12000});
    const r=data.chart?.result?.[0],q=r?.indicators?.quote?.[0];if(!q)throw new Error('Intraday source unavailable');
    const session=['EQUITY','ETF','MUTUALFUND','INDEX'].includes(r.meta?.instrumentType);
-   let candles=yahooTimedBars((r.timestamp??[]).map((time,i)=>({time,open:q.open?.[i],high:q.high?.[i],low:q.low?.[i],close:q.close?.[i],volume:q.volume?.[i]})),interval==='4h'?3600:900,session);
+   const raw=(r.timestamp??[]).map((time,i)=>({time,open:q.open?.[i],high:q.high?.[i],low:q.low?.[i],close:q.close?.[i],volume:q.volume?.[i]}));
+   let candles=['1w','1mo'].includes(interval)?validBars(raw.map(c=>({...c,time:calendarBarTime(c.time,interval)}))):yahooTimedBars(raw,interval==='4h'?3600:info.seconds,session);
    if(interval==='4h')candles=session?sessionFourHours(candles):aggregateHours(candles);
    if(candles.length<2)throw new Error('Insufficient observed intraday candles');
-   result={candles,source:'Yahoo Finance',currency:r.meta?.currency??null,interval,intervalSeconds:interval==='4h'?14400:900,retrievedAt:new Date().toISOString()};
+   result={candles,source:'Yahoo Finance',currency:r.meta?.currency??null,interval,intervalSeconds:info.seconds,retrievedAt:new Date().toISOString()};
   }
   cache.set(key,{data:result,expires:Date.now()+60000});return result;
  });

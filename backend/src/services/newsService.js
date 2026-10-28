@@ -5,7 +5,7 @@ import { createSingleFlight } from './singleFlight.js';
 
 const enrichOnce = createSingleFlight();
 
-const rssParser = new Parser({ timeout: 10000 });
+const rssParser = new Parser({ timeout: 3500 });
 
 // ─── Feeds ────────────────────────────────────────────────────────────────────
 
@@ -40,7 +40,8 @@ const ASSET_KEYWORDS = {
 
 const cache = new Map();
 const feedCache = new Map();
-const CACHE_TTL = 30 * 60 * 1000;
+const CACHE_TTL = 2 * 60 * 1000;
+const feedOnce=createSingleFlight();
 
 // ─── RSS fetch ────────────────────────────────────────────────────────────────
 
@@ -66,12 +67,14 @@ async function fetchFeed(feed) {
 }
 
 async function fetchFeedCached(feed) {
-  const cached = feedCache.get(feed.url);
-  if (cached && cached.expiresAt > Date.now()) return cached.data;
-  const data = await fetchFeed(feed);
-  feedCache.set(feed.url, { data, expiresAt: Date.now() + CACHE_TTL });
-  return data;
+  const cached=feedCache.get(feed.url);
+  if(cached&&cached.expiresAt>Date.now())return cached.data;
+  const refresh=()=>feedOnce(feed.url,async()=>{const data=await fetchFeed(feed);const previous=feedCache.get(feed.url);if(feedCache.size>500)feedCache.delete(feedCache.keys().next().value);feedCache.set(feed.url,{data:data.length?data:previous?.data??[],expiresAt:Date.now()+(data.length?CACHE_TTL:15000)});return data.length?data:previous?.data??[];});
+  if(cached?.data.length){void refresh();return cached.data;}
+  return refresh();
 }
+// Warm public feeds only: no model calls, no periodic keep-alive or paid infrastructure.
+export const warmNewsFeeds=()=>Promise.allSettled([...new Map([...CRYPTO_FEEDS,...TRADITIONAL_FEEDS].map(f=>[f.url,f])).values()].map(fetchFeedCached));
 
 // ─── Filtro por activo ────────────────────────────────────────────────────────
 

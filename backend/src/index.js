@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import {warmNewsFeeds} from './services/newsService.js';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -79,4 +80,5 @@ app.use('/api/carousel-img', carouselImgRouter);
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`WaStake backend running on port ${PORT}`);
   startAlertEngine();
+  void warmNewsFeeds();
 });
