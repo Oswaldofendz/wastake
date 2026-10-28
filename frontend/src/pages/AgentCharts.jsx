@@ -29,7 +29,7 @@ export default function AgentCharts({marketData}){
  const contextKey=`${getAnalysisType(asset)}:${asset.id}:${workspace.interval}:${venue}:${lang}`;currentContext.current=contextKey;
  const matchesSnapshot=chartContextMatches(snapshot,{id:asset.id,type:getAnalysisType(asset),interval:workspace.interval,venue});
  const fmt=n=>Number.isFinite(n)?n.toLocaleString(i18n.language,{maximumFractionDigits:Math.abs(n)<1?8:2}):'—';
- const date=stamp=>new Date(stamp*1000).toLocaleString(i18n.language,{timeZone:'UTC',dateStyle:'short',timeStyle:'short'});
+ const date=(stamp,interval=workspace.interval)=>new Date(stamp*1000).toLocaleString(i18n.language,{timeZone:'UTC',dateStyle:'short',...(interval==='1d'?{}:{timeStyle:'short'})});
  const quoteKeys=['close','low','high','ema20','ema50','support','resistance'];
  const fact=(data,key)=>quoteKeys.includes(key)?formatQuote(data.facts[key],data.currency,i18n.language):`${fmt(data.facts[key])}${['change','drawdown','atrPercent'].includes(key)&&Number.isFinite(data.facts[key])?'%':''}`;
  useEffect(()=>{
@@ -147,7 +147,7 @@ export default function AgentCharts({marketData}){
              {!!item.choices.length&&<div className="mt-3"><p className="text-xs text-slate-400">{t('studio_compare_pick')}</p>{item.choices.map(choice=><button type="button" key={`${choice.type}:${choice.id}`} onClick={()=>compareAsset(choice)} className="mt-1 block min-h-9 w-full rounded border border-slate-700 px-2 text-left text-xs" translate="no">{choice.name} · {choice.symbol} · {choice.source}</button>)}</div>}
              {item.response.explain&&<dl className="mt-3 grid grid-cols-2 gap-2">{[...new Set(item.response.insight?.citations??['close','score','rsi','atrPercent'])].slice(0,4).map(key=><div key={key}><dt className="text-[9px] text-slate-500">{t('agent_fact_'+key)}</dt><dd className="mt-1 font-mono text-xs text-slate-300">{fact(item.response.snapshot,key)}</dd></div>)}</dl>}
              {item.response.explain&&!item.response.insight&&!item.response.outsideScope&&<p className="mt-2 text-[10px] leading-5 text-amber-200">{t('studio_limited')}</p>}
-             <details className="mt-2 text-[9px] text-slate-500"><summary className="min-h-7 cursor-pointer">{t('agent_context')}</summary><p translate="no">{item.asset} · {item.interval} · {item.response.snapshot.source}</p><p>{date(item.response.snapshot.asOf)} UTC · {item.response.snapshot.snapshotId}</p></details>
+             <details className="mt-2 text-[9px] text-slate-500"><summary className="min-h-7 cursor-pointer">{t('agent_context')}</summary><p translate="no">{item.asset} · {item.interval} · {item.response.snapshot.source}</p><p>{date(item.response.snapshot.asOf,item.interval)} UTC · {item.response.snapshot.snapshotId}</p></details>
            </article>)}
            {busy&&<p role="status" className="animate-pulse text-xs leading-5 text-teal-200">{t('studio_working')}</p>}{error&&<p role="alert" className="text-xs leading-5 text-amber-200">{t('agent_error')}</p>}
          </div>
