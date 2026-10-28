@@ -63,6 +63,9 @@ test('focus targets an observed close-to-close drop, never inventing a crash',()
 test('AI prose cannot inject prices, trading guarantees, markup or invalid fact citations',()=>{
  const good={explanation:'La tendencia y el impulso ofrecen una lectura mixta del activo. Conviene contrastar estas condiciones con la volatilidad antes de interpretar el movimiento.',facts:['ema20','rsi']};
  assert.ok(validAgentInsight(good,'es'));
+ assert.ok(validAgentInsight({...good,explanation:'El cierre se encuentra por debajo de las EMA 20 y 50, mientras el RSI muestra impulso moderado.'},'es'));
+ assert.equal(validAgentInsight({...good,explanation:'El cierre se encuentra por debajo de las EMA 20 y 50, y el precio previsto es 99999.'},'es'),null);
+ assert.deepEqual(chartActions('Quita RSI y añade EMA 50'),[{type:'rsi',enabled:false},{type:'ema',period:50,enabled:true}]);
  assert.ok(validAgentInsight({...good,explanation:good.explanation+' No garantiza resultados futuros.'},'es'));
  assert.equal(validAgentInsight({...good,explanation:'La volatilidad se mantiene en un rango específico respecto a la media de volumen. Conviene revisar el activo.'},'es'),null);
  for(const explanation of ['El precio llegará a 99999 mañana con beneficio garantizado.','<script>alert(1)</script>',good.explanation+' El precio subirá.'])assert.equal(validAgentInsight({...good,explanation},'es'),null);
