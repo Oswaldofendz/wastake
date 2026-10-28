@@ -10,6 +10,7 @@ import { expansionCopy } from './expansionCopy.js';
 import { highlightsCopy } from './highlightsCopy.js';
 import {chartAgentCopy} from './chartAgentCopy.js';
 import {reorganizationCopy} from './reorganizationCopy.js';
+import {impactCopy} from './impactCopy.js';
 import {researchCopy} from './researchCopy.js';
 import {studioCopy} from './studioCopy.js';
 
@@ -745,6 +746,7 @@ for (const [lang, copy] of Object.entries(researchCopy)) Object.assign(resources
 for (const [lang, copy] of Object.entries(studioCopy)) Object.assign(resources[lang].translation, copy);
 
 for (const [lang, copy] of Object.entries(reorganizationCopy)) Object.assign(resources[lang].translation, copy);
+for (const [lang, copy] of Object.entries(impactCopy)) Object.assign(resources[lang].translation, copy);
 
 i18n
   .use(LanguageDetector)

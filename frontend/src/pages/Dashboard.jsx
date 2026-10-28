@@ -7,6 +7,7 @@ import { Disclaimer } from '../components/Disclaimer.jsx';
 import { AnalysisPanel } from '../components/AnalysisPanel.jsx';
 import { NewsPanel } from '../components/NewsPanel.jsx';
 import { MarketLeaders } from '../components/MarketLeaders.jsx';
+import {MarketImpactAlert} from '../components/MarketImpactAlert.jsx';
 import {useSelectedQuote} from '../hooks/useSelectedQuote.js';
 import { currentSelection } from '../utils/marketConventions.js';
 import { formatQuote } from '../utils/panoramaAnalysis.js';
@@ -60,6 +61,7 @@ export function Dashboard({marketData}) {
 
   return (
     <div className="mx-auto flex h-full w-full max-w-[1680px] flex-col">
+      <MarketImpactAlert/>
       <Disclaimer />
       <MarketLeaders marketData={marketData} onSelect={handleSearch}/>
 

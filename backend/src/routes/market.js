@@ -7,7 +7,9 @@ import { getEconomicCalendar } from '../services/economicCalendarService.js';
 import {getReferenceRates,getExchangeCandles} from '../services/publicMarketSources.js';
 
 import {getOpportunityScreen} from '../services/opportunityService.js';
+import {getMarketImpactAlerts} from '../services/marketImpactService.js';
 export const marketRouter = Router();
+marketRouter.get('/impact-alerts',async(_req,res)=>{res.set('Cache-Control','no-store');try{res.json(await getMarketImpactAlerts());}catch{res.status(503).json({error:'Market alert sources unavailable'});}});
 marketRouter.get('/opportunities',(_req,res)=>res.json(getOpportunityScreen()));
 marketRouter.get('/reference-rates',async(_req,res)=>{try{res.json(await getReferenceRates());}catch{res.status(502).json({error:'Reference rates unavailable'});}});
 marketRouter.get('/exchange-reference/:id',async(req,res)=>{try{

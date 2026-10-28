@@ -244,3 +244,9 @@
 @media(max-width:599px){.opportunity-candidates{grid-template-columns:1fr;gap:6px}.opportunity-candidates>a{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px}.opportunity-candidates h3{margin:0;font-size:13px}.opportunity-candidates .entry-name,.opportunity-candidates .entry-open{display:none}.opportunity-candidates .entry-price{margin:0;font-size:11px}}
 
 @media(min-width:860px) and (max-width:1279px){.opportunity-candidates{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Market-alert contrast in the optional light theme. */
+html.light .market-impact-active { background: linear-gradient(90deg,#fff1f2,#fffbeb); }
+html.light .market-impact .text-rose-200 { color: #9f1239; }
+html.light .market-impact .text-amber-200 { color: #92400e; }
+html.light .market-impact .text-sky-200 { color: #075985; }
