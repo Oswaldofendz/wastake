@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchCalendar } from '../services/api.js';
-import { localCalendarEvent } from '../utils/calendar.js';
+import { localCalendarEvent, calendarTitle } from '../utils/calendar.js';
 
 function dayKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -48,13 +48,14 @@ export function EventCalendarChart() {
 
   const maxTotal = Math.max(1, ...days.map(day => day.high + day.medium + day.low));
   const total = days.reduce((sum, day) => sum + day.high + day.medium + day.low, 0);
+  const next = events.filter(event=>event.date>=dayKey(new Date())&&(!event.scheduledAt||Date.parse(event.scheduledAt)>=Date.now())).sort((a,b)=>`${a.date} ${a.time||'99:99'}`.localeCompare(`${b.date} ${b.time||'99:99'}`))[0];
 
   return (
-    <section className="rounded-xl border border-white/[8%] bg-[var(--bg-card)] p-4" aria-labelledby="event-load-title">
+    <section className="grid gap-3 rounded-xl border border-white/[8%] bg-[var(--bg-card)] p-3 md:grid-cols-[minmax(0,1fr)_minmax(220px,.7fr)]" aria-labelledby="event-load-title">
+     <div className="min-w-0">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 id="event-load-title" className="text-xs font-semibold uppercase tracking-wider text-slate-300">{t('calendar_chart_title')}</h2>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">{t('calendar_chart_subtitle')}</p>
         </div>
         {source === 'live' && <span className="shrink-0 text-[10px] text-emerald-400">● {t('calendar_live')}</span>}
         {source === 'fallback' && <span className="shrink-0 text-[10px] text-amber-400">◐ {t('calendar_estimated')}</span>}
@@ -70,10 +71,10 @@ export function EventCalendarChart() {
         <p className="mt-6 text-sm text-slate-400" role="status">{t('calendar_chart_empty')}</p>
       ) : (
         <>
-          <div className="mt-4 flex h-28 items-end justify-between gap-2" role="img" aria-label={t('calendar_chart_accessible', { count: total })}>
+          <div className="mt-2 flex h-16 items-end justify-between gap-2" role="img" aria-label={t('calendar_chart_accessible', { count: total })}>
             {days.map(day => {
               const count = day.high + day.medium + day.low;
-              const maxHeight = 84;
+              const maxHeight = 38;
               const scale = maxHeight / maxTotal;
               return (
                 <div key={day.key} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1">
@@ -88,7 +89,7 @@ export function EventCalendarChart() {
               );
             })}
           </div>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-700/40 pt-3">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
             <p className="text-xs font-medium text-slate-300">{t('calendar_chart_total', { count: total })}</p>
             <div className="flex gap-3 text-[10px] text-slate-400">
               <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-rose-500" />{t('calendar_high')}</span>
@@ -98,6 +99,12 @@ export function EventCalendarChart() {
           </div>
         </>
       )}
+     </div>
+     <div className="min-w-0 border-t border-slate-700/40 pt-2 md:border-l md:border-t-0 md:pl-4 md:pt-0">
+       <h3 className="text-xs font-semibold text-sky-200">{t('calendar_next')}</h3>
+       {next?<><p className="mt-2 text-sm font-semibold">{calendarTitle(next,t,i18n.language)}</p><p className="mt-1 text-xs text-slate-400">{next.date} · {next.time||t('calendar_time_unknown')} · <span translate="no">{next.currency}</span></p></>:<p className="mt-2 text-xs text-slate-400">{t(loading?'loading':'calendar_chart_empty')}</p>}
+       <p className="mt-2 text-[10px] leading-4 text-slate-500">{t('calendar_compact_note')}</p>
+     </div>
     </section>
   );
 }

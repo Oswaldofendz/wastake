@@ -7,6 +7,7 @@ import { CandleChart } from '../components/PriceChart.jsx';
 import { AssetValuationCard } from '../components/AssetValuationCard.jsx';
 import { MarketLeaders } from '../components/MarketLeaders.jsx';
 import { ImportantNews } from '../components/ImportantNews.jsx';
+import { AnalysisNarrative } from '../components/AnalysisNarrative.jsx';
 import { formatQuote } from '../utils/panoramaAnalysis.js';
 import { marketStats,currentSelection } from '../utils/marketConventions.js';
 
@@ -410,6 +411,7 @@ export function Screener({marketData}) {
       {inspectedAsset && <section ref={inspectionRef} className="mb-4 scroll-mt-24 rounded-xl border border-sky-700/50 p-3">
         <div className="mb-3 flex items-center justify-between gap-2"><h2 translate="no" className="font-semibold">{inspectedAsset.name} · {inspectedAsset.symbol}</h2><button type="button" onClick={()=>{setInspectedAsset(null);resetFilters();}} className="min-h-10 px-3" aria-label={t('catalogue_return')}>← {t('catalogue_return')}</button></div>
         <AssetValuationCard key={`valuation:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)} technical={analysisSnapshot?.id===inspectedAsset.id&&analysisSnapshot?.type===inspectedAsset.type?analysisSnapshot:null}/><CandleChart key={`chart:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)}/><details className="mt-3 rounded-xl border border-slate-700 p-3"><summary className="min-h-8 cursor-pointer text-sm font-semibold">{t('audit_technical_details')}</summary><AnalysisPanel key={`analysis:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)} onAnalysis={setAnalysisSnapshot}/></details>
+        <AnalysisNarrative key={`narrative:${inspectedAsset.type}:${inspectedAsset.id}`} asset={inspectedAsset}/>
         <ImportantNews key={`news:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)}/>
       </section>}
     </div>

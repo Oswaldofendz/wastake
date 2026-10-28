@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FearGreedGauge }    from '../components/FearGreedGauge.jsx';
 import { MarketHeatmap }     from '../components/MarketMap.jsx';
 import { CorrelationMatrix } from '../components/CorrelationMatrix.jsx';
 import { WhaleAlerts }       from '../components/WhaleAlerts.jsx';
@@ -50,12 +49,7 @@ export function Markets({ allAssets }) {
         {/* ── Events & calendar ────────────────────────────────── */}
         {tab === 'overview' && (
           <>
-            {/* Sentimiento + contexto del calendario */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FearGreedGauge />
-              <EventCalendarChart />
-            </div>
-
+            <EventCalendarChart />
             <EconomicCalendar />
             <MacroRatesTable />
             <SourceReferences />

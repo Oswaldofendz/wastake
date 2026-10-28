@@ -212,7 +212,8 @@ export function Dashboard({marketData}) {
                 }}
               >
                 {/* Barra de timeframes */}
-                <div className="flex flex-wrap items-center gap-1 px-3 py-2 border-b border-slate-700/50 flex-shrink-0">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700/50 px-3 py-2">
+                 <div className="flex flex-wrap items-center gap-1" role="group" aria-label={t('audit_visible_period')}>
                   <span className="text-xs text-slate-500 mr-1">{t('audit_visible_period')}:</span>
                   {TIMEFRAMES.map(tf => (
                     <button
@@ -228,10 +229,10 @@ export function Dashboard({marketData}) {
                       {tf.label}
                     </button>
                   ))}
+                 </div>
+                 <label className="flex items-center gap-2 text-xs text-slate-400">{t('candle_interval')}<select value={candleInterval} onChange={e=>{const value=e.target.value;setCandleInterval(value);setActiveTf(TIMEFRAMES.find(tf=>tf.label===(value==='15m'?'1S':value==='4h'?'1M':'3M')));}} className="min-h-10 rounded-lg border border-slate-600 bg-slate-800 px-2 text-sm text-slate-100"><option value="15m">15 min</option><option value="4h">4 h</option><option value="1d">{t('candle_daily')}</option></select></label>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 px-3 pt-3" role="group" aria-label={t('candle_interval')}><span className="text-xs text-slate-400">{t('candle_interval')}:</span>{[['15m','15 min'],['4h','4 h'],['1d','1 día']].map(([value,label])=><button key={value} type="button" aria-pressed={candleInterval===value} onClick={()=>{setCandleInterval(value);setActiveTf(TIMEFRAMES.find(tf=>tf.label===(value==='15m'?'1S':value==='4h'?'1M':'3M')));}} className={`min-h-10 rounded-lg border px-3 text-sm ${candleInterval===value?'border-sky-400 bg-sky-900/30 text-sky-100':'border-slate-700 text-slate-300'}`}>{value==='1d'?t('candle_daily'):label}</button>)}</div>
-                <p className="px-3 pt-2 text-xs leading-5 text-slate-400">{t('interval_explanation')}</p>
-                <p className="px-3 pt-2 text-[11px] leading-4 text-slate-500">{t('chart_default_studies_note')}</p>
+                <p className="px-3 pt-2 text-[11px] leading-5 text-slate-400">{t('chart_time_controls_note')}</p>
 
                 {/* Chart */}
                 <div style={{ flex: 1, minHeight: 0, padding: isMobile ? '8px' : '12px' }}>

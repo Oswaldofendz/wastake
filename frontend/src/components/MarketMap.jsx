@@ -14,7 +14,7 @@ export function MarketHeatmap({ assets: provided }) {
   const [universe,setUniverse]=useState(null);
   const [loading,setLoading]=useState(true);
   const [scope,setScope]=useState('all');
-  const [size,setSize]=useState('equal');
+  const [size,setSize]=useState('cap');
   const [sector,setSector]=useState('all');
   const [attempt,setAttempt]=useState(0);
   const [width,setWidth]=useState(800);

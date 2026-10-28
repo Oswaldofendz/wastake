@@ -1,7 +1,7 @@
 import { ANALYSIS_DAYS } from '../utils/marketConventions.js';
 const BASE = import.meta.env.VITE_API_URL ?? '';
 export const fetchSourceReference=id=>get(id?`/api/market/exchange-reference/${encodeURIComponent(id)}`:'/api/market/reference-rates',25_000);
-export const fetchChartSnapshot=(asset,type,interval)=>get(`/api/chart-agent/${encodeURIComponent(asset.id)}?${new URLSearchParams({type,interval})}`,35_000);
+export const fetchChartSnapshot=(asset,type,interval,venue='auto')=>get(`/api/chart-agent/${encodeURIComponent(asset.id)}?${new URLSearchParams({type,interval,venue})}`,45_000);
 export async function askChartAgent(body,signal){
   const controller=new AbortController(),cancel=()=>controller.abort();
   if(signal?.aborted)controller.abort();else signal?.addEventListener('abort',cancel,{once:true});

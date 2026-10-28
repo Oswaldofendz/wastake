@@ -9,6 +9,7 @@ import { auditCopy } from './auditCopy.js';
 import { expansionCopy } from './expansionCopy.js';
 import { highlightsCopy } from './highlightsCopy.js';
 import {chartAgentCopy} from './chartAgentCopy.js';
+import {studioCopy} from './studioCopy.js';
 
 const resources = {
   en: {
@@ -738,6 +739,7 @@ for (const [lang, copy] of Object.entries(auditCopy)) Object.assign(resources[la
 for (const [lang, copy] of Object.entries(expansionCopy)) Object.assign(resources[lang].translation, copy);
 for (const [lang, copy] of Object.entries(highlightsCopy)) Object.assign(resources[lang].translation, copy);
 for (const [lang, copy] of Object.entries(chartAgentCopy)) Object.assign(resources[lang].translation, copy);
+for (const [lang, copy] of Object.entries(studioCopy)) Object.assign(resources[lang].translation, copy);
 
 i18n
   .use(LanguageDetector)

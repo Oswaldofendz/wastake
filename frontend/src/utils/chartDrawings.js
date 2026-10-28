@@ -6,7 +6,7 @@ export function validDrawing(value){
   return Array.isArray(value.points)&&value.points.length===count&&value.points.every(p=>Number.isFinite(p.time)&&p.time>0&&Number.isFinite(p.price)&&p.price>0&&p.price<=1e12);
 }
 export function drawingWithPoint(drawing,index,point){
-  const next={...drawing,origin:'manual',points:drawing.points.map((p,i)=>i===index?point:p)};
+  const next={...drawing,origin:'manual',reason:null,points:drawing.points.map((p,i)=>i===index?point:p)};
   return validDrawing(next)?next:drawing;
 }
 export function sharedPerformance(left=[],right=[]){
