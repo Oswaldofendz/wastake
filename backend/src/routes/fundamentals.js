@@ -25,7 +25,7 @@ fundamentalsRouter.get('/:id', async (req, res) => {
     if (req.query.stage === 'headlines') {
       return res.json({ id, type, lang, count: baseline.length, news: baseline, aiStatus: 'pending', analyzedCount: 0 });
     }
-    const analysis = await enrichFundamentalsNews(baseline, lang);
+    const analysis = await enrichFundamentalsNews(baseline, lang, {id,type,aliases});
     res.json({ id, type, lang, count: analysis.news.length, scoringVersion: 'keyword-rules-v1', ...analysis });
   } catch (err) {
     console.error('[fundamentals route]', err.message);

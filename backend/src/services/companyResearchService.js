@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { createSingleFlight } from './singleFlight.js';
+import {getBulkStockQuotes} from './catalogueService.js';
 import { getSingleQuote } from './priceService.js';
 
 const headers={ 'User-Agent':'Mozilla/5.0 (compatible; WaStake/1.0)', Accept:'application/json' };
@@ -53,20 +54,22 @@ async function loadResearch(symbol) {
     const end=Math.floor(Date.now()/1000);
     const start=end-5*366*86400;
     const financialUrl=`https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/${encodeURIComponent(symbol)}`;
-    const [financial,profile,summary]=await Promise.allSettled([
+    const [financial,profile,summary,bulk]=await Promise.allSettled([
       axios.get(financialUrl,{params:{type:types.join(','),period1:start,period2:end},headers,timeout:15000,maxContentLength:3_000_000}),
       axios.get(`https://api.nasdaq.com/api/company/${encodeURIComponent(symbol)}/company-profile`,{headers,timeout:8000}),
       axios.get(`https://api.nasdaq.com/api/quote/${encodeURIComponent(symbol)}/summary`,{params:{assetclass:'stocks'},headers,timeout:8000}),
+      getBulkStockQuotes(),
     ]);
+    const bulkQuote=bulk.status==='fulfilled'?bulk.value[symbol]:null;
     const p=profile.status==='fulfilled'?profile.value.data?.data:null;
     const verifiedProfile=p?.Symbol?.value===symbol?p:null;
     const s=summary.status==='fulfilled'?summary.value.data?.data:null;
-    const marketCap=s?.symbol===symbol?numeric(s.summaryData?.MarketCap?.value):null;
+    const marketCap=(s?.symbol===symbol?numeric(s.summaryData?.MarketCap?.value):null)??(bulkQuote?.isStale?null:bulkQuote?.marketCap);
     const company=verifiedProfile?{
       name:p.CompanyName?.value||symbol,description:shortProfile(p.CompanyDescription?.value),sector:p.Sector?.value||null,industry:p.Industry?.value||null,
       website:/^https?:\/\//i.test(p.CompanyUrl?.value||'')?p.CompanyUrl.value:null,
       sourceUrl:`https://www.nasdaq.com/market-activity/stocks/${encodeURIComponent(symbol.toLowerCase())}/company-profile`,
-    }:null;
+    }:bulkQuote?.name?{name:bulkQuote.name,sector:bulkQuote.sector,industry:null,description:null,website:null,sourceUrl:`https://www.nasdaq.com/market-activity/stocks/${encodeURIComponent(symbol.toLowerCase())}`} :null;
     const statements=financial.status==='fulfilled'?parseFinancialSeries(financial.value.data?.timeseries?.result??[]):parseFinancialSeries();
     const value={symbol,company,...statements,marketCap:marketCap?{value:marketCap,currency:'USD',source:'Nasdaq',date:new Date().toISOString()}:null,
       financialSource:'Yahoo Finance',financialSourceUrl:`https://finance.yahoo.com/quote/${encodeURIComponent(symbol)}/financials/`,

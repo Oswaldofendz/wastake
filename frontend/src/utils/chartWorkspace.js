@@ -6,7 +6,7 @@ export function applyChartActions(current,actions=[]){
   if(['levels','rsi','macd','bollinger','volume'].includes(action.type)&&typeof action.enabled==='boolean')next[action.type]=action.enabled;
   else if(action.type==='ema'&&[20,50,200].includes(action.period)&&typeof action.enabled==='boolean')next.ema=action.enabled?[...new Set([...next.ema,action.period])].sort((a,b)=>a-b):next.ema.filter(p=>p!==action.period);
   else if(action.type==='sma'&&[20,50,200].includes(action.period)&&typeof action.enabled==='boolean')next.sma=action.enabled?[...new Set([...next.sma,action.period])].sort((a,b)=>a-b):next.sma.filter(p=>p!==action.period);
-  else if(action.type==='draw'&&Array.isArray(action.drawings))next.drawings=[...next.drawings,...action.drawings.filter(validDrawing)].slice(-30);
+  else if(action.type==='draw'&&Array.isArray(action.drawings))next.drawings=[...new Map([...next.drawings,...action.drawings.filter(validDrawing)].map(d=>[d.id,d])).values()].slice(-30);
   else if(action.type==='removeDrawing')next.drawings=next.drawings.filter(d=>d.id!==action.id);
   else if(action.type==='removeLevels')next.drawings=next.drawings.filter(d=>d.kind!=='horizontal'||d.origin!=='computed');
   else if(action.type==='uncompare')next.compare=null;

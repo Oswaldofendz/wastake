@@ -172,7 +172,7 @@ export async function getRawNewsForAsset(assetId, type = 'crypto', aliases = [])
   const cached = cache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.data;
 
-  const feeds = type === 'crypto' ? CRYPTO_FEEDS : TRADITIONAL_FEEDS;
+  const feeds = type === 'crypto' ? CRYPTO_FEEDS : [...TRADITIONAL_FEEDS, {name:'Yahoo Finance', url:`https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(assetId)}&region=US&lang=en-US`}];
   const allArticles = (await Promise.all(feeds.map(fetchFeedCached))).flat();
   const seenTitles = new Set();
   const filtered = filterByAsset(allArticles, assetId, safeAliases)

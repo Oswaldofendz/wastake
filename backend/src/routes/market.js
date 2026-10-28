@@ -6,7 +6,9 @@ import { protectFinancialNames, restoreFinancialNames, isLikelyLanguage, preserv
 import { getEconomicCalendar } from '../services/economicCalendarService.js';
 import {getReferenceRates,getExchangeCandles} from '../services/publicMarketSources.js';
 
+import {getOpportunityScreen} from '../services/opportunityService.js';
 export const marketRouter = Router();
+marketRouter.get('/opportunities',(_req,res)=>res.json(getOpportunityScreen()));
 marketRouter.get('/reference-rates',async(_req,res)=>{try{res.json(await getReferenceRates());}catch{res.status(502).json({error:'Reference rates unavailable'});}});
 marketRouter.get('/exchange-reference/:id',async(req,res)=>{try{
  const data=await getExchangeCandles(req.params.id,'15m');

@@ -9,7 +9,7 @@ import {createSingleFlight} from './singleFlight.js';
 import {significantLevels} from './chartMath.js';
 import {dailyCandles} from './dailyCandles.js';
 import {getExchangeCandles} from './publicMarketSources.js';
-import {requestedTools,validateToolPlan,executeTools} from './chartAgentTools.js';
+import {requestedTools,validateToolPlan,executeTools,negatesChartAction} from './chartAgentTools.js';
 
 const once=createSingleFlight(),snapshots=new Map(),answers=new Map();
 const intervals={'15m':900,'4h':14400,'1d':86400};
@@ -18,7 +18,7 @@ export function chartActions(message){
  const clauses=String(message).split(/\s+(?:y|and|e)\s+(?=(?:add|show|remove|hide|quita|oculta|anade|añade|agrega|muestra|pon|adiciona|mostra|remova)\b)/i);
  if(clauses.length>1)return clauses.flatMap(part=>chartActions(part)).slice(0,8);
  const q=normalize(message),actions=[];
- if(/\b(no|not|don't|nao)\s+(add|show|pon|muestra|agrega|adicion\w*|anad\w*|mostr\w*)\b/.test(q))return [];
+ if(negatesChartAction(message))return [];
  const add=/\b(add|show|mark|draw|plot|pon|anade|agrega|muestra|marca|dibuja|traza|activar|activa|adiciona|mostra|marque|desenha|coloca)\b/.test(q);
  const remove=/\b(remove|hide|delete|quita|oculta|elimina|borra|desactiva|remova|ocultar|tira)\b/.test(q);
  if(/\b(undo|deshacer|deshaz|desfazer)\b/.test(q))return [{type:'undo'}];
@@ -59,7 +59,7 @@ export function snapshotFromCandles(raw,{id,type,interval='1d',source=null,curre
  const fingerprint=crypto.createHash('sha256').update(JSON.stringify({id,type,interval,source,closed})).digest('hex').slice(0,20);
  const levels=significantLevels(closed,null,now,seconds);
  facts.support=levels.find(l=>l.kind==='support')?.price??null;facts.resistance=levels.find(l=>l.kind==='resistance')?.price??null;
- return {id,type,interval,intervalSeconds:seconds,source,currency,candles,facts,levels,closedCount:closed.length,from:first.time,asOf:last.time,snapshotId:fingerprint,retrievedAt:new Date(now).toISOString()};
+ return {id,type,interval,intervalSeconds:seconds,source,currency,candles,facts,levels,coverage:analysis?.summary?.coverage??0,closedCount:closed.length,from:first.time,asOf:last.time,snapshotId:fingerprint,retrievedAt:new Date(now).toISOString()};
 }
 
 export async function getChartSnapshot(id,type,interval,venue='auto'){
@@ -81,7 +81,7 @@ export function ruleReading(snapshot,message,lang='es'){
  const w=words[lang]??words.es,f=snapshot.facts,q=normalize(message),sections=[];
  const trend=f.ema20==null||f.ema50==null?w.missing:f.close>f.ema20&&f.ema20>f.ema50?w.bull:f.close<f.ema20&&f.ema20<f.ema50?w.bear:w.mixed;
  if(/soporte|resistencia|support|resistance|niveles|levels|niveis/.test(q))sections.push({title:{es:'Zonas confirmadas',en:'Confirmed zones',pt:'Zonas confirmadas'}[lang]??'Zonas confirmadas',text:{es:'Los valores proceden de giros confirmados de este intervalo. Una zona ausente no se inventa y una zona presente puede romperse; abre su detalle bajo el gráfico para revisar los toques.',en:'Values come from confirmed swings at this interval. Missing zones are not invented, and existing zones can break. Review their touches below the chart.',pt:'Os valores vêm de viragens confirmadas deste intervalo. Zonas ausentes não são inventadas e as existentes podem romper. Confira os toques abaixo do gráfico.'}[lang],keys:['support','resistance']});
- if(!/\brsi\b|volatil|\batr\b|riesgo|risk|risco/.test(q))sections.push({title:w.trend,text:trend,keys:['close','ema20','ema50','score']});
+ if(/estructura actual|current (structure|setup)|estrutura atual/.test(q)||!/\brsi\b|volatil|\batr\b|riesgo|risk|risco/.test(q))sections.push({title:w.trend,text:trend,keys:['close','ema20','ema50','score']});
  if(!/volatil|\batr\b|riesgo|risk|risco/.test(q))sections.push({title:w.momentum,text:f.rsi==null?w.missing:f.rsi>=70?w.hot:f.rsi<=30?w.cold:w.neutral,keys:['rsi','macd']});
  sections.push({title:w.risk,text:w.riskText,keys:['atrPercent','drawdown']});
  return {sections,scope:w.scope,help:w.help,actionText:w.actions};
@@ -123,7 +123,7 @@ export async function askChartAgent(snapshot,message,lang='es',history=[],contex
     let parsed;try{parsed=JSON.parse(result.text);}catch{console.info('[chart-agent] discarded: invalid JSON');}
     insight=validAgentInsight(parsed,lang,snapshot.facts);if(insight)provider=result.provider;
     const planned=validateToolPlan(parsed?.tools,context);
-    if(!basic.length&&!tools.length&&planned.length&&!/\b(no|nao|don't|do not)\s+(dibuj|draw|traz|anad|add|limp|clear|bor|remov|quit|mostr|muestr)/.test(normalize(message))){tools=planned;planner='model';provider=result.provider;}
+    if(!basic.length&&!tools.length&&planned.length&&!negatesChartAction(message)){tools=planned;planner='model';provider=result.provider;}
     else if(parsed)console.info('[chart-agent] discarded: validation',JSON.stringify({length:parsed.explanation?.length??0,digits:/\d/.test(parsed.explanation??''),guarantee:/garant|guarante/i.test(parsed.explanation??''),citations:Array.isArray(parsed.facts)?parsed.facts.length:0}));
    }catch{/* Validated rules and numbers remain available when free quotas fail. */}
   }

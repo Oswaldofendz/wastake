@@ -14,7 +14,7 @@ export const catalogueMeta={asOf:universe.asOf,stockCount:universe.stocks.length
 const once=createSingleFlight();let bulk=null,bulkAt=0;
 export function normalizeBulkRows(rows=[]){return Object.fromEntries(rows.filter(r=>r?.symbol).map(r=>{
  const numeric=v=>{if(v==null||String(v).trim()===''||String(v).toLowerCase()==='n/a')return null;const n=Number(String(v).replace(/[$,%]/g,''));return Number.isFinite(n)?n:null;};
- return [r.symbol,{price:numeric(r.lastsale),change:numeric(r.pctchange),marketCap:numeric(r.marketCap),currency:'USD',sector:r.sector||null,source:'Nasdaq screener',quoteAsOf:null,retrievedAt:new Date().toISOString()}];
+ return [r.symbol,{name:typeof r.name==='string'?r.name:null,price:numeric(r.lastsale),change:numeric(r.pctchange),marketCap:numeric(r.marketCap),currency:'USD',sector:r.sector||null,source:'Nasdaq screener',quoteAsOf:null,retrievedAt:new Date().toISOString()}];
 }));}
 export async function getBulkStockQuotes(){
  if(bulk&&Date.now()-bulkAt<15*60_000)return bulk;

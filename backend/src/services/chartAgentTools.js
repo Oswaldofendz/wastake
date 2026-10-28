@@ -1,9 +1,10 @@
 import crypto from 'node:crypto';
 
 const normalize=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+export function negatesChartAction(message){return /\b(no|not|nao|don't|do not)\s+(?:quiero que |quero que )?(?:add|show|pon|muestr|agreg|adicion|anad|mostr|clear|clean|limp|quit|remov|bor|elimin|hid|delet|reset|restab|reinic|ocult|desactiv|traz|trac|draw|dibuj)/.test(normalize(message));}
 export function requestedTools(message){
  const q=normalize(message),tools=[];
- if(/\b(no|nao|don't|do not)\s+(quiero que |quero que )?(dibuj|draw|trac|traz|anad|add|limp|clear|bor|remov|quit|mostr|muestr|adicion)/.test(q))return [];
+ if(negatesChartAction(message))return [];
  const draw=/dibuj|draw|mark|marca|traz|trac|plot|pon |coloca|muestra|mostra|anade|adiciona|\badd\b|\bshow\b|estructura actual|current (setup|structure)|estrutura atual/.test(q);
  if(draw){
   if(/soporte|resistencia|support|resistance|niveles|levels|niveis|estructura actual|current (setup|structure)|estrutura atual/.test(q))tools.push({name:'draw',drawing:'levels'});

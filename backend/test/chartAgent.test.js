@@ -13,6 +13,8 @@ test('chart commands are explicit, multilingual, bounded and never evaluate arbi
  assert.deepEqual(chartActions('Añade EMA 50 y 200'),[{type:'ema',period:50,enabled:true},{type:'ema',period:200,enabled:true}]);
  assert.deepEqual(chartActions('Add RSI and show volume'),[{type:'rsi',enabled:true},{type:'volume',enabled:true}]);
  assert.deepEqual(chartActions('Mudar velas para 4 horas'),[{type:'interval',value:'4h'}]);
+ for(const text of ["Don't clear the chart",'No limpiar el gráfico','Não remova RSI',"Don't delete all drawings",'Não reinicie o gráfico','No ocultes RSI'])assert.deepEqual(chartActions(text),[]);
+ assert.deepEqual(chartActions('Quita RSI y añade EMA 50'),[{type:'rsi',enabled:false},{type:'ema',period:50,enabled:true}]);
  assert.deepEqual(chartActions('Limpa o gráfico'),[{type:'clear'}]);
  assert.deepEqual(chartActions('Foca a maior queda'),[{type:'focus',value:'drop'}]);
  assert.deepEqual(chartActions('Não adiciona EMA 50'),[]);
