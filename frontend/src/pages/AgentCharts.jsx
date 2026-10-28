@@ -14,11 +14,11 @@ const starter={id:'bitcoin',name:'Bitcoin',symbol:'BTC',type:'crypto'};
 function readWatchlist(){try{return JSON.parse(localStorage.getItem('wastake_chart_watchlist_v1')||'[]').filter(a=>a&&typeof a.id==='string'&&typeof a.symbol==='string'&&['stock','crypto','etf','bond','forex','index','commodity'].includes(a.type)).slice(0,20);}catch{return [];}}
 function AlbertoIcon({busy}){return <svg viewBox="0 0 96 80" className={`alberto-bull h-16 w-20 shrink-0 ${busy?'is-thinking':''}`} aria-hidden="true"><ellipse cx="48" cy="72" rx="29" ry="4" fill="#071c22"/><g className="bull-head"><path d="M24 32C7 33 6 13 11 7c-1 13 11 13 19 14m42 11c17 1 18-19 13-25 1 13-11 13-19 14" fill="#ffdda2" stroke="#ca9d60" strokeWidth="2"/><path d="M26 29 13 25l4 15 13 3m40-14 13-4-4 15-13 3" fill="#377d7b"/><path d="M25 26q23-20 46 0l-3 30q-20 23-40 0Z" fill="#1e575a" stroke="#63c9bb" strokeWidth="2"/><path d="m35 16 7-7 4 8 8-9 5 12" fill="#66d4bb"/><path d="m32 36 10 3m12 0 10-3" stroke="#c0fbe6" strokeWidth="3" strokeLinecap="round"/><g className="bull-eyes" fill="#fff6c9"><ellipse cx="37" cy="42" rx="3" ry="4"/><ellipse cx="59" cy="42" rx="3" ry="4"/></g><ellipse cx="48" cy="59" rx="19" ry="11" fill="#58aa9b"/><ellipse cx="39" cy="58" rx="3" ry="2" fill="#14383f"/><ellipse cx="57" cy="58" rx="3" ry="2" fill="#14383f"/><path d="M41 65q7 4 14 0" fill="none" stroke="#14383f" strokeWidth="2" strokeLinecap="round"/></g></svg>;}
 
-export default function AgentCharts({marketData}){
+export default function AgentCharts({marketData,guided=false}){
  const {t,i18n}=useTranslation(),lang=(i18n.resolvedLanguage||i18n.language).split('-')[0];
  const [asset,setAsset]=useState(starter),[venue,setVenue]=useState('auto'),[timeline,setTimeline]=useState({current:initialWorkspace(),past:[]});
  const workspace=timeline.current;
- const [automatic,setAutomatic]=useState(true),[refreshFailed,setRefreshFailed]=useState(false);
+ const [automatic,setAutomatic]=useState(!guided),[refreshFailed,setRefreshFailed]=useState(false);
  const automaticSeen=useRef(''),busyRef=useRef(false);
  const [snapshot,setSnapshot]=useState(null),[loading,setLoading]=useState(true),[dataError,setDataError]=useState(false),[reload,setReload]=useState(0);
  const [comparison,setComparison]=useState(null),[comparisonError,setComparisonError]=useState(false),[comparisonLoading,setComparisonLoading]=useState(false);
@@ -113,6 +113,7 @@ export default function AgentCharts({marketData}){
  const ready=matchesSnapshot&&!loading&&!dataError,selected=workspace.drawings.find(d=>d.id===selectedId),isSaved=watchlist.some(a=>a.id===asset.id&&a.type===asset.type);
  const actionName=a=>['ema','sma'].includes(a.type)?`${a.type.toUpperCase()} ${a.period}`:a.type==='draw'?`${t('studio_objects')} · ${a.drawings.length}`:a.type==='interval'?a.value:a.type==='focus'?t(a.value==='drop'?'agent_drop':'agent_recent'):a.type==='liquidity'?t('cycle_liquidity'):a.type==='fvg'?'FVG · imbalance':a.type==='clear'?t('agent_clear'):a.type==='undo'?t('agent_undo'):a.type==='volume'?t('agent_volume'):a.type==='bollinger'?'Bollinger':a.type==='rsi'?'RSI':a.type==='macd'?'MACD':a.type==='uncompare'?t('studio_compare_remove'):['atr','adx','stoch','obv','vwap','cci','mfi','williams','roc','cmf','donchian','keltner'].includes(a.type)?a.type.toUpperCase():t('studio_objects');
  return <main className="studio-shell" aria-label={t('studio_name')}>
+   {guided&&<div className="easy-lesson easy-ai-intro"><strong>✦ {t('easy_ai_hint')}</strong><p>{t('easy_ai_hint_help')}</p></div>}
    <header className="studio-topbar"><label className="flex items-center gap-1 px-2 text-[11px] text-teal-200"><input type="checkbox" checked={automatic} onChange={e=>setAutomatic(e.target.checked)}/>{t('studio_autopilot')}</label>
      <button type="button" onClick={()=>{setPicker('asset');setPickerQuery('');}} className="flex min-h-10 min-w-0 items-center gap-2 rounded px-2 text-left hover:bg-slate-800" aria-label={t('search_assets')}><span className="text-teal-300">⌕</span><span translate="no" className="truncate text-sm font-semibold">{asset.symbol}</span><span className="text-xs text-slate-500">⌄</span></button>
      {ready&&<span title={t('agent_fact_close')} className="font-mono text-xs text-slate-300">{formatQuote(snapshot.facts.close,snapshot.currency,i18n.language)}</span>}

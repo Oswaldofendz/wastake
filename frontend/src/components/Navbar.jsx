@@ -52,6 +52,7 @@ export function Navbar({
   darkMode,
   onToggleDark,
   isStale,
+  simple=false,
 }) {
   const { t, i18n } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -108,7 +109,7 @@ export function Navbar({
                         : 'text-slate-300 hover:text-white hover:bg-white/5',
                     ].join(' ')}
                   >
-                    {t(item.labelKey)}
+                    {simple?t('easy_nav_'+item.id,{defaultValue:t(item.labelKey)}):t(item.labelKey)}
                   </button>
                 ))}
               </div>
@@ -145,6 +146,7 @@ export function Navbar({
           />
 
           <button
+            hidden={simple}
             onClick={onToggleDark}
             className={[
               'p-2 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center',
@@ -214,7 +216,7 @@ export function Navbar({
                         ].join(' ')}
                       >
                         <span className="text-xl">{item.icon}</span>
-                        {t(item.labelKey)}
+                        {simple?t('easy_nav_'+item.id,{defaultValue:t(item.labelKey)}):t(item.labelKey)}
                       </button>
                     ))}
                   </div>

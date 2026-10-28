@@ -1,3 +1,5 @@
+import {useTranslation} from 'react-i18next';
+import './easy.css';
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Navbar }    from './components/Navbar.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
@@ -13,6 +15,7 @@ import { useAuth }   from './hooks/useAuth.js';
 import { useAlerts } from './hooks/useAlerts.js';
 import { useBrowserNotifications } from './hooks/useBrowserNotifications.js';
 import { usePWAInstall }           from './hooks/usePWAInstall.js';
+const SimpleExperience=lazy(()=>import('./pages/SimpleExperience.jsx').then(m=>({default:m.SimpleExperience})));
 const AgentCharts=lazy(()=>import('./pages/AgentCharts.jsx'));
 
 // ── Hook: favicon dinámico con variación de BTC ───────────────────────────────
@@ -68,6 +71,10 @@ function useDynamicFavicon(allAssets) {
 }
 
 export default function App() {
+  const {t}=useTranslation();
+  const [experience,setExperience]=useState(()=>{try{return localStorage.getItem('wastake_experience')==='simple'?'simple':'advanced';}catch{return 'advanced';}});
+  const simple=experience==='simple';
+  const chooseExperience=value=>{setExperience(value);try{localStorage.setItem('wastake_experience',value);}catch{}window.scrollTo(0,0);};
   const marketData=usePrices(60_000);
   const { lastUpdated, allAssets, isStale } = marketData;
   const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
@@ -105,20 +112,22 @@ export default function App() {
 
   useEffect(() => {
     const root = document.documentElement;
-    if (darkMode) {
+    root.dataset.experience=experience;
+    if (darkMode&&!simple) {
       root.classList.add('dark');
       root.classList.remove('light');
     } else {
       root.classList.remove('dark');
       root.classList.add('light');
     }
-    localStorage.setItem('wf_theme', darkMode ? 'dark' : 'light');
-  }, [darkMode]);
+    if(!simple)localStorage.setItem('wf_theme', darkMode ? 'dark' : 'light');
+  }, [darkMode,experience]);
 
   return (
-    <div className="min-h-screen text-white flex flex-col" style={{ background: 'var(--bg-primary)' }}>
+    <div className={`${simple?'mode-simple ':''}min-h-screen text-white flex flex-col`} style={{ background: 'var(--bg-primary)' }}>
       <ReleaseNotice/>
       <Navbar
+        simple={simple}
         lastUpdated={lastUpdated}
         currentPage={currentPage}
         onNavigate={setCurrentPage}
@@ -126,10 +135,12 @@ export default function App() {
         unreadCount={unreadCount}
         onMarkRead={markRead}
         onMarkAllRead={markAllRead}
-        darkMode={darkMode}
+        darkMode={simple?false:darkMode}
         onToggleDark={() => setDarkMode(d => !d)}
         isStale={isStale}
       />
+
+      {simple?<div className="experience-bar"><span>🌱 <strong>{t('easy_badge')}</strong> <small>Beta</small></span><span className="experience-description">{t('easy_mode_help')}</span><button type="button" onClick={()=>chooseExperience('advanced')}>{t('easy_advanced')} ↗</button></div>:currentPage==='dashboard'?<div className="experience-invite"><span>{t('easy_invite')}</span><button type="button" onClick={()=>chooseExperience('simple')}>🌱 {t('easy_switch')} <small>Beta</small> →</button></div>:null}
 
       {/* ── Banner de instalación PWA ── */}
       {canInstall && (
@@ -147,10 +158,10 @@ export default function App() {
       )}
 
       <div className="flex-1 flex flex-col min-h-0">
-        {currentPage === 'dashboard' ? (
+        {simple&&currentPage!=='chart-ai'?<Suspense fallback={<p role="status" className="p-6 text-slate-400">{t('loading')}</p>}><SimpleExperience page={currentPage} marketData={marketData} onNavigate={setCurrentPage} user={user} authLoading={authLoading} signIn={signIn} signUp={signUp} signOut={signOut}/></Suspense>:currentPage === 'dashboard' ? (
           <Dashboard marketData={marketData}/>
         ) : currentPage === 'chart-ai' ? (
-          <Suspense fallback={<p role="status" className="p-6 text-slate-400">…</p>}><AgentCharts marketData={marketData}/></Suspense>
+          <Suspense fallback={<p role="status" className="p-6 text-slate-400">…</p>}><AgentCharts marketData={marketData} guided={simple}/></Suspense>
         ) : currentPage === 'panorama' ? (
           <Panorama />
         ) : currentPage === 'markets' ? (

@@ -46,3 +46,11 @@ test('stale news is returned immediately while a refresh is pending, without mix
  const service=createNewsSnapshotService({now:()=>instant,read:async id=>{if(block)await pending;return [{title:id,link:'https://example.com/'+id,pubDate:'2026-10-28T10:00:00Z'}];},analyze:async news=>({news,aiStatus:'unavailable',analyzedCount:0})});
  const a={id:'AAPL',type:'stock',aliases:[]};await service(a,'es',false);instant+=121000;block=true;const cached=await service(a,'es',false);assert.equal(cached.news[0].title,'AAPL');assert.equal(cached.stale,true);assert.equal(cached.revalidating,true);release();await new Promise(r=>setImmediate(r));assert.equal((await service({...a,id:'MSFT'},'en',false)).news[0].title,'MSFT');
 });
+
+
+test('simple readings retain missing evidence and use the same technical thresholds and closed days',async()=>{
+ const {easyBias,easyHistory,easyVolatility}=await import('../../frontend/src/utils/easyReading.js');
+ assert.equal(easyBias(null),'unknown');assert.equal(easyBias(0),'weak');assert.equal(easyBias(4),'weak');assert.equal(easyBias(5),'mixed');assert.equal(easyBias(6),'strong');
+ assert.equal(easyVolatility({indicators:{atr:{current:2}},meta:{lastPrice:100}}),2);assert.equal(easyVolatility({meta:{lastPrice:100}}),null);
+ const now=Date.UTC(2026,9,28,15),day=Math.floor(now/86400000)*86400;assert.equal(easyHistory([{time:day,close:100},{time:day-86400,close:90}],now).length,1);
+});

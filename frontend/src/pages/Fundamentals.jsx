@@ -62,13 +62,13 @@ function scoreTone(value) {
   return value > 0 ? 'text-green-400' : 'text-red-400';
 }
 
-export function Fundamentals() {
+export function Fundamentals({initialAsset=null}) {
   const { i18n, t: translate } = useTranslation();
   const lang = languageCode(i18n.resolvedLanguage || i18n.language);
   const t = COPY[lang];
   const analysisLabels = { ...ANALYSIS_LABELS[lang], ...FALLBACK_LABELS[lang] };
-  const assets = useMemo(() => ALL_ASSETS.filter(asset => asset.analysisType), []);
-  const [assetId, setAssetId] = useState('bitcoin');
+  const assets = useMemo(() => {const list=ALL_ASSETS.filter(asset=>asset.analysisType);return initialAsset&&!list.some(a=>a.id===initialAsset.id)?[initialAsset,...list]:list;}, [initialAsset]);
+  const [assetId, setAssetId] = useState(initialAsset?.id??'bitcoin');
   const [periodId, setPeriodId] = useState('day');
   const [refreshKey, setRefreshKey] = useState(0);
   const [articles, setArticles] = useState([]);
