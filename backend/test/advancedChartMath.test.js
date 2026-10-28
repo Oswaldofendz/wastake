@@ -29,6 +29,7 @@ test('FVGs require displacement, preserve only unfilled space and retire at the 
  const missing=input.map((b,i)=>i===36?{...b,time:b.time-300}:b);assert.equal(fairValueGaps(missing,900).some(z=>z.formedAt===input[37].time),false);
 });
 test('imbalance requests create auditable FVG tools, while order-book requests cannot fake order flow',()=>{
+ assert.deepEqual(requestedTools('Muestra imbalance (FVG) y explica las zonas detectadas'),[{name:'draw',drawing:'fvg'}]);
  assert.deepEqual(requestedTools('imbalance'),[{name:'draw',drawing:'fvg'}]);assert.deepEqual(requestedTools('Quita FVG'),[{name:'removeFvg'}]);assert.deepEqual(requestedTools('No muestres imbalance'),[]);
  assert.deepEqual(requestedTools('order book imbalance'),[]);
  const snap=snapshotFromCandles(bars,{id:'fixture',type:'crypto',interval:'15m',source:'fixture',currency:'USD'},(bars.at(-1).time+900)*1000);

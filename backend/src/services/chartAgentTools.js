@@ -15,7 +15,7 @@ export function requestedTools(message){
   if(/canal|channel/.test(q))tools.push({name:'draw',drawing:'channel'});
   else if(/tendencia|trend|tendencia|estructura actual|current (setup|structure)|estrutura atual/.test(q))tools.push({name:'draw',drawing:'trend'});
   if(/fibonac|retroces|retrac/.test(q))tools.push({name:'draw',drawing:'fib'});
-  if(/zona|rango|range|consolidac/.test(q)&&!/fibonac/.test(q))tools.push({name:'draw',drawing:'range'});
+  if((/rango|range|consolidac/.test(q)||(/zona/.test(q)&&!tools.some(t=>t.drawing==='fvg')))&&!/fibonac/.test(q))tools.push({name:'draw',drawing:'range'});
  }
  if(/\b(atr|adx|stoch|stochastic|estocastico|obv|vwap)\b/.test(q))for(const [pattern,indicator] of [[/\batr\b/,'atr'],[/\badx\b/,'adx'],[/stoch|estocastico/,'stoch'],[/\bobv\b/,'obv'],[/\bvwap\b/,'vwap']])if(pattern.test(q))tools.push({name:'indicator',indicator,enabled:!removing});
  if(/\b(sma|ma)\s*(50|200)\b/.test(q)&&draw)for(const m of q.matchAll(/\b(?:sma|ma)\s*(50|200)\b/g))tools.push({name:'indicator',indicator:'sma',period:Number(m[1]),enabled:true});
