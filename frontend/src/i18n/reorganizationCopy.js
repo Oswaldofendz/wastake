@@ -10,9 +10,9 @@ const rows={
 
  "ui_imbalance_prompt":["Muestra imbalance (FVG) y explica las zonas detectadas","Show imbalance (FVG) and explain detected zones","Mostra imbalance (FVG) e explica as zonas detetadas"],
  "ui_indicator_missing":["Faltan velas o volumen válidos para calcular este indicador.","Valid bars or volume are missing for this indicator.","Faltam velas ou volume válidos para este indicador."],
- "ui_vwap_missing":["VWAP requiere velas de 15 min o 4 h y volumen válido. No se sustituye con velas diarias.","VWAP requires 15m or 4h candles and valid volume. Daily bars are not substituted.","VWAP exige velas de 15 min ou 4 h e volume válido. Não se substitui por velas diárias."],
+ "ui_vwap_missing":["VWAP requiere velas intradiarias y volumen válido. No se sustituye con velas diarias.","VWAP requires intraday candles and valid volume. Daily bars are not substituted.","VWAP exige velas intradiárias e volume válido. Não se substitui por velas diárias."],
  "ui_vwap_method":["VWAP de HLC/3 y volumen de velas observadas · reinicio diario UTC · no es cálculo por operación.","VWAP from observed bar HLC/3 and volume · resets daily UTC · not trade-level calculation.","VWAP de HLC/3 e volume observado · reinício diário UTC · não é cálculo por transação."],
- "agent_fact_fvgCount":["Zonas FVG abiertas mostradas","Open FVG zones shown","Zonas FVG abertas mostradas"],
+ "agent_fact_fvgCount":["Zonas FVG abiertas detectadas","Open FVG zones detected","Zonas FVG abertas detetadas"],
  "agent_fact_fvgBullish":["FVG de impulso alcista","Upward-displacement FVGs","FVG de impulso de alta"],
  "agent_fact_fvgBearish":["FVG de impulso bajista","Downward-displacement FVGs","FVG de impulso de baixa"],
  "agent_fact_fvgLow":["Borde inferior · zona más cercana","Lower edge · nearest zone","Borda inferior · zona mais próxima"],
