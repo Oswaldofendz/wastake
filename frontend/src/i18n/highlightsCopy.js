@@ -12,7 +12,7 @@ const rows={
  highlights_scope:['Entre activos del catálogo con datos disponibles · no es un ranking mundial','Among catalogue assets with available data · not a worldwide ranking','Entre ativos do catálogo com dados disponíveis · não é um ranking mundial'],
  highlights_cryptoCap:['Cripto · mayor capitalización','Crypto · largest market caps','Cripto · maior capitalização'],
  highlights_stockCap:['Empresas · mayor capitalización en USD','Companies · largest USD market caps','Empresas · maior capitalização em USD'],
- highlights_gainers:['Mayores subidas · empresas y cripto','Top gainers · companies and crypto','Maiores subidas · empresas e cripto'],
+ highlights_gainers:['Empresas · mayores subidas','Companies · top gainers','Empresas · maiores subidas'],
  highlights_cryptoGainers:['Cripto · mayores subidas','Crypto · top gainers','Cripto · maiores subidas'],
  highlights_missing:['No hay datos verificables suficientes.','Not enough verified data.','Sem dados verificáveis suficientes.'],
  highlights_moves:['Variación: cripto en 24 h; acciones frente al cierre anterior. Las fuentes pueden tener retraso.','Changes: crypto over 24h; stocks against previous close. Sources may be delayed.','Variação: cripto em 24 h; ações face ao fecho anterior. As fontes podem ter atraso.'],

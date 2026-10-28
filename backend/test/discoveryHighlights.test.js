@@ -9,7 +9,7 @@ test('catalogue leaders exclude missing caps, non-USD company caps, yield indice
   const result=marketLeaders([...rows,rows[0]]);
   assert.deepEqual(result.stockCap.map(a=>a.id),['A']);
   assert.deepEqual(result.cryptoCap.map(a=>a.id),['C']);
-  assert.deepEqual(result.gainers.map(a=>a.id),['C','A']);
+  assert.deepEqual(result.gainers.map(a=>a.id),['A']);
   assert.deepEqual(result.cryptoGainers.map(a=>a.id),['C']);
   assert.deepEqual(marketLeaders([]).gainers,[]);
 });

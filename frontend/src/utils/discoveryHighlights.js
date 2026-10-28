@@ -3,7 +3,7 @@ export function marketLeaders(assets = [], limit = 5) {
   const unique=[...new Map(assets.filter(a=>a?.id).map(a=>[`${a.type}:${a.id}`,a])).values()];
   const cap=type=>unique.filter(a=>a.type===type&&Number.isFinite(a.marketCap)&&a.marketCap>0&&(a.currency==='USD'||a.type==='crypto')).sort((a,b)=>b.marketCap-a.marketCap).slice(0,limit);
   // Do not mix forex, yields and indices with investable company/token moves.
-  const movers=cryptoOnly=>unique.filter(a=>(cryptoOnly?a.type==='crypto':['stock','crypto'].includes(a.type))&&Number.isFinite(a.price)&&a.price>0&&Number.isFinite(a.change24h)&&a.change24h>0).sort((a,b)=>b.change24h-a.change24h).slice(0,limit);
+  const movers=cryptoOnly=>unique.filter(a=>a.type===(cryptoOnly?'crypto':'stock')&&Number.isFinite(a.price)&&a.price>0&&Number.isFinite(a.change24h)&&a.change24h>0).sort((a,b)=>b.change24h-a.change24h).slice(0,limit);
   return {cryptoCap:cap('crypto'),stockCap:cap('stock'),gainers:movers(false),cryptoGainers:movers(true)};
 }
 
