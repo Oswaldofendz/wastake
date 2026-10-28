@@ -1,9 +1,11 @@
+import {createSingleFlight} from './singleFlight.js';
+const analysisOnce=createSingleFlight();
 import axios from 'axios';
 import crypto from 'node:crypto';
 import { callLLM } from './llmService.js';
 import { isLikelyLanguage, localizedHorizon, preservesFinancialNames, preservesFinancialNumbers } from './financialLanguageService.js';
 
-const VERSION = 'event-analysis-v5-asset';
+const VERSION = 'event-analysis-v6-bounded';
 const CACHE_TTL = 4 * 60 * 60 * 1000;
 const MAX_REPAIRS_PER_REQUEST = 3;
 const analysisCache = new Map();
@@ -184,6 +186,7 @@ function hasProviderKey() {
 }
 
 export async function enrichFundamentalsNews(news, lang = 'es', target = '') {
+  const budget=AbortSignal.timeout(45000);
   const locale = Object.prototype.hasOwnProperty.call(LANGUAGES, lang) ? lang : 'es';
   const enriched = news.map(article => ({ ...article }));
   const eligible = enriched.map((article, index) => ({ article, index }))
@@ -220,11 +223,13 @@ export async function enrichFundamentalsNews(news, lang = 'es', target = '') {
     return { news: enriched, aiStatus, analyzedCount: cached.analyzedCount, analysisVersion: VERSION, cached: true };
   }
 
+  return analysisOnce(digest,async()=>{
   try {
     const cacheItems = {};
     let analyzedCount = 0;
     let repairAttempts = 0;
     for (let start = 0; start < eligible.length; start += 5) {
+      if(budget.aborted)break;
       const batch = eligible.slice(start, start + 5);
       let result;
       try {
@@ -233,6 +238,7 @@ export async function enrichFundamentalsNews(news, lang = 'es', target = '') {
           maxTokens: 2800,
           temperature: 0.2,
           tag: '[fundamentals-events]',
+          signal: budget,
         });
       } catch (error) {
         console.warn(`[fundamentals-events] AI batch ${Math.floor(start / 5) + 1} unavailable: ${error.message}`);
@@ -258,7 +264,7 @@ export async function enrichFundamentalsNews(news, lang = 'es', target = '') {
         // A partial/malformed batch should not force every missing story onto
         // keyword rules. Retry only a few failed items individually to keep
         // additional provider calls bounded.
-        if (!analysis && article.analysisDepth !== 'title' && repairAttempts < MAX_REPAIRS_PER_REQUEST) {
+        if (!budget.aborted && !analysis && article.analysisDepth !== 'title' && repairAttempts < MAX_REPAIRS_PER_REQUEST) {
           repairAttempts++;
           try {
             const repaired = await callLLM(buildPrompt([article], locale, target), {
@@ -266,6 +272,7 @@ export async function enrichFundamentalsNews(news, lang = 'es', target = '') {
               maxTokens: 1200,
               temperature: 0.2,
               tag: '[fundamentals-events-repair]',
+              signal: budget,
             });
             const repairedItems = JSON.parse(repaired.text).articles;
             const candidate = Array.isArray(repairedItems)
@@ -290,7 +297,8 @@ export async function enrichFundamentalsNews(news, lang = 'es', target = '') {
       }
     }
     for (const { article } of eligible) delete article.analysisText;
-    if (analyzedCount) analysisCache.set(digest, { items: cacheItems, analyzedCount, expiresAt: Date.now() + CACHE_TTL });
+    if(analysisCache.size>=100)analysisCache.delete(analysisCache.keys().next().value);
+    analysisCache.set(digest, { items: cacheItems, analyzedCount, expiresAt: Date.now() + (analyzedCount===eligible.length?CACHE_TTL:analyzedCount?5*60000:60000) });
     const aiStatus = analyzedCount === eligible.length ? 'ready' : analyzedCount ? 'partial' : 'unavailable';
     return { news: enriched, aiStatus, analyzedCount, analysisVersion: VERSION };
   } catch (error) {
@@ -298,4 +306,5 @@ export async function enrichFundamentalsNews(news, lang = 'es', target = '') {
     for (const { article } of eligible) delete article.analysisText;
     return { news: enriched, aiStatus: 'unavailable', analyzedCount: 0, analysisVersion: VERSION };
   }
+  });
 }
