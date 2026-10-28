@@ -15,7 +15,7 @@ export function importantArticles(articles=[], now=Date.now(), limit=5) {
   return articles.filter(a=>{
     const time=Date.parse(a.pubDate),key=String(a.title??'').trim().toLowerCase();
     if(!key||seen.has(key)||!/^https?:\/\//i.test(a.link??'')||!Number.isFinite(time)||time>now||time<now-30*86400000)return false;
-    seen.add(key);return true;
+    seen.add(key);return contextualArticle(a)&&a.relevance>=70&&a.factors?.assetLink>=60&&a.factors?.evidence>=50&&Boolean(a.evidenceQuote);
   }).sort((a,b)=>{
     const aScore=contextualArticle(a)?Math.max(0,Math.min(100,a.relevance)):null;
     const bScore=contextualArticle(b)?Math.max(0,Math.min(100,b.relevance)):null;

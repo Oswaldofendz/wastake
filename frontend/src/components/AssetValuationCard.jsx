@@ -4,6 +4,7 @@ import { fetchAssetResearch, translateText } from '../services/api.js';
 import { companyRatios } from '../utils/companyValuation.js';
 import { DcfScenario } from './DcfScenario.jsx';
 import { AssetQuickSummary } from './AssetQuickSummary.jsx';
+import {ResearchCoverage} from './ResearchCoverage.jsx';
 import { CryptoResearchCard } from './CryptoResearchCard.jsx';
 
 const linkStyle='text-sky-300 underline underline-offset-2';
@@ -47,7 +48,7 @@ export function AssetValuationCard({asset,technical}) {
     <h3 className="text-xl font-semibold text-white">{tr(asset.type==='stock'?'title':'assetTitle')}</h3><p className="mt-1 text-sm leading-relaxed text-slate-300">{tr(asset.type==='stock'?'intro':'assetIntro')}</p>
     {asset.type!=='stock'?<><p className="mt-4 rounded-lg bg-slate-800 p-4 text-sm leading-relaxed">{tr(['etf','crypto','bond'].includes(asset.type)?asset.type:'other')}</p><p className="mt-3 text-sm text-slate-400">{tr('technical')}</p></>:!data&&!state.error?<p role="status" className="py-6 text-sky-200">{tr('loading')}</p>:<>
       {(state.error||data?.partial)&&<div role="status" className="mt-3 rounded-lg border border-amber-800 p-3 text-sm text-amber-200">{tr('unavailable')} <button type="button" onClick={()=>setAttempt(n=>n+1)} className="min-h-10 px-2 underline">{tr('retry')}</button></div>}
-      {data&&<>
+      {data&&<><ResearchCoverage data={data} type="stock"/>
         {company&&<div className="my-4 space-y-2 border-b border-slate-700 pb-4 text-sm leading-relaxed">
           <h4 className="font-semibold">{tr('company')} · <span translate="no">{company.name}</span></h4>
           {profileText&&<><p lang={description?.lang===lang?lang:'en'} translate="no">{profileText}</p>{lang!=='en'&&!description&&<div className="text-xs text-amber-200" role="status"><p>{tr(translating?'translating':'original')}</p>{!translating&&<button type="button" className="min-h-10 underline" onClick={()=>setTranslationAttempt(n=>n+1)}>{tr('retryTranslation')}</button>}</div>}</>}

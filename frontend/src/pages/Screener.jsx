@@ -6,6 +6,7 @@ import { AnalysisPanel } from '../components/AnalysisPanel.jsx';
 import { CandleChart } from '../components/PriceChart.jsx';
 import { AssetValuationCard } from '../components/AssetValuationCard.jsx';
 import { MarketLeaders } from '../components/MarketLeaders.jsx';
+import {OpportunityPanel} from '../components/OpportunityPanel.jsx';
 import { ImportantNews } from '../components/ImportantNews.jsx';
 import { AnalysisNarrative } from '../components/AnalysisNarrative.jsx';
 import { formatQuote } from '../utils/panoramaAnalysis.js';
@@ -163,7 +164,13 @@ export function Screener({marketData}) {
   const [search, setSearch]           = useState('');
   const [inspectedAsset, setInspectedAsset] = useState(null);
   const [analysisSnapshot,setAnalysisSnapshot]=useState(null);
-  const inspectionRef=useRef(null);
+  const inspectionRef=useRef(null),deepLinkRead=useRef(false);
+  useEffect(()=>{
+    if(deepLinkRead.current||!allAssets.length)return;
+    const params=new URLSearchParams(window.location.search),id=params.get('inspect'),kind=params.get('kind');
+    const found=allAssets.find(a=>a.id===id&&a.type===kind);
+    if(found){deepLinkRead.current=true;setInspectedAsset(found);}
+  },[allAssets]);
   useEffect(()=>{ if(inspectedAsset)inspectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },[inspectedAsset]);
   const [typeFilter, setTypeFilter]   = useState('all');
   const [changeFilter, setChangeFilter] = useState('all');
@@ -410,9 +417,10 @@ export function Screener({marketData}) {
       </section>
       {inspectedAsset && <section ref={inspectionRef} className="mb-4 scroll-mt-24 rounded-xl border border-sky-700/50 p-3">
         <div className="mb-3 flex items-center justify-between gap-2"><h2 translate="no" className="font-semibold">{inspectedAsset.name} · {inspectedAsset.symbol}</h2><button type="button" onClick={()=>{setInspectedAsset(null);resetFilters();}} className="min-h-10 px-3" aria-label={t('catalogue_return')}>← {t('catalogue_return')}</button></div>
+        <OpportunityPanel asset={inspectedAsset}/>
+        <ImportantNews key={`news:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)}/>
         <AssetValuationCard key={`valuation:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)} technical={analysisSnapshot?.id===inspectedAsset.id&&analysisSnapshot?.type===inspectedAsset.type?analysisSnapshot:null}/><CandleChart key={`chart:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)}/><details className="mt-3 rounded-xl border border-slate-700 p-3"><summary className="min-h-8 cursor-pointer text-sm font-semibold">{t('audit_technical_details')}</summary><AnalysisPanel key={`analysis:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)} onAnalysis={setAnalysisSnapshot}/></details>
         <AnalysisNarrative key={`narrative:${inspectedAsset.type}:${inspectedAsset.id}`} asset={inspectedAsset}/>
-        <ImportantNews key={`news:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)}/>
       </section>}
     </div>
   );

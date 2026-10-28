@@ -56,7 +56,7 @@ export const AgentCanvas=forwardRef(function AgentCanvas({snapshot,asset,workspa
    }
    const view=compareMode?performance.left:all,key=`${snapshot.id}:${snapshot.interval}:${snapshot.source}:${compareMode}:${workspace.focus}:${workspace.focusToken??0}`;
    const range=focusRange(compareMode?view.map(c=>({...c,close:c.value+100})):workspace.focus==='drop'?closed:all,workspace.focus);
-   if(saved.current?.key===key&&saved.current.range)chart.timeScale().setVisibleLogicalRange(saved.current.range);else if(range)chart.timeScale().setVisibleRange(range);else chart.timeScale().fitContent();
+   if(saved.current?.key===key&&saved.current.range)chart.timeScale().setVisibleLogicalRange(saved.current.range);else if(workspace.focus==='recent')chart.timeScale().setVisibleLogicalRange({from:Math.max(0,view.length-80),to:view.length+3});else if(range)chart.timeScale().setVisibleRange(range);else chart.timeScale().fitContent();
    const oscillators=[];
    if(!compareMode&&workspace.rsi&&rsi.current){
      const pane=makeChart(rsi.current,{handleScroll:false,handleScale:false,rightPriceScale:{borderVisible:false,scaleMargins:{top:.12,bottom:.12}}});

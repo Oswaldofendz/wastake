@@ -16,9 +16,9 @@ test('catalogue leaders exclude missing caps, non-USD company caps, yield indice
 test('news ranking uses contextual evidence, never title rules as verified relevance; excludes future, old and duplicate stories',()=>{
   const now=Date.parse('2026-10-27T18:00:00Z');
   const article=(title,days,extra={})=>({title,pubDate:new Date(now-days*86400000).toISOString(),link:'https://example.test/'+title,...extra});
-  const contextual={relevance:70,analysisProvider:'test',summary:'Summary',mechanism:'Reason',watch:'Watch'};
-  const data=[article('recent',0),article('context',1,contextual),article('keyword',2,{relevance:100}),article('future',-1,contextual),article('old',31,contextual),article('recent',0),article('bad',0,{link:'javascript:alert(1)'})];
-  assert.deepEqual(importantArticles(data,now).map(a=>a.title),['context','recent','keyword']);
+  const contextual={relevance:70,analysisProvider:'test',summary:'Summary',mechanism:'Reason',watch:'Watch',evidenceQuote:'Verified source excerpt',factors:{assetLink:80,evidence:80}};
+  const data=[article('recent',0),article('context',1,contextual),article('keyword',2,{relevance:100}),article('low relevance',0,{...contextual,relevance:69}),article('weak link',0,{...contextual,factors:{assetLink:10,evidence:90}}),article('future',-1,contextual),article('old',31,contextual),article('recent',0),article('bad',0,{link:'javascript:alert(1)'})];
+  assert.deepEqual(importantArticles(data,now).map(a=>a.title),['context']);
 });
 test('NVDA public-candle regression detects the nearer confirmed rejection and plots the centre inside its observed zone',()=>{
   const {candles}=JSON.parse(fs.readFileSync(new URL('./fixtures/nvda-levels-2026-10-27.json',import.meta.url)));

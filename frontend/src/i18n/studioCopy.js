@@ -1,4 +1,8 @@
 const rows={
+ studio_autopilot:['Analizar al cambiar','Analyze on change','Analisar ao mudar'],
+ studio_refresh_policy:['Consulta cada 60 s · la fuente puede traer retraso','Checks every 60 s · source data may be delayed','Consulta a cada 60 s · a fonte pode ter atraso'],
+ studio_refresh_failed:['Sin actualización · se conserva la última lectura','Refresh unavailable · keeping the last reading','Sem atualização · mantém-se a última leitura'],
+
  market_subtitle:['Agenda económica, eventos y contexto del mercado','Economic calendar, events and market context','Agenda económica, eventos e contexto do mercado'],
  studio_closed_bars:['velas cerradas','completed candles','velas fechadas'],studio_score:['Índice','Index','Índice'],studio_plan_ai:['Herramientas elegidas por IA','AI-selected tools','Ferramentas escolhidas por IA'],
  calendar_next:['Próximo evento','Next event','Próximo evento'],calendar_time_unknown:['Hora no publicada','Time not published','Hora não publicada'],calendar_compact_note:['Agenda de publicaciones; el impacto no indica dirección del precio.','Release schedule; impact does not indicate price direction.','Agenda de publicações; o impacto não indica a direção do preço.'],chart_time_controls_note:['El período ajusta el zoom; la duración cambia las velas del gráfico. El índice técnico de abajo conserva su análisis diario.','The range adjusts zoom; the interval changes chart candles. The technical index below keeps its daily analysis.','O período ajusta o zoom; a duração altera as velas. O índice técnico abaixo mantém a análise diária.'],

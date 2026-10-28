@@ -6,29 +6,34 @@ import {DrawingToolbar} from '../components/ChartDrawings.jsx';
 import {fetchChartSnapshot,askChartAgent,searchAssets} from '../services/api.js';
 import {getAnalysisType} from '../data/assetCatalog.js';
 import {formatQuote} from '../utils/panoramaAnalysis.js';
+import {mergeAutomaticAnalysis,chartContextMatches} from '../utils/automaticChart.js';
 import {initialWorkspace,applyChartActions} from '../utils/chartWorkspace.js';
 
 const starter={id:'bitcoin',name:'Bitcoin',symbol:'BTC',type:'crypto'};
 function readWatchlist(){try{return JSON.parse(localStorage.getItem('wastake_chart_watchlist_v1')||'[]').filter(a=>a&&typeof a.id==='string'&&typeof a.symbol==='string'&&['stock','crypto','etf','bond','forex','index','commodity'].includes(a.type)).slice(0,20);}catch{return [];}}
-function AlbertoIcon({busy}){return <svg viewBox="0 0 60 48" className={`h-12 w-14 shrink-0 ${busy?'animate-pulse':''}`} aria-hidden="true"><path d="M30 3v7M25 3h10" stroke="#5eead4" strokeWidth="2"/><rect x="8" y="10" width="44" height="29" rx="11" fill="#0d2d2c" stroke="#2dd4bf"/><rect x="15" y="17" width="30" height="15" rx="6" fill="#0a1518"/><path d="M21 22v4m18-4v4m-14 8h10M3 21v8m54-8v8" stroke="#99f6e4" strokeWidth="3" strokeLinecap="round"/><path d="m20 40-3 5m23-5 3 5" stroke="#2dd4bf" strokeWidth="2"/></svg>;}
+function AlbertoIcon({busy}){return <svg viewBox="0 0 96 80" className={`alberto-bull h-16 w-20 shrink-0 ${busy?'is-thinking':''}`} aria-hidden="true"><ellipse cx="48" cy="72" rx="29" ry="4" fill="#071c22"/><g className="bull-head"><path d="M24 32C7 33 6 13 11 7c-1 13 11 13 19 14m42 11c17 1 18-19 13-25 1 13-11 13-19 14" fill="#ffdda2" stroke="#ca9d60" strokeWidth="2"/><path d="M26 29 13 25l4 15 13 3m40-14 13-4-4 15-13 3" fill="#377d7b"/><path d="M25 26q23-20 46 0l-3 30q-20 23-40 0Z" fill="#1e575a" stroke="#63c9bb" strokeWidth="2"/><path d="m35 16 7-7 4 8 8-9 5 12" fill="#66d4bb"/><path d="m32 36 10 3m12 0 10-3" stroke="#c0fbe6" strokeWidth="3" strokeLinecap="round"/><g className="bull-eyes" fill="#fff6c9"><ellipse cx="37" cy="42" rx="3" ry="4"/><ellipse cx="59" cy="42" rx="3" ry="4"/></g><ellipse cx="48" cy="59" rx="19" ry="11" fill="#58aa9b"/><ellipse cx="39" cy="58" rx="3" ry="2" fill="#14383f"/><ellipse cx="57" cy="58" rx="3" ry="2" fill="#14383f"/><path d="M41 65q7 4 14 0" fill="none" stroke="#14383f" strokeWidth="2" strokeLinecap="round"/></g></svg>;}
 
 export default function AgentCharts({marketData}){
  const {t,i18n}=useTranslation(),lang=(i18n.resolvedLanguage||i18n.language).split('-')[0];
  const [asset,setAsset]=useState(starter),[venue,setVenue]=useState('auto'),[timeline,setTimeline]=useState({current:initialWorkspace(),past:[]});
  const workspace=timeline.current;
+ const [automatic,setAutomatic]=useState(true),[refreshFailed,setRefreshFailed]=useState(false);
+ const automaticSeen=useRef(''),busyRef=useRef(false);
  const [snapshot,setSnapshot]=useState(null),[loading,setLoading]=useState(true),[dataError,setDataError]=useState(false),[reload,setReload]=useState(0);
  const [comparison,setComparison]=useState(null),[comparisonError,setComparisonError]=useState(false),[comparisonLoading,setComparisonLoading]=useState(false);
  const [messages,setMessages]=useState([]),[query,setQuery]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(false);
  const [tool,setTool]=useState('select'),[selectedId,setSelectedId]=useState(null),[picker,setPicker]=useState(null),[pickerQuery,setPickerQuery]=useState('');
  const [chatOpen,setChatOpen]=useState(()=>window.innerWidth>=760),[railTab,setRailTab]=useState('chat'),[watchlist,setWatchlist]=useState(readWatchlist);
  const pickerNode=useRef(null),canvas=useRef(null),controller=useRef(null),currentContext=useRef(''),messageSequence=useRef(0),log=useRef(null);
+ busyRef.current=busy;
  const contextKey=`${getAnalysisType(asset)}:${asset.id}:${workspace.interval}:${venue}:${lang}`;currentContext.current=contextKey;
+ const matchesSnapshot=chartContextMatches(snapshot,{id:asset.id,type:getAnalysisType(asset),interval:workspace.interval,venue});
  const fmt=n=>Number.isFinite(n)?n.toLocaleString(i18n.language,{maximumFractionDigits:Math.abs(n)<1?8:2}):'—';
  const date=stamp=>new Date(stamp*1000).toLocaleString(i18n.language,{timeZone:'UTC',dateStyle:'short',timeStyle:'short'});
  const quoteKeys=['close','low','high','ema20','ema50','support','resistance'];
  const fact=(data,key)=>quoteKeys.includes(key)?formatQuote(data.facts[key],data.currency,i18n.language):`${fmt(data.facts[key])}${['change','drawdown','atrPercent'].includes(key)&&Number.isFinite(data.facts[key])?'%':''}`;
  useEffect(()=>{
-   let active=true;controller.current?.abort();setBusy(false);setLoading(true);setDataError(false);setSnapshot(null);setSelectedId(null);setTool('select');
+   let active=true;controller.current?.abort();setBusy(false);setLoading(true);setDataError(false);setRefreshFailed(false);setSnapshot(null);setSelectedId(null);setTool('select');
    fetchChartSnapshot(asset,getAnalysisType(asset),workspace.interval,venue).then(data=>{
      if(active){if(data.id!==asset.id||data.interval!==workspace.interval||!Array.isArray(data.candles)||!data.snapshotId)throw new Error('Chart context unavailable');setSnapshot(data);}
    }).catch(()=>{if(active)setDataError(true);}).finally(()=>{if(active)setLoading(false);});
@@ -61,14 +66,14 @@ export default function AgentCharts({marketData}){
  function selectAsset(next){controller.current?.abort();messageSequence.current++;currentContext.current='';setAsset(next);setVenue('auto');setMessages([]);setQuery('');setError(false);setSelectedId(null);setTool('select');setTimeline({current:initialWorkspace(),past:[]});setPicker(null);}
  function compareAsset(next,source='auto'){commit({...workspace,compare:{asset:next,venue:source}});setPicker(null);setTool('select');setSelectedId(null);}
  function saveAsset(){setWatchlist(previous=>{const found=previous.some(a=>a.id===asset.id&&a.type===asset.type);const list=found?previous.filter(a=>a.id!==asset.id||a.type!==asset.type):[...previous,{id:asset.id,type:asset.type,analysisType:asset.analysisType,name:asset.name,symbol:asset.symbol}].slice(-20);try{localStorage.setItem('wastake_chart_watchlist_v1',JSON.stringify(list));}catch{}return list;});}
- async function send(text=query,focusId=selectedId){
-   const message=text.trim();if(!message||busy||!snapshot)return;
+ async function send(text=query,focusId=selectedId,auto=false){
+   const message=text.trim();if(!message||busy||!matchesSnapshot)return;
    const captured=contextKey,request=++messageSequence.current;
    controller.current?.abort();controller.current=new AbortController();
-   setMessages(p=>[...p,{role:'user',text:message,context:captured,id:`u${request}`,asset:asset.symbol,interval:workspace.interval}].slice(-30));setQuery('');setBusy(true);setError(false);setRailTab('chat');setChatOpen(true);
+   setMessages(p=>[...p,{role:'user',text:message,context:captured,id:`u${request}`,asset:asset.symbol,interval:workspace.interval}].slice(-30));setQuery('');setBusy(true);setError(false);setRailTab('chat');if(!auto)setChatOpen(true);
    try{
-     const history=messages.filter(m=>m.context===captured).slice(-4).map(m=>({role:m.role,text:m.role==='user'?m.text:m.response.insight?.explanation??m.response.reading.sections.map(s=>s.text).join(' ')}));
-     const response=await askChartAgent({id:asset.id,type:getAnalysisType(asset),interval:workspace.interval,venue,message,lang:['es','pt','en'].includes(lang)?lang:'en',history,context:{drawings:workspace.drawings,selectedId:focusId}},controller.current.signal);
+     const history=auto?[]:messages.filter(m=>m.context===captured).slice(-4).map(m=>({role:m.role,text:m.role==='user'?m.text:m.response.insight?.explanation??m.response.reading.sections.map(s=>s.text).join(' ')}));
+     const response=await askChartAgent({id:asset.id,type:getAnalysisType(asset),interval:workspace.interval,venue,message,lang:['es','pt','en'].includes(lang)?lang:'en',history,context:{drawings:auto?[]:workspace.drawings,selectedId:auto?null:focusId}},controller.current.signal);
      if(currentContext.current!==captured||request!==messageSequence.current)return;
      if(response.snapshot?.id!==asset.id||response.snapshot.interval!==workspace.interval||!response.reading||!Array.isArray(response.actions))throw new Error('Invalid context');
      setSnapshot(response.snapshot);
@@ -79,15 +84,35 @@ export default function AgentCharts({marketData}){
        if(matches.length===1){setTimeline(p=>({past:[...p.past,p.current].slice(-20),current:{...p.current,compare:{asset:matches[0],venue:'auto'}}}));continue;}
        const result=await searchAssets(action.query);if(currentContext.current!==captured||request!==messageSequence.current)return;choices=(result.results??result).slice(0,6);
      }
-     if(actions.length)operate(actions);
-     setMessages(p=>[...p,{role:'assistant',response:{...response,actions,comparisonRequested:requests[0]??null},choices,context:captured,id:`a${request}`,asset:asset.symbol,interval:workspace.interval}].slice(-30));
+     if(auto)setTimeline(p=>({past:[...p.past,p.current].slice(-20),current:mergeAutomaticAnalysis(p.current,actions)}));
+     else if(actions.length)operate(actions);
+     setMessages(p=>[...p,{role:'assistant',response:{...response,actions,comparisonRequested:requests[0]??null},choices,context:captured,id:`a${request}`,asset:asset.symbol,interval:workspace.interval,automatic:auto}].slice(-30));
    }catch(e){if(e.name!=='AbortError'&&currentContext.current===captured)setError(true);}
    finally{if(currentContext.current===captured&&request===messageSequence.current)setBusy(false);}
  }
- const ready=!!snapshot&&!loading&&!dataError,selected=workspace.drawings.find(d=>d.id===selectedId),isSaved=watchlist.some(a=>a.id===asset.id&&a.type===asset.type);
+ useEffect(()=>{
+   if(!matchesSnapshot||loading||dataError||busy||!automatic)return;
+   const key=`${contextKey}:${snapshot.snapshotId}`;
+   if(automaticSeen.current===key)return;
+   automaticSeen.current=key;
+   send(`${t('studio_setup')}; ${t('agent_rsi')}`,null,true);
+ },[snapshot?.snapshotId,contextKey,loading,dataError,busy,automatic]);
+ useEffect(()=>{
+   let active=true,inFlight=false;
+   const refresh=async()=>{
+     if(document.visibilityState!=='visible'||busyRef.current||inFlight)return;
+     inFlight=true;
+     try{const data=await fetchChartSnapshot(asset,getAnalysisType(asset),workspace.interval,venue);if(active&&data.id===asset.id&&data.interval===workspace.interval&&data.snapshotId){setSnapshot(data);setRefreshFailed(false);}}
+     catch{if(active)setRefreshFailed(true);}finally{inFlight=false;}
+   };
+   const timer=setInterval(refresh,60000);
+   document.addEventListener('visibilitychange',refresh);
+   return()=>{active=false;clearInterval(timer);document.removeEventListener('visibilitychange',refresh);};
+ },[asset.id,asset.type,workspace.interval,venue]);
+ const ready=matchesSnapshot&&!loading&&!dataError,selected=workspace.drawings.find(d=>d.id===selectedId),isSaved=watchlist.some(a=>a.id===asset.id&&a.type===asset.type);
  const actionName=a=>['ema','sma'].includes(a.type)?`${a.type.toUpperCase()} ${a.period}`:a.type==='draw'?`${t('studio_objects')} · ${a.drawings.length}`:a.type==='interval'?a.value:a.type==='focus'?t(a.value==='drop'?'agent_drop':'agent_recent'):a.type==='clear'?t('agent_clear'):a.type==='undo'?t('agent_undo'):a.type==='volume'?t('agent_volume'):a.type==='bollinger'?'Bollinger':a.type==='rsi'?'RSI':a.type==='macd'?'MACD':a.type==='uncompare'?t('studio_compare_remove'):t('studio_objects');
  return <main className="studio-shell" aria-label={t('studio_name')}>
-   <header className="studio-topbar">
+   <header className="studio-topbar"><label className="flex items-center gap-1 px-2 text-[11px] text-teal-200"><input type="checkbox" checked={automatic} onChange={e=>setAutomatic(e.target.checked)}/>{t('studio_autopilot')}</label>
      <button type="button" onClick={()=>{setPicker('asset');setPickerQuery('');}} className="flex min-h-10 min-w-0 items-center gap-2 rounded px-2 text-left hover:bg-slate-800" aria-label={t('search_assets')}><span className="text-teal-300">⌕</span><span translate="no" className="truncate text-sm font-semibold">{asset.symbol}</span><span className="text-xs text-slate-500">⌄</span></button>
      {ready&&<span title={t('agent_fact_close')} className="font-mono text-xs text-slate-300">{formatQuote(snapshot.facts.close,snapshot.currency,i18n.language)}</span>}
      <select aria-label={t('candle_interval')} value={workspace.interval} onChange={e=>operate([{type:'interval',value:e.target.value}])} className="min-h-10 rounded border border-slate-700 bg-transparent px-2 text-xs"><option value="15m">15 min</option><option value="4h">4 h</option><option value="1d">{t('candle_daily')}</option></select>
@@ -103,7 +128,7 @@ export default function AgentCharts({marketData}){
        {workspace.compare&&<div className="flex shrink-0 items-center justify-between gap-2 bg-purple-950/20 px-3 py-2 text-xs"><span translate="no">{asset.symbol} · {snapshot?.source} / {workspace.compare.asset.symbol} · {comparison?.source??workspace.compare.venue}</span><button type="button" onClick={()=>operate([{type:'uncompare'}])} className="text-purple-200">× {t('studio_compare_remove')}</button></div>}
        {comparisonLoading&&<p role="status" className="px-3 py-1 text-xs text-purple-200">{t('loading')}</p>}{comparisonError&&<p role="status" className="px-3 py-2 text-xs text-amber-200">{t('studio_compare_missing')}</p>}
        {loading?<p role="status" className="grid min-h-80 flex-1 place-items-center text-sm text-slate-400">{t('agent_loading')}</p>:dataError?<div role="alert" className="grid min-h-80 flex-1 place-items-center p-5 text-center text-sm text-amber-200"><div>{t('studio_unavailable')}<button type="button" onClick={()=>setReload(n=>n+1)} className="mt-3 block w-full text-sky-200 underline">{t('retry')}</button></div></div>:snapshot&&<AgentCanvas ref={canvas} snapshot={snapshot} asset={asset} workspace={workspace} comparison={comparison} tool={tool} setTool={setTool} onDrawings={next=>commit({...workspace,drawings:next})} selectedId={selectedId} onSelect={setSelectedId}/>}
-       <div className="studio-status"><span translate="no">{asset.symbol} · {snapshot?.source??'—'} · {snapshot?.currency??'—'}</span><span>{ready?`${date(snapshot.asOf)} UTC · ${snapshot.closedCount} ${t('studio_closed_bars')}`:t('loading')}</span>{ready&&<span>RSI {fmt(snapshot.facts.rsi)} · {t('studio_score')} {fmt(snapshot.facts.score)}/10</span>}</div>
+       <div className="studio-status"><span className="text-teal-300">{t(refreshFailed?'studio_refresh_failed':'studio_refresh_policy')}{snapshot?.retrievedAt&&` · ${new Date(snapshot.retrievedAt).toLocaleTimeString(i18n.language)}`}</span><span translate="no">{asset.symbol} · {snapshot?.source??'—'} · {snapshot?.currency??'—'}</span><span>{ready?`${date(snapshot.asOf)} UTC · ${snapshot.closedCount} ${t('studio_closed_bars')}`:t('loading')}</span>{ready&&<span>RSI {fmt(snapshot.facts.rsi)} · {t('studio_score')} {fmt(snapshot.facts.score)}/10</span>}</div>
      </section>
      <aside className="studio-rail" data-open={chatOpen} aria-label="Alberto">
        <div className="flex shrink-0 items-center gap-2 border-b border-slate-800 px-3 py-2"><AlbertoIcon busy={busy}/><div className="flex-1"><h1 className="text-sm font-semibold text-teal-100">Alberto</h1><p className="text-[10px] text-slate-400">{t('studio_tagline')}</p></div><button type="button" onClick={()=>{controller.current?.abort();messageSequence.current++;setMessages([]);setBusy(false);setError(false);}} aria-label={t('studio_new')} title={t('studio_new')} className="min-h-9 min-w-8 text-slate-400">＋</button><button type="button" onClick={()=>setChatOpen(false)} aria-label={t('draw_close')} className="min-h-9 min-w-8 text-slate-400">×</button></div>

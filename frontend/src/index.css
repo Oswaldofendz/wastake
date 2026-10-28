@@ -223,3 +223,11 @@
     filter: none;
   }
 }
+
+.alberto-bull .bull-head { transform-origin:48px 64px; animation:bull-breathe 4s ease-in-out infinite; }
+.alberto-bull .bull-eyes { transform-origin:48px 42px; animation:bull-blink 6s infinite; }
+.alberto-bull.is-thinking .bull-head { animation:bull-think 1.2s ease-in-out infinite; }
+@keyframes bull-breathe {50% {transform:translateY(-2px) rotate(2deg)}}
+@keyframes bull-blink {0%,43%,47%,100% {transform:scaleY(1)}45% {transform:scaleY(.1)}}
+@keyframes bull-think {50% {transform:translateY(-3px) rotate(-4deg)}}
+@media(prefers-reduced-motion:reduce) {.alberto-bull .bull-head,.alberto-bull .bull-eyes {animation:none}}
