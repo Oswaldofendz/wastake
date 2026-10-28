@@ -52,3 +52,10 @@ test('automatic analysis rejects old snapshots during an asset, interval or venu
  assert.equal(chartContextMatches(snapshot,context),true);
  for(const change of [{id:'OTHER'},{interval:'4h'},{type:'crypto'},{venue:'Coinbase'}])assert.equal(chartContextMatches(snapshot,{...context,...change}),false);
 });
+
+test('active FVG study retires prior computed zones at automatic refresh while keeping manually edited ones',()=>{
+ const old={id:'oldfvg',tool:'fvg',origin:'computed',kind:'box',points:[{time:1,price:100},{time:2,price:105}]};
+ const manual={...old,id:'manualfvg',origin:'manual'};
+ const state={...initialWorkspace(),fvg:true,drawings:[old,manual]};
+ const updated=mergeAutomaticAnalysis(state,[{type:'fvg',enabled:true}]);assert.deepEqual(updated.drawings.map(d=>d.id),['manualfvg']);assert.equal(updated.fvg,true);
+});

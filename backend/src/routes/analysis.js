@@ -1,3 +1,4 @@
+import {completedDailyCandles} from '../services/dailyCandles.js';
 import { Router } from 'express';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
@@ -61,7 +62,7 @@ analysisRouter.get('/:id', async (req, res) => {
       return res.status(404).json({ error: `No se encontraron datos OHLCV para "${id}"` });
     }
 
-    const analysis = computeIndicators(candles);
+    const analysis = computeIndicators(completedDailyCandles(candles));
     analysis.meta.currency = candles.currency ?? null;
     analysis.meta.source = candles.source ?? null;
     const result   = { id, type, analysis };
@@ -95,7 +96,7 @@ analysisRouter.get('/:id/narrative', async (req, res) => {
       return res.status(404).json({ error: 'Insufficient data for narrative' });
     }
 
-    const analysis = computeIndicators(candles);
+    const analysis = computeIndicators(completedDailyCandles(candles));
     const { indicators, signals, summary } = analysis;
     const lastPrice = analysis.meta.lastPrice;
 

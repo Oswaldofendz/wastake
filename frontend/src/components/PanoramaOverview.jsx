@@ -55,6 +55,12 @@ function IndicatorDetails({ analysis }) {
   </details>;
 }
 
+function TechnicalSemaphore({score,coverage}){
+ const {t}=useTranslation(),ready=Number.isFinite(score)&&coverage===100;
+ const active=ready?(score<=4?'bearish':score>=6?'bullish':'mixed'):'unavailable';
+ return <div role="img" aria-label={`${t('ui_semaphore')}: ${t('technical_score_'+(active==='unavailable'?'unavailable':active))}`} className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950/40 px-3 py-2"><span className="flex gap-1.5" aria-hidden="true">{[['bearish','bg-rose-500 shadow-[0_0_10px_#f43f5e66]'],['mixed','bg-amber-400 shadow-[0_0_10px_#fbbf2466]'],['bullish','bg-emerald-400 shadow-[0_0_10px_#34d39966]']].map(([key,color])=><span key={key} className={`h-3 w-3 rounded-full ${active===key?color:'bg-slate-700'}`}/>)}</span><span className="text-[10px] text-slate-300">{t('technical_score_'+active)}</span></div>;
+}
+
 export function Panorama() {
   const { t, i18n } = useTranslation();
   const lang=(i18n.resolvedLanguage||i18n.language).split('-')[0];
@@ -107,7 +113,7 @@ export function Panorama() {
     </section>
     <div className="grid items-start gap-4 lg:grid-cols-3">
       <section className={`${panel} lg:col-span-2`} aria-label={t('technical_score_title')}>
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-300">{t('technical_score_title')}</h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="text-sm font-semibold uppercase tracking-wide text-slate-300">{t('technical_score_title')}</h2><TechnicalSemaphore score={summary?.score10} coverage={summary?.coverage}/></div>
         {state.analysis.loading?<p role="status" className="py-8 text-sm text-slate-400">{t('pan_analysis_loading')}</p>:state.analysis.error?<p role="alert" className="py-4 text-sm text-amber-300">{t('pan_analysis_error')}</p>:<>
           <ScoreGauge score={summary?.score10??null} bias={summary?.bias??'unavailable'} t={t}/>
           <div className="mt-5 flex flex-wrap justify-between gap-2 text-xs text-slate-400"><h3 className="font-semibold">{t('technical_weighted_components')}</h3><span>{t('technical_score_coverage')}: {summary?.coverage??0}%</span></div>

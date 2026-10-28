@@ -10,7 +10,7 @@ import {OpportunityPanel} from '../components/OpportunityPanel.jsx';
 import { ImportantNews } from '../components/ImportantNews.jsx';
 import { AnalysisNarrative } from '../components/AnalysisNarrative.jsx';
 import { formatQuote } from '../utils/panoramaAnalysis.js';
-import { marketStats,currentSelection } from '../utils/marketConventions.js';
+import { currentSelection } from '../utils/marketConventions.js';
 
 // ─── Helpers de formato ───────────────────────────────────────────────────────
 function fmtChange(n) {
@@ -102,7 +102,7 @@ function AssetRow({ asset, rank, t, showMarketCap, onSelect }) {
   const typeColors = TYPE_COLORS[asset.type] ?? TYPE_COLORS.etf;
 
   return (
-    <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 border-b border-slate-700/20 last:border-0 hover:bg-slate-700/20 transition-colors">
+    <div className="catalogue-asset-row flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 border-b border-slate-700/20 last:border-0 hover:bg-slate-700/20 transition-colors">
       {/* Rank */}
       <span className="hidden sm:block w-6 text-xs text-slate-600 text-right flex-shrink-0">{rank}</span>
 
@@ -121,12 +121,12 @@ function AssetRow({ asset, rank, t, showMarketCap, onSelect }) {
       </span>
 
       {/* Precio */}
-      <span className="w-20 sm:w-24 break-words text-right text-sm font-mono font-semibold text-white flex-shrink-0">
+      <span className="catalogue-price w-20 sm:w-24 break-words text-right text-sm font-mono font-semibold text-white flex-shrink-0">
         {formatQuote(asset.price,asset.currency,i18n.language,asset.type==='forex'?5:null)}
       </span>
 
       {/* Cambio 24h */}
-      <span className={`w-16 sm:w-20 text-right text-sm font-mono font-semibold flex-shrink-0 ${positive===null?'text-slate-400':positive ? 'text-green-400' : 'text-red-400'}`}>
+      <span className={`catalogue-change w-16 sm:w-20 text-right text-sm font-mono font-semibold flex-shrink-0 ${positive===null?'text-slate-400':positive ? 'text-green-400' : 'text-red-400'}`}>
         {fmtChange(asset.change24h)}
       </span>
 
@@ -239,104 +239,9 @@ export function Screener({marketData}) {
   const sectorOptions=[...new Set(allAssets.filter(a=>a.type==='stock').map(getAssetGroup))].sort();
   const availableSortOptions=SORT_OPTIONS;
   // ── Stats rápidas ────────────────────────────────────────────────────────────
-  const stats=useMemo(()=>marketStats(filtered),[filtered]);
   const catalogTotal=allAssets.length;
 
-  return (
-    <div className="flex flex-col h-full p-4 max-w-6xl mx-auto w-full">
-
-      {/* ── Header ── */}
-      <div className="mb-5">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h1 className="text-xl font-bold text-white">{t('screener_title')}</h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {t('screener_results_count', { total: catalogTotal, results: filtered.length })}
-              {(isStale || error) && <span className="ml-2 text-amber-500">⚠ {t('screener_stale_data')}</span>}
-            </p>
-            <p className="text-sm text-slate-400 mt-2">{t('screener_intro')}</p>
-            {marketData.data?.catalogue&&<details className="mt-2 text-xs leading-relaxed text-slate-400"><summary className="min-h-8 cursor-pointer">{t('catalogue_source')}</summary><p>{t('catalogue_scope',{date:new Date(marketData.data.catalogue.asOf).toLocaleDateString(),stocks:marketData.data.catalogue.stockCount,crypto:marketData.data.catalogue.cryptoCount})}</p><div className="flex gap-4 text-sky-300 underline"><a href={marketData.data.catalogue.stockSource} target="_blank" rel="noopener noreferrer">CompaniesMarketCap ↗</a><a href="https://www.coingecko.com/" target="_blank" rel="noopener noreferrer">CoinGecko ↗</a></div></details>}
-          </div>
-        </div>
-        {error && allAssets.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-700/40 bg-amber-950/20 px-3 py-2" role="status">
-            <p className="text-xs text-amber-300">{t('screener_data_unavailable')}</p>
-            <button type="button" onClick={refresh} className="text-xs font-semibold text-white underline underline-offset-2">
-              {t('retry')}
-            </button>
-          </div>
-        )}
-
-        {/* ── Stats rápidas ── */}
-        {!inspectedAsset&&<><p className="mt-4 text-xs text-slate-400">{t('catalogue_coverage',{priced:stats.total,total:filtered.length})}</p><div className="grid grid-cols-3 gap-2 mt-2" aria-live="polite">
-          {[
-            { label: t('screener_rising'), value: stats.gainers, color: 'text-green-400', bg: 'bg-green-900/20 border-green-700/30' },
-            { label: t('screener_falling'), value: stats.losers, color: 'text-red-400', bg: 'bg-red-900/20 border-red-700/30' },
-            {
-              label: t('screener_average_move'),
-              value: stats.avgChange===null?'—':`${stats.avgChange >= 0 ? '+' : ''}${stats.avgChange.toFixed(2)}%`,
-              color: stats.avgChange===null?'text-slate-400':stats.avgChange >= 0 ? 'text-green-400' : 'text-red-400',
-              bg: 'bg-slate-800/60 border-slate-700/40',
-            },
-          ].map(s => (
-            <div key={s.label} className={`min-w-0 px-4 py-3 rounded-xl border ${s.bg}`}>
-              <p className="text-xs text-slate-400">{s.label}</p>
-              <p className={`text-xl font-bold font-mono mt-0.5 ${s.color}`}>{s.value}</p>
-            </div>
-          ))}
-        </div></>}
-      </div>
-
-      {/* ── Panel de búsqueda y filtros ── */}
-      <section className="mb-4 rounded-xl border border-white/[8%] bg-[var(--bg-card)] p-3 sm:p-4" aria-labelledby="screener-filters-title">
-        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-          <div>
-            <h2 id="screener-filters-title" className="text-sm font-semibold text-white">{t('screener_filters_title')}</h2>
-            <p className="mt-1 text-xs leading-relaxed text-slate-400">{t('screener_filters_description')}</p>
-          </div>
-          {(search || typeFilter !== 'all' || changeFilter !== 'all' || sortBy !== 'mktcap_desc'||sectorFilter!=='all') && (
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="min-h-9 rounded-lg border border-slate-600/50 px-3 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-400 hover:text-white"
-            >
-              {t('screener_clear_filters')}
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="min-w-0 sm:col-span-2 xl:col-span-2"><AssetSearch query={search} onQueryChange={setSearch} onSelect={setInspectedAsset} catalogueAssets={allAssets}/></div>
-
-          <label className="block min-w-0">
-            <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_type_label')}</span>
-            <select aria-label={t('screener_type_label')} value={typeFilter} onChange={e => {
-              const nextType = e.target.value;
-              setTypeFilter(nextType);
-              setSectorFilter('all');
-            }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
-              {Object.entries(TYPE_LABELS).map(([k, labelKey]) => <option key={k} value={k}>{t(labelKey)}</option>)}
-            </select>
-          </label>
-
-          {(typeFilter==='all'||typeFilter==='stock')&&<label className="block min-w-0"><span className="mb-1.5 block text-xs text-slate-400">{t('catalogue_sector')}</span><select aria-label={t('catalogue_sector')} value={sectorFilter} onChange={e=>{setSectorFilter(e.target.value);if(e.target.value!=='all')setTypeFilter('stock');}} className="min-h-11 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 text-sm"><option value="all">{t('catalogue_all_sectors')}</option>{sectorOptions.map(id=><option key={id} value={id}>{t('screener_group_'+id)}</option>)}</select></label>}
-          <details className="rounded-lg border border-slate-700/60 p-3 sm:col-span-2 xl:col-span-4"><summary className="min-h-8 cursor-pointer text-sm font-semibold">{t('catalogue_advanced')}</summary><div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="block min-w-0">
-            <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_change_label')}</span>
-            <select aria-label={t('screener_change_label')} value={changeFilter} onChange={e => { setChangeFilter(e.target.value); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
-              {CHANGE_FILTERS.map(f => <option key={f.id} value={f.id}>{t(f.labelKey)}</option>)}
-            </select>
-          </label><label className="block min-w-0 sm:col-span-2 xl:col-span-2">
-            <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_sort_label')}</span>
-            <select aria-label={t('screener_sort_label')} value={sortBy} onChange={e => { setSortBy(e.target.value); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
-              {availableSortOptions.map(s => <option key={s.id} value={s.id}>{t(s.labelKey)}</option>)}
-            </select>
-          </label></div><p className="mt-2 text-xs leading-relaxed text-slate-400">{t('catalogue_caps')}</p></details>
-
-        </div>
-
-
-      <div className="mt-4 mb-3 border-t border-slate-700/50 pt-4"><h3 className="text-sm font-semibold">{t('browse_catalogue')} · {filtered.length}</h3><p className="mt-1 text-xs leading-5 text-slate-400">{t('browse_help')}</p></div>
-      <div className="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-2">
+  const catalogue=(<>
       <div className="catalogue-table min-w-0 bg-[var(--bg-card)] border border-white/[8%] rounded-xl overflow-hidden">
         {/* Header de columnas */}
         <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 text-xs text-slate-500 border-b border-slate-700/40 bg-slate-800/60">
@@ -405,9 +310,88 @@ export function Screener({marketData}) {
           </div>
         )}
       </div>
-      <MarketLeaders compact marketData={marketData} onSelect={setInspectedAsset}/>
-      </div>
 
+</>);
+
+  return (
+    <div className="flex flex-col h-full p-4 max-w-[1480px] mx-auto w-full">
+
+      {/* ── Header ── */}
+      <div className="mb-5">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h1 className="text-xl font-bold text-white">{t('screener_title')}</h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {t('screener_results_count', { total: catalogTotal, results: filtered.length })}
+              {(isStale || error) && <span className="ml-2 text-amber-500">⚠ {t('screener_stale_data')}</span>}
+            </p>
+            <p className="text-sm text-slate-400 mt-2">{t('screener_intro')}</p>
+            {marketData.data?.catalogue&&<details className="mt-2 text-xs leading-relaxed text-slate-400"><summary className="min-h-8 cursor-pointer">{t('catalogue_source')}</summary><p>{t('catalogue_scope',{date:new Date(marketData.data.catalogue.asOf).toLocaleDateString(),stocks:marketData.data.catalogue.stockCount,crypto:marketData.data.catalogue.cryptoCount})}</p><div className="flex gap-4 text-sky-300 underline"><a href={marketData.data.catalogue.stockSource} target="_blank" rel="noopener noreferrer">CompaniesMarketCap ↗</a><a href="https://www.coingecko.com/" target="_blank" rel="noopener noreferrer">CoinGecko ↗</a></div></details>}
+          </div>
+        </div>
+        {error && allAssets.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-700/40 bg-amber-950/20 px-3 py-2" role="status">
+            <p className="text-xs text-amber-300">{t('screener_data_unavailable')}</p>
+            <button type="button" onClick={refresh} className="text-xs font-semibold text-white underline underline-offset-2">
+              {t('retry')}
+            </button>
+          </div>
+        )}
+
+      </div>
+      <div className="explorer-workspace">
+        <aside className="explorer-sidebar" aria-label={t('browse_catalogue')}><h2 className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold"><span>📂 {t('ui_catalogue_short')}</span><span className="rounded-full bg-slate-800 px-2 py-1 text-xs text-slate-400">{filtered.length}</span></h2><p className="mb-3 text-xs leading-5 text-slate-400">{t('ui_catalogue_help')}</p>{catalogue}</aside>
+        <div className="min-w-0">
+          {!inspectedAsset&&<OpportunityPanel embedded/>}
+      {/* ── Panel de búsqueda y filtros ── */}
+      <section className="mb-4 rounded-xl border border-white/[8%] bg-[var(--bg-card)] p-3 sm:p-4" aria-labelledby="screener-filters-title">
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <div>
+            <h2 id="screener-filters-title" className="text-sm font-semibold text-white">{t('screener_filters_title')}</h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-400">{t('screener_filters_description')}</p>
+          </div>
+          {(search || typeFilter !== 'all' || changeFilter !== 'all' || sortBy !== 'mktcap_desc'||sectorFilter!=='all') && (
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="min-h-9 rounded-lg border border-slate-600/50 px-3 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-400 hover:text-white"
+            >
+              {t('screener_clear_filters')}
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="min-w-0 sm:col-span-2 xl:col-span-2"><AssetSearch query={search} onQueryChange={setSearch} onSelect={setInspectedAsset} catalogueAssets={allAssets}/></div>
+
+          <label className="block min-w-0">
+            <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_type_label')}</span>
+            <select aria-label={t('screener_type_label')} value={typeFilter} onChange={e => {
+              const nextType = e.target.value;
+              setTypeFilter(nextType);
+              setSectorFilter('all');
+            }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
+              {Object.entries(TYPE_LABELS).map(([k, labelKey]) => <option key={k} value={k}>{t(labelKey)}</option>)}
+            </select>
+          </label>
+
+          {(typeFilter==='all'||typeFilter==='stock')&&<label className="block min-w-0"><span className="mb-1.5 block text-xs text-slate-400">{t('catalogue_sector')}</span><select aria-label={t('catalogue_sector')} value={sectorFilter} onChange={e=>{setSectorFilter(e.target.value);if(e.target.value!=='all')setTypeFilter('stock');}} className="min-h-11 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 text-sm"><option value="all">{t('catalogue_all_sectors')}</option>{sectorOptions.map(id=><option key={id} value={id}>{t('screener_group_'+id)}</option>)}</select></label>}
+          <details className="rounded-lg border border-slate-700/60 p-3 sm:col-span-2 xl:col-span-4"><summary className="min-h-8 cursor-pointer text-sm font-semibold">{t('catalogue_advanced')}</summary><div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="block min-w-0">
+            <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_change_label')}</span>
+            <select aria-label={t('screener_change_label')} value={changeFilter} onChange={e => { setChangeFilter(e.target.value); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
+              {CHANGE_FILTERS.map(f => <option key={f.id} value={f.id}>{t(f.labelKey)}</option>)}
+            </select>
+          </label><label className="block min-w-0 sm:col-span-2 xl:col-span-2">
+            <span className="mb-1.5 block text-xs font-medium text-slate-400">{t('screener_sort_label')}</span>
+            <select aria-label={t('screener_sort_label')} value={sortBy} onChange={e => { setSortBy(e.target.value); }} className="min-h-11 w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-sm text-slate-200 focus:border-brand-500/60 focus:outline-none">
+              {availableSortOptions.map(s => <option key={s.id} value={s.id}>{t(s.labelKey)}</option>)}
+            </select>
+          </label></div><p className="mt-2 text-xs leading-relaxed text-slate-400">{t('catalogue_caps')}</p></details>
+
+        </div>
+
+
+      <details className="explorer-mobile-catalogue mt-3 rounded-xl border border-slate-700 p-3"><summary className="min-h-10 cursor-pointer font-semibold">📂 {t('browse_catalogue')} · {filtered.length}</summary>{catalogue}</details>
       {/* Footer con total */}
       {filtered.length > 0 && (
         <p className="text-xs text-slate-600 text-center mt-3">
@@ -415,6 +399,7 @@ export function Screener({marketData}) {
         </p>
       )}
       </section>
+      {!inspectedAsset&&<MarketLeaders compact marketData={marketData} onSelect={setInspectedAsset}/>}
       {inspectedAsset && <section ref={inspectionRef} className="mb-4 scroll-mt-24 rounded-xl border border-sky-700/50 p-3">
         <div className="mb-3 flex items-center justify-between gap-2"><h2 translate="no" className="font-semibold">{inspectedAsset.name} · {inspectedAsset.symbol}</h2><button type="button" onClick={()=>{setInspectedAsset(null);resetFilters();}} className="min-h-10 px-3" aria-label={t('catalogue_return')}>← {t('catalogue_return')}</button></div>
         <OpportunityPanel asset={inspectedAsset}/>
@@ -422,6 +407,7 @@ export function Screener({marketData}) {
         <AssetValuationCard key={`valuation:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)} technical={analysisSnapshot?.id===inspectedAsset.id&&analysisSnapshot?.type===inspectedAsset.type?analysisSnapshot:null}/><CandleChart key={`chart:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)}/><details className="mt-3 rounded-xl border border-slate-700 p-3"><summary className="min-h-8 cursor-pointer text-sm font-semibold">{t('audit_technical_details')}</summary><AnalysisPanel key={`analysis:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)} onAnalysis={setAnalysisSnapshot}/></details>
         <AnalysisNarrative key={`narrative:${inspectedAsset.type}:${inspectedAsset.id}`} asset={inspectedAsset}/>
       </section>}
+      </div></div>
     </div>
   );
 }

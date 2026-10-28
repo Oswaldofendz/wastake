@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ALL_ASSETS, getAnalysisType } from '../data/assetCatalog.js';
 import { fetchFundamentalsNews, fetchOHLCV, translateText } from '../services/api.js';
 import { assetLabel } from '../utils/assetLabel.js';
+import { reactionAfterArticle } from '../utils/newsReaction.js';
 
 const WINDOWS = [
   { id: 'day', label: { es: '24 h', pt: '24 h', en: '24h' }, days: 1 },
@@ -10,8 +11,6 @@ const WINDOWS = [
   { id: 'month', label: { es: '30 días', pt: '30 dias', en: '30 days' }, days: 30 },
 ];
 
-const SENTIMENT_SIGN = { positive: 1, neutral: 0, negative: -1 };
-const IMPACT_WEIGHT = { low: 1, medium: 2, high: 3 };
 
 const COPY = {
   es: { eyebrow: 'WaStake · análisis de eventos', title: 'Fundamentales', subtitle: 'Qué puede mover el mercado, por qué importa y qué señales conviene confirmar.', update: 'Actualizar', updating: 'Actualizando…', asset: 'Activo', period: 'Periodo de análisis', bias: 'Sesgo informativo', biasHelp: 'Tono detectado en los titulares', intensity: 'Relevancia media', newsCount: 'titulares en', reaction: 'Reacción media observada', reactionHelp: 'Movimiento posterior; no prueba que la noticia lo causara', guide: 'Cómo leer esta pantalla', guideText: 'La IA analiza el contexto del texto disponible y estima la relevancia; si no responde, mostramos una estimación preliminar basada solo en palabras del titular, claramente identificada. El medidor no predice si el precio subirá o bajará. El tono y la reacción posterior tampoco prueban causalidad.', list: 'Noticias ordenadas por relevancia', available: 'disponibles', loading: 'Cargando titulares e histórico de precios…', empty: 'No hay titulares disponibles para este activo en el periodo seleccionado.', translation: 'Traducción automática', translationUnavailable: 'Traducción no disponible; se muestra el titular original.', impact: 'Relevancia estimada', low: 'Limitada', medium: 'Moderada', high: 'Alta', news: '1. ¿Qué pasó?', why: '2. ¿Por qué podría afectar?', projection: '3. ¿Qué conviene observar?', positive: 'Positivo', negative: 'Negativo', neutral: 'Mixto o sin dirección clara', highExplanation: 'El titular menciona un evento que suele atraer atención del mercado, como regulación, resultados, tasas o un incidente de seguridad.', mediumExplanation: 'El titular menciona un cambio o anuncio que podría influir en expectativas, adopción o actividad.', lowExplanation: 'Con las palabras detectadas, no aparece un catalizador claro de impacto. El contexto completo puede cambiar esta lectura.', projectionPositive: 'Si el mercado confirma esta lectura, el ánimo podría mejorar; comprueba volumen y reacción del precio.', projectionNegative: 'Si el mercado confirma esta lectura, podría aumentar la presión vendedora; comprueba volumen y reacción del precio.', projectionNeutral: 'La dirección no está clara. Espera más información y observa cómo responde el precio.', matched: 'Palabras que activaron la regla', score: 'Puntaje de tono', observed: 'Cambio posterior observado', after: 'cierre diario, al menos 24 h', noTranslation: 'No se pudo traducir; se muestra el titular original.', disclaimer: 'Lectura educativa y experimental, no una predicción ni asesoramiento financiero. Los movimientos posteriores no demuestran causalidad.', method: 'Método y límites', methodDetails: 'La relevancia se ordena por categoría de palabras clave; el tono usa el balance entre términos positivos y negativos. El cambio posterior compara el último cierre previo con el primer cierre al menos 24 horas después. Las reglas pueden pasar por alto contexto, negaciones y sarcasmo. Las noticias proceden de RSS públicos y hay hasta 10 titulares recientes por activo; el rango de 30 días no implica un archivo completo.' },
@@ -43,36 +42,6 @@ function relevanceValue(article) {
   const raw = hasContextualAnalysis(article) ? article.relevance : Math.min(55, impactValue(article.impact));
   return Math.max(0, Math.min(100, Math.round(raw)));
 }
-function scoreArticles(articles) {
-  if (!articles.length) return { direction: null, intensity: null };
-
-  let signedWeight = 0;
-  let totalWeight = 0;
-  for (const article of articles) {
-    const weight = hasContextualAnalysis(article)
-      ? (IMPACT_WEIGHT[article.impact] ?? IMPACT_WEIGHT.low)
-      : 1;
-    const direction = Number.isFinite(article.score) ? article.score / 100 : (SENTIMENT_SIGN[article.sentiment] ?? 0);
-    signedWeight += direction * weight;
-    totalWeight += weight;
-  }
-
-  return {
-    direction: Math.round((signedWeight / totalWeight) * 100),
-    intensity: Math.round(articles.reduce((sum, article) => sum + relevanceValue(article), 0) / articles.length),
-  };
-}
-
-function reactionAfterArticle(article, candles) {
-  const publishedAt = Date.parse(article.pubDate);
-  if (!Number.isFinite(publishedAt) || !candles?.length) return null;
-  const publishedSeconds = publishedAt / 1000;
-  const before = [...candles].reverse().find(candle => candle.time < publishedSeconds);
-  const after = candles.find(candle => candle.time >= publishedSeconds + 86_400);
-  if (!before || !after || !(before.close > 0) || !Number.isFinite(after.close)) return null;
-  return ((after.close / before.close) - 1) * 100;
-}
-
 function formatPercent(value, pending = '—') {
   if (value == null || !Number.isFinite(value)) return pending;
   return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
@@ -103,14 +72,11 @@ export function Fundamentals() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [articles, setArticles] = useState([]);
   const [translatedTitles, setTranslatedTitles] = useState({});
-  const [translating, setTranslating] = useState(false);
   const [candles, setCandles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [newsError, setNewsError] = useState('');
   const [priceError, setPriceError] = useState('');
-  const [aiStatus, setAiStatus] = useState('');
-  const [aiCoverage, setAiCoverage] = useState({ analyzed: 0, total: 0 });
 
   const asset = assets.find(item => item.id === assetId) ?? assets[0];
   const selectedWindow = WINDOWS.find(window => window.id === periodId) ?? WINDOWS[0];
@@ -127,8 +93,6 @@ export function Fundamentals() {
       setCandles([]);
       setNewsError('');
       setPriceError('');
-      setAiStatus('');
-      setAiCoverage({ analyzed: 0, total: 0 });
       const type = getAnalysisType(asset);
       // Price history and headlines render independently; AI never blocks either.
       fetchOHLCV(asset.id, type, { days: 90, interval: '1d', range: '3mo' })
@@ -139,7 +103,6 @@ export function Fundamentals() {
         baseline = await fetchFundamentalsNews(asset, type, lang, 'headlines');
         if (cancelled) return;
         setArticles(Array.isArray(baseline?.news) ? baseline.news : []);
-        setAiStatus('pending');
       } catch {
         if (cancelled) return;
         setNewsError(translate('fundamentals_news_error'));
@@ -153,11 +116,8 @@ export function Fundamentals() {
         const result = await fetchFundamentalsNews(asset, type, lang);
         if (cancelled) return;
         setArticles(Array.isArray(result?.news) ? result.news : baseline.news);
-        setAiStatus(result?.aiStatus ?? 'unavailable');
-        setAiCoverage({ analyzed: Number(result?.analyzedCount) || 0, total: Number(result?.count) || baseline.news.length });
       } catch {
         if (cancelled) return;
-        setAiStatus('unavailable');
       } finally {
         if (!cancelled) setAnalyzing(false);
       }
@@ -170,14 +130,13 @@ export function Fundamentals() {
   useEffect(() => {
     const pending = articles.filter(article => article.title && lang !== 'en'
       && (!article.localizedTitle || article.localizedTitle.trim() === article.title.trim()));
-    if (!pending.length) { setTranslating(false); return undefined; }
+    if (!pending.length) return undefined;
     let cancelled = false;
-    setTranslating(true);
     (async () => {
       const translated = {};
       for (let start = 0; start < pending.length; start += 3) {
         const batch = pending.slice(start, start + 3);
-        const results = await Promise.allSettled(batch.map(article => translateText(article.title, lang, 'en')));
+        const results = await Promise.allSettled(batch.map(article => translateText(article.title, lang, 'en',[asset?.name,asset?.symbol].filter(Boolean))));
         results.forEach((result, index) => {
           const value = result.status === 'fulfilled' ? (result.value?.translatedText || result.value?.translation || '') : '';
           if (value && value.trim() && value.trim() !== batch[index].title.trim()) translated[articleKey(batch[index])] = value.trim();
@@ -185,22 +144,19 @@ export function Fundamentals() {
       }
       if (!cancelled) {
         setTranslatedTitles(current => ({ ...current, ...Object.fromEntries(Object.entries(translated).map(([key, value]) => [`${lang}:${key}`, value])) }));
-        setTranslating(false);
       }
     })();
     return () => { cancelled = true; };
   }, [articles, lang]);
 
   const periodArticles = useMemo(() => {
-    const cutoff = Date.now() - selectedWindow.days * 86_400_000;
+    const now=Date.now(),cutoff = now - selectedWindow.days * 86_400_000;
     return articles
-      .filter(article => Number.isFinite(Date.parse(article.pubDate)) && Date.parse(article.pubDate) >= cutoff)
+      .filter(article => Number.isFinite(Date.parse(article.pubDate)) && Date.parse(article.pubDate) >= cutoff&&Date.parse(article.pubDate)<=now)
       .sort((a, b) => relevanceValue(b) - relevanceValue(a)
         || Date.parse(b.pubDate) - Date.parse(a.pubDate));
   }, [articles, selectedWindow.days]);
 
-  const score = useMemo(() => scoreArticles(periodArticles), [periodArticles]);
-  const hasPreliminaryItems = periodArticles.some(article => !hasContextualAnalysis(article));
   const reactions = useMemo(
     () => periodArticles.map(article => reactionAfterArticle(article, candles)).filter(value => value != null),
     [periodArticles, candles],
@@ -219,186 +175,37 @@ export function Fundamentals() {
     return [...groups.entries()];
   }, [assets, lang, translate]);
 
-  return (
-    <main className="mx-auto w-full min-w-0 max-w-7xl px-4 py-6 text-white">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand-400">{t.eyebrow}</p>
-          <h1 className="text-2xl font-bold">{t.title}</h1>
-          <p className="mt-1 text-sm text-slate-400">{t.subtitle}</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setRefreshKey(value => value + 1)}
-          disabled={loading}
-          className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-700 disabled:opacity-50"
-        >
-          {loading ? t.updating : t.update}
-        </button>
-      </header>
-
-      <section className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-slate-700/60 bg-slate-900/70 p-4">
-        <label className="text-sm text-slate-400" htmlFor="fundamentals-asset">{t.asset}</label>
-        <select
-          id="fundamentals-asset"
-          value={assetId}
-          onChange={event => setAssetId(event.target.value)}
-          className="min-w-0 w-full sm:w-auto sm:min-w-56 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
-        >
-          {assetGroups.map(([category, groupAssets]) => (
-            <optgroup key={category} label={category}>
-              {groupAssets.map(item => <option translate="no" key={item.id} value={item.id}>{assetLabel(item)}</option>)}
-            </optgroup>
-          ))}
-        </select>
-        <div className="ml-auto flex gap-1 rounded-lg border border-slate-700 bg-slate-950/60 p-1" aria-label={t.period}>
-          {WINDOWS.map(window => (
-            <button
-              key={window.id}
-              type="button"
-              onClick={() => setPeriodId(window.id)}
-              aria-pressed={periodId === window.id}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${periodId === window.id ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}`}
-            >
-              {window.label[lang]}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {(newsError || priceError) && (
-        <div className="mb-5 rounded-lg border border-amber-700/50 bg-amber-950/20 px-4 py-3 text-sm text-amber-300">
-          {[newsError, priceError].filter(Boolean).join(' ')}
-        </div>
-      )}
-
-      <section className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
-        <article className="rounded-xl border border-slate-700/60 bg-slate-900/70 p-4">
-          <p className="text-xs uppercase tracking-wide text-slate-400">{t.bias}</p>
-          <p className={`mt-2 font-mono text-3xl font-bold ${scoreTone(score.direction)}`}>
-            {score.direction == null ? '—' : `${score.direction > 0 ? '+' : ''}${score.direction}`}
-            {score.direction != null && <span className="ml-1 text-sm font-normal text-slate-500">/ 100</span>}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">{t.biasHelp}</p>
-        </article>
-        <article className="rounded-xl border border-slate-700/60 bg-slate-900/70 p-4">
-          <p className="text-xs uppercase tracking-wide text-slate-400">{hasPreliminaryItems ? (aiStatus === 'partial' ? analysisLabels.partialIntensity : analysisLabels.preliminaryIntensity) : t.intensity}</p>
-          <p className="mt-2 font-mono text-3xl font-bold text-white">
-            {score.intensity == null ? '—' : `${score.intensity}`}<span className="ml-1 text-sm font-normal text-slate-500">/ 100</span>
-          </p>
-          <p className="mt-1 text-xs text-slate-500">{periodArticles.length} {t.newsCount} {selectedPeriodLabel}</p>
-        </article>
-        <article className="rounded-xl border border-slate-700/60 bg-slate-900/70 p-4">
-          <p className="text-xs uppercase tracking-wide text-slate-400">{t.reaction}</p>
-          <p className={`mt-2 font-mono text-3xl font-bold ${scoreTone(meanReaction)}`}>{formatPercent(meanReaction, translate('fundamentals_pending'))}</p>
-          <p className="mt-1 text-xs text-slate-500">{t.reactionHelp} · {reactions.length}</p>
-        </article>
-      </section>
-
-      <details className="mb-5 rounded-xl border border-slate-700/60 bg-slate-900/50 px-4 py-3">
-        <summary className="cursor-pointer text-sm font-medium text-slate-200">{t.guide}</summary>
-        <div className="mt-3 space-y-2 text-sm leading-6 text-slate-400">
-          <p>{t.guideText}</p>
-          <p><strong className="text-amber-300">{t.method}: </strong>{lang === 'es' ? 'La IA lee texto público del artículo o, si no está disponible, el extracto RSS. Estima cinco factores del 0 al 100: gravedad (25%), relación directa con el activo (25%), sorpresa (20%), persistencia probable (15%) y calidad de evidencia (15%). La relevancia es la suma ponderada; el sesgo direccional se muestra por separado. Las estimaciones pueden equivocarse y no son pronósticos.' : lang === 'pt' ? 'A IA lê o texto público do artigo ou, se não estiver disponível, o excerto RSS. Estima cinco fatores de 0 a 100: gravidade (25%), relação direta com o ativo (25%), surpresa (20%), persistência provável (15%) e qualidade da evidência (15%). A relevância é a soma ponderada; a direção é apresentada separadamente. As estimativas podem falhar e não são previsões.' : 'AI reads public article text or, when unavailable, the RSS excerpt. It estimates five factors from 0 to 100: severity (25%), direct asset link (25%), surprise (20%), likely persistence (15%), and evidence quality (15%). Relevance is their weighted sum; directional bias is separate. These estimates can be wrong and are not forecasts.'}</p>
-        </div>
-      </details>
-
-      <section className="rounded-xl border border-slate-700/60 bg-slate-900/50">
-        <div className="flex items-center justify-between gap-3 border-b border-slate-700/50 px-4 py-3">
-          <h2 className="font-semibold">{t.list} · {asset?.name ?? t.asset}</h2>
-          <div className="flex flex-wrap items-center justify-end gap-3 text-xs">
-            <span className={aiStatus === 'ready' ? 'text-emerald-400' : 'text-amber-400'}>{aiStatus === 'ready' ? analysisLabels.aiReady : aiStatus === 'partial' ? analysisLabels.aiPartial.replace('{{analyzed}}', aiCoverage.analyzed).replace('{{total}}', aiCoverage.total) : aiStatus === 'not_configured' ? analysisLabels.aiMissing : aiStatus === 'unavailable' ? analysisLabels.aiUnavailable : ''}</span>
-            <span className="text-slate-400">{periodArticles.length} / {articles.length} {t.available}</span>
-          </div>
-        </div>
-        {analyzing && <p className="border-b border-slate-700/50 px-4 py-3 text-sm text-sky-300" role="status">{translate('fundamentals_analyzing')}</p>}
-        {loading ? (
-          <div className="p-8 text-center text-sm text-slate-400">{t.loading}</div>
-        ) : periodArticles.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-400" role="status"><p>{t.empty}</p><p className="mt-2">{translate('fund_empty_help')}</p>{periodId !== WINDOWS.at(-1).id && <button type="button" onClick={()=>setPeriodId(WINDOWS.at(-1).id)} className="mt-4 min-h-10 rounded-lg border border-sky-600 px-4 text-sky-300">{translate('fund_expand')}</button>}</div>
-        ) : (
-          <div className="divide-y divide-slate-800">
-            {periodArticles.map((article, index) => {
-              const articleScore = Number.isFinite(article.score) ? article.score : 0;
-              const reaction = reactionAfterArticle(article, candles);
-              const contextual = hasContextualAnalysis(article);
-              const relevance = relevanceValue(article);
-              const fallbackTitle = translatedTitles[`${lang}:${articleKey(article)}`];
-              const title = article.localizedTitle || fallbackTitle || article.title;
-              const toneLabel = article.sentiment === 'positive' ? t.positive : article.sentiment === 'negative' ? t.negative : t.neutral;
-              const impactCopy = contextual ? (article.mechanism || (article.impact === 'high' ? t.highExplanation : article.impact === 'medium' ? t.mediumExplanation : t.lowExplanation)) : analysisLabels.preliminaryWhy;
-              const projection = contextual ? (article.watch || (article.sentiment === 'positive' ? t.projectionPositive : article.sentiment === 'negative' ? t.projectionNegative : t.projectionNeutral)) : analysisLabels.preliminaryWatch;
-              const relevanceBand = relevance >= 70 ? 'high' : relevance >= 40 ? 'medium' : 'low';
-              const analysisBasis = contextual
-                ? (article.analysisDepth === 'article' ? analysisLabels.depthArticle : article.analysisDepth === 'rss' ? analysisLabels.depthRss : analysisLabels.depthTitle)
-                : analysisLabels.rulesOnly;
-              const relevanceLabel = contextual
-                ? (relevanceBand === 'high' ? t.high : relevanceBand === 'medium' ? t.medium : t.low)
-                : analysisLabels.preliminary;
-              return (
-                <article key={article.link || `${article.pubDate}-${index}`} className="flex w-full min-w-0 flex-col gap-3 px-4 py-4">
-                  <div className="w-full min-w-0">
-                    <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                      <span className="font-medium text-slate-300">{article.source || 'Fuente RSS'}</span>
-                      <span>·</span>
-                      <time dateTime={article.pubDate}>{formatDate(article.pubDate, lang)}</time>
-                    </div>
-                    {article.link ? (
-                      <a href={article.link} target="_blank" rel="noopener noreferrer" className="font-medium leading-6 text-white hover:text-brand-300">
-                        {title}
-                      </a>
-                    ) : (
-                      <p className="font-medium leading-6 text-white">{title}</p>
-                    )}
-                    {title !== article.title && <p className="mt-1 text-xs text-slate-500">{analysisLabels.original}: {article.title}</p>}
-                    {title === article.title && lang !== 'en' && <p className="mt-1 text-xs text-amber-400">{translating ? analysisLabels.translationLoading : analysisLabels.translationMissing}</p>}
-                    <div className="mt-4 rounded-lg border border-slate-700/60 bg-slate-950/40 p-3">
-                      <p className={`mb-3 text-[11px] ${contextual ? 'text-sky-300' : 'text-amber-300'}`} role="note">{analysisBasis}</p>
-                      <div className="mb-2 flex items-center justify-between gap-3 text-xs">
-                        <span className="font-semibold text-slate-200">{contextual ? t.impact : analysisLabels.preliminaryImpact}: {relevanceLabel}</span>
-                        <span className="text-slate-500">{relevance}/100</span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-slate-800" role="meter" aria-label={analysisLabels.relevanceMeter} aria-valuemin="0" aria-valuemax="100" aria-valuenow={relevance}>
-                        <div className={`h-full rounded-full ${relevanceBand === 'high' ? 'bg-rose-500' : relevanceBand === 'medium' ? 'bg-amber-400' : 'bg-sky-500'}`} style={{ width: `${relevance}%` }} />
-                      </div>
-                      <div className="mt-3 grid gap-2 text-xs leading-5 sm:grid-cols-3">
-                        <p><strong className="block text-slate-200">{t.news}</strong><span className="text-slate-400">{contextual ? (article.summary || title) : analysisLabels.preliminarySummary}</span></p>
-                        <p><strong className="block text-slate-200">{t.why}</strong><span className="text-slate-400">{impactCopy}</span></p>
-                        <p><strong className="block text-slate-200">{t.projection}</strong><span className="text-slate-400">{projection}</span></p>
-                      </div>
-                      {article.category && contextual && <p className="mt-3 text-xs text-slate-400"><strong className="text-slate-200">{analysisLabels.category}: </strong>{article.category}{article.horizon ? ` · ${article.horizon}` : ''}{article.confidence != null ? ` · ${analysisLabels.confidence}: ${article.confidence}%` : ''}</p>}
-                      {article.factors && <details className="mt-3 text-xs text-slate-400"><summary className="cursor-pointer text-slate-300">{analysisLabels.factors} · {relevance}/100</summary><div className="mt-2 grid grid-cols-2 gap-1 sm:grid-cols-5"><span>{analysisLabels.severity}: {article.factors.severity}</span><span>{analysisLabels.assetLink}: {article.factors.assetLink}</span><span>{analysisLabels.surprise}: {article.factors.surprise}</span><span>{analysisLabels.persistence}: {article.factors.persistence}</span><span>{analysisLabels.evidenceFactor}: {article.factors.evidence}</span></div></details>}
-                      {article.scenarios && <div className="mt-3 border-t border-slate-800 pt-3"><p className="mb-2 text-xs font-semibold text-slate-200">{analysisLabels.scenario}</p><div className="grid gap-2 text-xs leading-5 sm:grid-cols-3"><p className="text-emerald-300"><strong className="block">{analysisLabels.bull}</strong><span className="text-slate-400">{article.scenarios.positive}</span></p><p className="text-sky-300"><strong className="block">{analysisLabels.base}</strong><span className="text-slate-400">{article.scenarios.base}</span></p><p className="text-rose-300"><strong className="block">{analysisLabels.bear}</strong><span className="text-slate-400">{article.scenarios.negative}</span></p></div></div>}
-                      {article.evidenceQuote && <p className="mt-3 text-xs text-slate-400"><strong className="text-slate-200">{analysisLabels.evidence}: </strong>“{article.evidenceQuote}”</p>}
-                      {article.limitations && <p className="mt-2 text-xs text-amber-300"><strong>{analysisLabels.limitation}: </strong>{article.limitations}</p>}
-                      <p className="mt-2 text-[11px] text-slate-500">{article.analysisDepth === 'article' ? analysisLabels.depthArticle : article.analysisDepth === 'rss' ? analysisLabels.depthRss : analysisLabels.depthTitle}{article.analysisProvider ? ` · ${analysisLabels.provider}: ${article.analysisProvider}` : ` · ${aiStatus === 'not_configured' ? analysisLabels.aiMissing : analysisLabels.aiUnavailable}`}</p>
-                    </div>
-                    {article.matchedTerms && !contextual && (
-                      <p className="mt-2 text-xs text-slate-500">
-                        {t.matched}: {[...article.matchedTerms.positive, ...article.matchedTerms.negative, ...article.matchedTerms.highImpact, ...article.matchedTerms.mediumImpact].join(', ') || '—'}
-                      </p>
-                    )}
-                  </div>
-                  <div className="grid w-full grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <p className="text-xs text-slate-500">{contextual ? t.score : analysisLabels.preliminaryTone}</p>
-                      <p className={`font-mono font-semibold ${scoreTone(articleScore)}`}>{articleScore > 0 ? '+' : ''}{articleScore}</p>
-                      <p className="text-xs text-slate-500">{toneLabel}{contextual ? ` · ${t.impact.toLowerCase()} ${relevanceLabel.toLowerCase()}` : ''}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500">{t.observed}</p>
-                      <p className={`font-mono font-semibold ${scoreTone(reaction)}`}>{formatPercent(reaction, translate('fundamentals_pending'))}</p>
-                      <p className="text-xs text-slate-500">{t.after}</p>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      <p className="mt-5 text-center text-xs text-slate-600">{t.disclaimer}</p>
-    </main>
-  );
+  const assessed=periodArticles.filter(hasContextualAnalysis);
+  const preliminary=periodArticles.filter(article=>!hasContextualAnalysis(article));
+  const important=assessed.filter(article=>article.relevance>=70&&article.factors?.assetLink>=60&&article.factors?.evidence>=50);
+  const headline=(article)=>article.localizedTitle?.trim()&&article.localizedTitle.trim()!==article.title?.trim()?article.localizedTitle:translatedTitles[`${lang}:${articleKey(article)}`]||article.title;
+  const tone=article=>article.sentiment==='positive'?t.positive:article.sentiment==='negative'?t.negative:t.neutral;
+  const toneStyle=article=>article.sentiment==='positive'?'border-emerald-800 bg-emerald-950/30 text-emerald-300':article.sentiment==='negative'?'border-rose-800 bg-rose-950/30 text-rose-300':'border-slate-600 bg-slate-800/50 text-slate-300';
+  return <main className="mx-auto w-full min-w-0 max-w-6xl px-4 py-5 text-white">
+    <header className="mb-5 rounded-2xl border border-sky-800/50 bg-gradient-to-br from-sky-950/50 via-slate-900/40 to-teal-950/20 p-5 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-widest text-sky-300">🗞️ {t.eyebrow}</p><h1 className="mt-2 text-2xl font-bold sm:text-3xl">{t.title}</h1><p className="mt-2 text-sm text-slate-300">{translate('ui_fund_intro')}</p></div><button type="button" onClick={()=>setRefreshKey(n=>n+1)} disabled={loading||analyzing} className="min-h-11 rounded-xl border border-sky-700 bg-sky-950/40 px-4 text-sm text-sky-200 disabled:opacity-40">↻ {loading||analyzing?t.updating:t.update}</button></div>
+      <p className="mt-4 text-xs leading-6 text-sky-200">{translate('ui_fund_steps')}</p>
+    </header>
+    <section aria-label={t.asset} className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-slate-700 bg-slate-900/40 p-3"><label htmlFor="fundamentals-asset" className="text-xs text-slate-400">🔎 {t.asset}</label><select id="fundamentals-asset" value={assetId} onChange={e=>setAssetId(e.target.value)} className="min-h-11 min-w-0 flex-[1_1_12rem] rounded-lg border border-slate-600 bg-slate-800 px-3 text-sm">{assetGroups.map(([category,items])=><optgroup key={category} label={category}>{items.map(item=><option translate="no" key={item.id} value={item.id}>{assetLabel(item)}</option>)}</optgroup>)}</select><div role="group" aria-label={t.period} className="flex rounded-xl border border-slate-700 p-1">{WINDOWS.map(window=><button type="button" key={window.id} onClick={()=>setPeriodId(window.id)} aria-pressed={window.id===periodId} className={`min-h-10 rounded-lg px-3 text-xs ${window.id===periodId?'bg-sky-900 text-sky-100':'text-slate-400'}`}>{window.label[lang]}</button>)}</div></section>
+    {(newsError||priceError)&&<p role="status" className="mb-4 rounded-xl border border-amber-800 p-3 text-sm text-amber-200">{[newsError,priceError].filter(Boolean).join(' ')}</p>}
+    <section className="mb-5 grid gap-3 sm:grid-cols-3" aria-label={translate('ui_fund_reviewed')}>
+      <div className="rounded-xl border border-teal-800/50 bg-teal-950/15 p-4"><p className="text-xs text-teal-200">🧠 {translate('ui_fund_reviewed')}</p><p className="mt-2 text-2xl font-semibold">{assessed.length}<span className="text-sm font-normal text-slate-400"> / {periodArticles.length}</span></p><p className="mt-1 text-xs leading-5 text-slate-400">{translate('ui_fund_coverage',{assessed:assessed.length,total:periodArticles.length})}</p></div>
+      <div className="rounded-xl border border-amber-800/50 bg-amber-950/15 p-4"><p className="text-xs text-amber-200">⚡ {translate('ui_fund_priority')}</p><p className="mt-2 text-2xl font-semibold">{important.length}<span className="ml-2 text-xs font-normal text-slate-400">{translate('ui_fund_high')}</span></p><p className="mt-1 text-xs leading-5 text-slate-400">{t.impact} ≥70/100 · {translate('ui_fund_context_only')}</p></div>
+      <div className="rounded-xl border border-sky-800/50 bg-sky-950/15 p-4"><p className="text-xs text-sky-200">👀 {translate('ui_fund_watch')}</p><p className="mt-2 text-sm leading-6 text-slate-200">{(important[0]||assessed[0])?.watch||translate('ui_fund_no_priority')}</p></div>
+    </section>
+    {analyzing&&<p role="status" className="mb-4 rounded-xl border border-sky-900 p-3 text-sm text-sky-200">🧠 {translate('fundamentals_analyzing')}</p>}
+    {loading?<p role="status" className="py-8 text-center text-slate-400">{t.loading}</p>:!periodArticles.length?<div className="rounded-xl border border-slate-700 p-6 text-center text-sm text-slate-400"><p>{t.empty}</p><p className="mt-2">{translate('fundamentals_empty_help')}</p></div>:<>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold">🧭 {t.list} · <span translate="no">{asset?.name}</span></h2><span className="text-xs text-slate-400">{selectedPeriodLabel} · {assessed.length} {translate('ui_fund_reviewed').toLowerCase()}</span></div>
+      {!assessed.length&&<p role="status" className="mb-4 rounded-xl border border-slate-700 p-4 text-sm leading-6 text-slate-400">{analyzing?translate('fundamentals_analyzing'):translate('ui_fund_unavailable')}</p>}
+      <div className="space-y-4">{assessed.map(article=>{const relevance=relevanceValue(article),title=headline(article),reaction=reactionAfterArticle(article,candles),isHigh=important.includes(article);return <article key={articleKey(article)} className={`overflow-hidden rounded-2xl border bg-slate-900/35 ${isHigh?'border-amber-700/60':'border-slate-700/70'}`}>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700/40 px-4 py-3"><p className="text-xs text-slate-400"><span translate="no">{article.source}</span> · <time dateTime={article.pubDate}>{formatDate(article.pubDate,lang)}</time></p><span className={`rounded-full border px-2 py-1 text-[11px] ${isHigh?'border-amber-800 text-amber-200':'border-slate-600 text-slate-300'}`}>{isHigh?'⚡':'📰'} {translate(isHigh?'ui_fund_high':relevance>=40?'ui_fund_moderate':'ui_fund_low')} · {relevance}/100</span></div>
+        <div className="p-4 sm:p-5"><a href={/^https?:\/\//i.test(article.link??'')?article.link:undefined} target="_blank" rel="noopener noreferrer" className="text-base font-semibold leading-7 text-sky-100 hover:underline sm:text-lg">{title} ↗</a><div className="mt-3 flex flex-wrap items-center gap-2"><span className={`rounded-full border px-2 py-1 text-[11px] ${toneStyle(article)}`}>{article.sentiment==='positive'?'↗':article.sentiment==='negative'?'↘':'↔'} {tone(article)}</span><span className="text-xs text-slate-500">{article.category} · {article.analysisDepth==='article'?analysisLabels.depthArticle:analysisLabels.depthRss}</span></div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">{[['📰',t.news,article.summary],['🌐',t.why,article.mechanism],['👀',t.projection,article.watch]].map(([emoji,label,text])=><div key={label} className="rounded-xl border border-slate-700/40 bg-slate-950/30 p-3"><h3 className="text-xs font-semibold text-sky-200">{emoji} {label}</h3><p className="mt-2 text-sm leading-6 text-slate-300">{text}</p></div>)}</div>
+          <details className="mt-4 border-t border-slate-700/40 pt-3 text-xs leading-6 text-slate-400"><summary className="min-h-9 cursor-pointer font-semibold text-sky-200">🔎 {translate('ui_fund_read')}</summary><p className="mt-2">{analysisLabels.original}: <span translate="no">{article.title}</span></p>{article.evidenceQuote&&<blockquote translate="no" className="my-3 border-l-2 border-teal-700 pl-3">“{article.evidenceQuote}”</blockquote>}{article.factors&&<dl className="grid gap-2 sm:grid-cols-5">{Object.entries(article.factors).map(([key,value])=><div key={key}><dt>{analysisLabels[key==='evidence'?'evidenceFactor':key]}</dt><dd className="font-mono text-slate-200">{value}/100</dd></div>)}</dl>}{article.scenarios&&<div className="mt-3"><h4 className="font-semibold">{analysisLabels.scenario}</h4>{[['bull','positive'],['base','base'],['bear','negative']].map(([label,key])=><p key={key} className="mt-2"><strong>{analysisLabels[label]}: </strong>{article.scenarios[key]}</p>)}</div>}{article.limitations&&<p className="mt-3 text-amber-200">{article.limitations}</p>}<p className="mt-3">{t.observed}: <span className={scoreTone(reaction)}>{formatPercent(reaction,translate('fundamentals_pending'))}</span> · {t.after}. {t.reactionHelp}</p><p>{analysisLabels.confidence}: {article.confidence??'—'}% · {article.analysisProvider}</p><a href={/^https?:\/\//i.test(article.link??'')?article.link:undefined} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-sky-200 underline">{translate('ui_fund_source')} ↗</a></details>
+        </div></article>;})}</div>
+      {preliminary.length>0&&<details className="mt-5 rounded-2xl border border-slate-700 p-4"><summary className="min-h-10 cursor-pointer text-sm font-semibold text-slate-300">🗂️ {translate('ui_fund_preliminary')} · {preliminary.length}</summary><p className="my-3 text-xs leading-6 text-amber-200">{analysisLabels.preliminarySummary}</p><div className="divide-y divide-slate-800">{preliminary.map(article=><article key={articleKey(article)} className="py-3"><p className="text-xs text-slate-500">{article.source} · {formatDate(article.pubDate,lang)}</p><a href={/^https?:\/\//i.test(article.link??'')?article.link:undefined} target="_blank" rel="noopener noreferrer" className="mt-1 block text-sm leading-6 text-sky-200">{headline(article)} ↗</a>{lang!=='en'&&headline(article)===article.title&&<p className="text-xs text-amber-200">{t.noTranslation}</p>}</article>)}</div></details>}
+    </>}
+    <details className="mt-5 rounded-xl border border-slate-700 p-4 text-xs leading-6 text-slate-400"><summary className="min-h-9 cursor-pointer font-semibold text-slate-200">📐 {translate('ui_fund_history')}</summary><p className="mt-2">{translate('ui_fund_method')}</p><p className="mt-2">{t.reaction}: {formatPercent(meanReaction,translate('fundamentals_pending'))} · {reactions.length} {t.available}. {t.reactionHelp}</p></details>
+    <p className="mt-5 text-[11px] leading-6 text-slate-500">{t.disclaimer}</p>
+  </main>;
 }

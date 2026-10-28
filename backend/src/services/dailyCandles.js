@@ -8,3 +8,8 @@ export function dailyCandles(input=[]) {
   }
   return [...days.values()];
 }
+
+export function completedDailyCandles(input=[],now=Date.now()){
+ const bars=dailyCandles(input).filter(c=>c.time<Math.floor(now/86400000)*86400);
+ bars.source=input.source??null;bars.currency=input.currency??null;return bars;
+}

@@ -385,6 +385,7 @@ export function AnalysisPanel({ asset, days = ANALYSIS_DAYS, onAnalysis }) {
             </div>
           </section>
 
+          <details className="mt-3 rounded-xl border border-slate-700/60 p-3"><summary className="min-h-10 cursor-pointer text-sm font-semibold text-sky-200">🔎 {t('ui_indicator_details')}</summary><div className="mt-3">
           <details className="mb-3 rounded-lg border border-slate-700/50 bg-slate-900/40 px-3 py-2 text-xs text-slate-400">
             <summary className="cursor-pointer font-medium text-slate-300">{t('technical_signal_method')}</summary>
             <p className="mt-2 leading-5">{t('technical_signal_method_details')}</p>
@@ -412,6 +413,7 @@ export function AnalysisPanel({ asset, days = ANALYSIS_DAYS, onAnalysis }) {
             label={`${t('technical_atr_row')} · ${volatility.volatility === 'unknown' ? '—' : t(`technical_volatility_${volatility.volatility}`)}`}
             onClick={() => openInfo('ATR (14)')}
           />
+          </div></details>
         </div>
       </div>
 

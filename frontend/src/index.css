@@ -231,3 +231,16 @@
 @keyframes bull-blink {0%,43%,47%,100% {transform:scaleY(1)}45% {transform:scaleY(.1)}}
 @keyframes bull-think {50% {transform:translateY(-3px) rotate(-4deg)}}
 @media(prefers-reduced-motion:reduce) {.alberto-bull .bull-head,.alberto-bull .bull-eyes {animation:none}}
+
+.explorer-workspace{display:grid;grid-template-columns:240px minmax(0,1fr);gap:20px;align-items:start}
+.explorer-sidebar{position:sticky;top:90px;max-height:calc(100dvh - 110px);overflow:auto;min-width:0;border:1px solid #64748b33;border-radius:14px;padding:12px;background:var(--bg-card)}
+.explorer-sidebar .catalogue-table>div:first-child,.explorer-sidebar .catalogue-asset-row>span,.explorer-sidebar .catalogue-price,.explorer-sidebar .catalogue-change,.explorer-sidebar .asset-type,.explorer-sidebar .asset-move-bar{display:none}
+.explorer-sidebar .catalogue-asset-row{padding:4px 8px}.explorer-sidebar .catalogue-table>div{max-height:none!important}
+.explorer-mobile-catalogue{display:none}
+@media(max-width:859px){.explorer-workspace{display:block}.explorer-sidebar{display:none}.explorer-mobile-catalogue{display:block}.explorer-mobile-catalogue .catalogue-table{margin-top:12px}.explorer-mobile-catalogue .catalogue-asset-row>span:first-child{display:none}}
+
+.studio-menu{max-height:65dvh;overflow-y:auto}.studio-chart{overflow-y:auto}
+
+@media(max-width:599px){.opportunity-candidates{grid-template-columns:1fr;gap:6px}.opportunity-candidates>a{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px}.opportunity-candidates h3{margin:0;font-size:13px}.opportunity-candidates .entry-name,.opportunity-candidates .entry-open{display:none}.opportunity-candidates .entry-price{margin:0;font-size:11px}}
+
+@media(min-width:860px) and (max-width:1279px){.opportunity-candidates{grid-template-columns:repeat(3,minmax(0,1fr))}}
