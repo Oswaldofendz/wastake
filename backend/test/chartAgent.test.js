@@ -73,6 +73,9 @@ test('AI prose cannot inject prices, trading guarantees, markup or invalid fact 
  for(const explanation of ['El precio llegará a 99999 mañana con beneficio garantizado.','<script>alert(1)</script>',good.explanation+' El precio subirá.'])assert.equal(validAgentInsight({...good,explanation},'es'),null);
  assert.equal(validAgentInsight({...good,facts:['madeUpPrice']},'es'),null);
  assert.equal(validAgentInsight({explanation:'La lectura es alcista y muestra una tendencia fuerte en este activo. El impulso acompaña a las medias observadas.',facts:['score']},'es',{score:2}),null);
+ assert.equal(validAgentInsight({explanation:'El RSI sugiere una presión de compra moderada, mientras las medias ofrecen referencias históricas para el activo.',facts:['rsi']},'es',{rsi:45.45}),null);
+ assert.equal(validAgentInsight({explanation:'El RSI confirma presión de venta moderada y requiere comprobar el resto de condiciones del gráfico.',facts:['rsi']},'es',{rsi:65}),null);
+ assert.equal(validAgentInsight({explanation:'La estructura muestra una consolidación con posibles niveles de soporte y resistencia históricos.',facts:['ema20']},'es',{ema20:100}),null);
  assert.equal(outsideChartScope('Investiga las noticias de hoy'),true);assert.equal(outsideChartScope('Está barata esta acción por sus ventas?'),true);assert.equal(outsideChartScope('Compara EMA 20 y 50'),false);
 });
 test('chart operations use no AI and unsupported questions keep a clearly labelled rule response',async()=>{
