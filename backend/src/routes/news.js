@@ -10,10 +10,9 @@ newsRouter.get('/:id', async (req, res) => {
 
   try {
     const stage = req.query.stage === 'headlines' ? 'headlines' : 'analysis';
-    const news = stage === 'headlines'
-      ? (await getRawNewsForAsset(id,type)).map(article=>({...article,sentiment:null,impact:null,analysisStatus:'unavailable'}))
-      : await getNewsForAsset(id, type);
-    res.json({ id, type, stage, count: news.length, news });
+    const raw=stage==='headlines'?await getRawNewsForAsset(id,type):await getNewsForAsset(id,type);
+    const news=stage==='headlines'?raw.map(article=>({...article,sentiment:null,impact:null,analysisStatus:'unavailable'})):raw;
+    res.json({ id, type, stage, count: news.length, news,sourceStatus:raw.sourceStatus??'ok',stale:raw.stale??false,checkedAt:raw.sourceCheckedAt??null });
   } catch (err) {
     console.error('[news route]', err.message);
     res.status(500).json({ error: 'Error al obtener noticias' });

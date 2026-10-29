@@ -1,3 +1,4 @@
+import {compactNumber} from '../utils/compactNumber.js';
 import { useEffect,useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchAssetResearch,translateText } from '../services/api.js';
@@ -13,7 +14,7 @@ export function CryptoResearchCard({asset}){
  useEffect(()=>{let active=true;setDescription(null);setTranslating(!!data?.description&&lang!=='en');if(data?.description&&lang!=='en')translateText(data.description,lang,'en',[data.name,data.symbol,data.source]).then(r=>{if(active&&r.translated)setDescription(r.translatedText);}).catch(()=>{}).finally(()=>{if(active)setTranslating(false);});return()=>{active=false;};},[data,lang,translationAttempt]);
  const valuation=cryptoValuation(data);
  const fmt=(n,style)=>Number.isFinite(n)?new Intl.NumberFormat(i18n.language,{maximumFractionDigits:2,...style}).format(n):'—';
- const compact=n=>fmt(n,{notation:'compact'}),when=v=>v?new Date(v).toLocaleString(i18n.language):'—';
+ const compact=n=>compactNumber(n,i18n.language),when=v=>v?new Date(v).toLocaleString(i18n.language):'—';
  const item=(key,value)=><div key={key} className="min-w-0 rounded-lg border border-slate-700 bg-slate-950/30 p-3"><dt className="text-xs text-slate-400">{t(key)}</dt><dd className="mt-1 break-words text-base font-semibold tabular-nums">{value}</dd></div>;
  return <section className="mb-4 rounded-xl border border-sky-800/70 bg-slate-900/60 p-4 sm:p-5" aria-label={t('crypto_title')}>
   <h3 className="text-xl font-semibold">{t('crypto_title')}</h3><p className="mt-2 text-sm leading-relaxed text-slate-300">{t('crypto_intro')}</p>
@@ -23,6 +24,7 @@ export function CryptoResearchCard({asset}){
   {data.description&&<p translate="no" lang={description?lang:'en'} className="mt-2 text-sm leading-relaxed text-slate-300">{description||data.description}</p>}
   {lang!=='en'&&data.description&&!description&&<div className="mt-1 text-xs text-amber-200" role="status"><p>{t(translating?'valuation.translating':'valuation.original')}</p>{!translating&&<button type="button" className="min-h-10 underline" onClick={()=>setTranslationAttempt(n=>n+1)}>{t('valuation.retryTranslation')}</button>}</div>}
   <dl className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-3">{item('crypto_cap',compact(data.marketCap))}{item('crypto_fdv',compact(data.fdv))}{item('crypto_volume',compact(data.volume24h))}{item('crypto_supply',`${compact(data.circulating)} / ${data.maxSupply===null?t('crypto_unknown_supply'):compact(data.maxSupply)}`)}{item('crypto_turnover',data.volumeToCap===null?'—':`${fmt(data.volumeToCap)}%`)}{item('crypto_dilution',data.fdvToCap===null?'—':`${fmt(data.fdvToCap)}×`)}</dl>
+  <p className="mt-2 text-xs text-slate-400">USD · {t('audit_compact_legend')}</p>
   {data.fdvMethod&&<p className="mt-2 text-xs leading-relaxed text-slate-400">{t('crypto_fdv_formula')}</p>}
   <h4 className="mt-4 text-sm font-semibold">{t('crypto_changes')}</h4><p className="mt-2 grid grid-cols-4 gap-2 text-sm tabular-nums">{Object.entries(data.changes).map(([key,value])=><span key={key} className={value===null?'text-slate-400':value<0?'text-rose-300':'text-emerald-300'}><span className="block text-xs text-slate-400">{t('research_change_'+key)}</span>{value===null?'—':`${value>0?'+':''}${fmt(value)}%`}</span>)}</p>
   {data.limitedReturns&&<p className="mt-2 text-xs leading-relaxed text-amber-200">{t('crypto_returns_limited')}</p>}

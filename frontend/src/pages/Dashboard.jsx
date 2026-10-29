@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import {useAssetRoute} from '../hooks/useAssetRoute.js';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PriceCard } from '../components/PriceCard.jsx';
 import { CandleChart } from '../components/PriceChart.jsx';
@@ -18,7 +19,7 @@ const TIMEFRAMES=['1S','1M','3M','6M','1A'].map(label=>({label}));
 export function Dashboard({marketData}) {
   const { t,i18n } = useTranslation();
   const { allAssets, loading, error, isStale, refresh } = marketData;
-  const [selectedAsset, setSelectedAsset] = useState(null);
+  const [selectedAsset, setSelectedAsset] = useAssetRoute(null,allAssets);
   const [extraAssets, setExtraAssets]     = useState([]);
   const [sidebarOpen, setSidebarOpen]     = useState(false);
   const [expandedCats, setExpandedCats]   = useState({});
@@ -46,10 +47,10 @@ export function Dashboard({marketData}) {
 
   const chartAsset = useSelectedQuote(currentSelection(selectedAsset,allAssets));
 
-  const displayAssets = [
+  const displayAssets = useMemo(()=>[
     ...allAssets,
-    ...extraAssets.filter(e => !allAssets.find(a => a.id === e.id)),
-  ];
+    ...extraAssets.filter(e => !allAssets.find(a => a.id === e.id&&a.type===e.type)),
+  ],[allAssets,extraAssets]);
 
   function handleSearch(asset) {
     if (!displayAssets.find(a => a.id === asset.id)) {
@@ -90,7 +91,7 @@ export function Dashboard({marketData}) {
                 </span>
                 {chartAsset && (
                   <span className={`text-sm font-mono font-bold ${(chartAsset.change24h ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {(chartAsset.change24h ?? 0) >= 0 ? '+' : ''}{chartAsset.change24h != null && !isNaN(chartAsset.change24h) ? chartAsset.change24h.toFixed(2) : '0.00'}%
+                    {Number.isFinite(chartAsset.change24h)?`${chartAsset.change24h>=0?'+':''}${chartAsset.change24h.toLocaleString(i18n.language,{minimumFractionDigits:2,maximumFractionDigits:2})}%`:'—'}
                   </span>
                 )}
                 <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 text-slate-500 transition-transform ${sidebarOpen ? 'rotate-180' : ''}`}>
@@ -145,7 +146,7 @@ export function Dashboard({marketData}) {
                         className="w-full flex items-center gap-2 px-3 py-2 bg-slate-800/60 hover:bg-slate-700/40 transition-colors"
                       >
                         <span className="text-sm leading-none">{cat.icon}</span>
-                        <span className={`text-xs font-semibold uppercase tracking-wide ${cat.color}`}>{cat.label}</span>
+                        <span className={`text-xs font-semibold uppercase tracking-wide ${cat.color}`}>{t('screener_type_'+kinds[cat.id])}</span>
                         <span className="text-xs text-slate-600 ml-1">({catAssets.length})</span>
                         <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 text-slate-500 ml-auto transition-transform ${isOpen ? 'rotate-180' : ''}`}>
                           <path d="M8 10.5L2.5 5h11L8 10.5Z" />
@@ -191,16 +192,17 @@ export function Dashboard({marketData}) {
           {chartAsset ? (
             <>
               {/* Stats */}
+              <h1 translate="no" className="mb-3 text-lg font-semibold">{chartAsset.name} <span className="text-sm text-slate-400">· {chartAsset.symbol}</span></h1>
               <div className="grid grid-cols-3 gap-2 mb-3">
                 <StatCard label={`${t('price')} · ${chartAsset.currency || (chartAsset.type==='crypto'?'USD':'—')}`} value={formatQuote(chartAsset.price,chartAsset.currency||(chartAsset.type==='crypto'?'USD':null),i18n.language,chartAsset.type==='forex'?5:null)} mono />
                 <StatCard
                   label={t('change_24h')}
-                  value={chartAsset.change24h != null && !isNaN(chartAsset.change24h) ? `${chartAsset.change24h >= 0 ? '+' : ''}${chartAsset.change24h.toFixed(2)}%` : '—'}
+                  value={chartAsset.change24h != null && !isNaN(chartAsset.change24h) ? `${chartAsset.change24h >= 0 ? '+' : ''}${chartAsset.change24h.toLocaleString(i18n.language,{minimumFractionDigits:2,maximumFractionDigits:2})}%` : '—'}
                   positive={Number.isFinite(chartAsset.change24h)?chartAsset.change24h>=0:undefined}
                 />
                 <StatCard label={t(chartAsset.type==='crypto'?'audit_crypto_volume':'audit_traded_volume')} value={chartAsset.type === 'crypto' ? fmtCompact(chartAsset.volume24h) : chartAsset.volume24h > 0 ? chartAsset.volume24h.toLocaleString(undefined,{notation:'compact',maximumFractionDigits:2}) : '—'} />
               </div>
-              <p className="mb-3 text-xs leading-5 text-slate-400"><span translate="no">{chartAsset.source}</span>{chartAsset.quoteAsOf&&` · ${new Date(chartAsset.quoteAsOf).toLocaleString(i18n.language)}`}</p>
+              <p className="mb-3 text-xs leading-5 text-slate-400"><span translate="no">{chartAsset.source}</span>{chartAsset.quoteAsOf?` · ${new Date(chartAsset.quoteAsOf).toLocaleString(i18n.language)}`:` · ${t('audit_quote_undated')}`}</p>
 
               {/* Timeframe selector + Chart container */}
               <div

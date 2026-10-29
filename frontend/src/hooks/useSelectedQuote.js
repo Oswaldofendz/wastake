@@ -8,6 +8,6 @@ export function useSelectedQuote(asset){
   const load=()=>fetchAssetQuote(asset).then(q=>{if(active&&Number.isFinite(q.price)&&q.price>0)setLive({...q,id:asset.id,type:asset.type});}).catch(()=>{});
   load();const timer=setInterval(()=>{if(document.visibilityState==='visible')load();},60000);
   return()=>{active=false;clearInterval(timer);};
- },[asset?.id,asset?.type]);
+ },[asset?.id,asset?.type,asset?.analysisType]);
  return asset&&live?.id===asset.id&&live?.type===asset.type?{...asset,...live,name:asset.name,symbol:asset.symbol,volume24h:live.volume??live.volume24h??asset.volume24h}:asset;
 }

@@ -1,13 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
-import { getCryptoPrices, getTraditionalPrices, getCryptoOHLCV, getTraditionalOHLCV } from './priceService.js';
+import { getSingleQuote, getCryptoOHLCV, getTraditionalOHLCV } from './priceService.js';
 import { computeIndicators } from './technicalAnalysisService.js';
+import {completedDailyCandles} from './dailyCandles.js';
+import {evaluateAlertCondition} from './alertConditions.js';
 
 const supabase = (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY)
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
   : null;
 
 const indicatorCache = new Map();
-let isRunning = false;
+let isRunning = false,checking=false;
 
 async function getIndicators(assetId, assetType) {
   const cacheKey = `${assetType}_${assetId}`;
@@ -16,14 +18,14 @@ async function getIndicators(assetId, assetType) {
   try {
     let candles;
     if (assetType === 'crypto') {
-      candles = await getCryptoOHLCV(assetId, 90);
+      candles = await getCryptoOHLCV(assetId, 365);
     } else {
       candles = await getTraditionalOHLCV(assetId);
     }
 
     if (!candles || candles.length === 0) return null;
 
-    const indicators = computeIndicators(candles);
+    const indicators = computeIndicators(completedDailyCandles(candles));
     indicatorCache.set(cacheKey, indicators);
     setTimeout(() => indicatorCache.delete(cacheKey), 5 * 60 * 1000);
 
@@ -33,56 +35,9 @@ async function getIndicators(assetId, assetType) {
   }
 }
 
-async function evaluateAlert(alert, priceMap) {
-  const assetPrice = priceMap[alert.asset_id];
-  if (!assetPrice) return false;
-
-  const price = assetPrice.price;
-  const change24h = assetPrice.change24h;
-
-  switch (alert.alert_type) {
-    case 'price_above':
-      return price >= alert.target_value;
-
-    case 'price_below':
-      return price <= alert.target_value;
-
-    case 'change_above':
-      return change24h >= alert.target_value;
-
-    case 'change_below':
-      return change24h <= alert.target_value;
-
-    case 'rsi_overbought': {
-      const indicators = await getIndicators(alert.asset_id, alert.asset_type);
-      return indicators?.indicators?.rsi?.current >= 70;
-    }
-
-    case 'rsi_oversold': {
-      const indicators = await getIndicators(alert.asset_id, alert.asset_type);
-      return indicators?.indicators?.rsi?.current <= 30;
-    }
-
-    case 'macd_bullish': {
-      const indicators = await getIndicators(alert.asset_id, alert.asset_type);
-      return indicators?.indicators?.macd?.current?.histogram > 0;
-    }
-
-    case 'macd_bearish': {
-      const indicators = await getIndicators(alert.asset_id, alert.asset_type);
-      return indicators?.indicators?.macd?.current?.histogram < 0;
-    }
-
-    default:
-      return false;
-  }
-}
-
 async function checkAlerts() {
+  if(checking)return;checking=true;
   try {
-    const cryptoPrices = await getCryptoPrices();
-    const traditionalPrices = await getTraditionalPrices();
-    const priceMap = { ...cryptoPrices, ...traditionalPrices };
 
     const { data: alerts, error } = await supabase
       .from('alerts')
@@ -93,9 +48,14 @@ async function checkAlerts() {
     if (error) throw error;
     if (!alerts || alerts.length === 0) return;
 
+    const quotes=new Map();
     let triggered = 0;
     for (const alert of alerts) {
-      const shouldTrigger = await evaluateAlert(alert, priceMap);
+      const technical=!/^(price|change)_/.test(alert.alert_type);
+      const key=`${alert.asset_type}:${alert.asset_id}`;
+      if(!technical&&!quotes.has(key)){try{quotes.set(key,await getSingleQuote(alert.asset_id,alert.asset_type==='crypto'?'crypto':'stock'));}catch{quotes.set(key,null);}}
+      const indicators=technical?await getIndicators(alert.asset_id,alert.asset_type):null;
+      const shouldTrigger=evaluateAlertCondition(alert,quotes.get(key),indicators);
       if (shouldTrigger) {
         const { error: updateError } = await supabase
           .from('alerts')
@@ -113,7 +73,7 @@ async function checkAlerts() {
     }
   } catch (err) {
     console.error(`[AlertEngine] Error:`, err.message);
-  }
+  }finally{checking=false;}
 }
 
 export function startAlertEngine() {

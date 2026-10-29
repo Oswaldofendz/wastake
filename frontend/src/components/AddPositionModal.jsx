@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { AssetSearch } from './AssetSearch.jsx';
+import {quoteInUsd} from '../utils/portfolioCurrency.js';
+import {useTranslation} from 'react-i18next';
 
-export function AddPositionModal({ onAdd, onClose }) {
+export function AddPositionModal({ onAdd, onClose,rates }) {
+  const {t}=useTranslation();
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [quantity,     setQuantity]     = useState('');
   const [entryPrice,   setEntryPrice]   = useState('');
@@ -30,8 +33,8 @@ export function AddPositionModal({ onAdd, onClose }) {
   async function handleSubmit(e) {
     e.preventDefault();
     if (!selectedAsset)                      { setError('Selecciona un activo'); return; }
-    if (!quantity || parseFloat(quantity) <= 0)    { setError('Cantidad inválida'); return; }
-    if (!entryPrice || parseFloat(entryPrice) <= 0) { setError('Precio de entrada inválido'); return; }
+    if (!Number.isFinite(Number(quantity)) || Number(quantity) <= 0)    { setError('Cantidad inválida'); return; }
+    if (!Number.isFinite(Number(entryPrice)) || Number(entryPrice) <= 0) { setError('Precio de entrada inválido'); return; }
 
     setError(null);
     setLoading(true);
@@ -65,6 +68,7 @@ export function AddPositionModal({ onAdd, onClose }) {
         <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
           <h2 className="text-white font-semibold">Nueva posición</h2>
           <button
+            aria-label={t("close")}
             onClick={onClose}
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
             onMouseEnter={e => e.currentTarget.style.color = '#fff'}
@@ -92,13 +96,14 @@ export function AddPositionModal({ onAdd, onClose }) {
                 </button>
               </div>
             ) : (
-              <AssetSearch onSelect={asset => {
+              <AssetSearch withQuote onSelect={asset => {
                 setSelectedAsset(asset);
-                if (asset.price) setEntryPrice(asset.price.toString());
+                const usd=quoteInUsd(asset,rates);setEntryPrice(usd==null?'':String(usd));
               }} />
             )}
           </div>
 
+          {selectedAsset?.currency&&selectedAsset.currency!=='USD'&&<p role="status" className="text-xs leading-5 text-amber-300">{t('audit_entry_usd_note',{currency:selectedAsset.currency})}</p>}
           {/* Cantidad + Precio */}
           <div className="grid grid-cols-2 gap-3">
             <div>

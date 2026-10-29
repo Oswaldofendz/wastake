@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ANALYZABLE_CATEGORIES, getAnalysisType } from '../data/assetCatalog.js';
 import { fetchNarrative } from '../services/api.js';
 import { usePanoramaData } from '../hooks/usePanoramaData.js';
+import {useAssetRoute} from '../hooks/useAssetRoute.js';
 import { AssetSearch } from './AssetSearch.jsx';
 import { AssetRangeContext } from './AssetRangeContext.jsx';
 import { FearGreedGauge } from './FearGreedGauge.jsx';
@@ -64,7 +65,7 @@ function TechnicalSemaphore({score,coverage}){
 export function Panorama() {
   const { t, i18n } = useTranslation();
   const lang=(i18n.resolvedLanguage||i18n.language).split('-')[0];
-  const [asset,setAsset]=useState(DEFAULT_ASSET);
+  const [asset,setAsset]=useAssetRoute(DEFAULT_ASSET);
   const [attempt,setAttempt]=useState(0);
   const state=usePanoramaData(asset,attempt);
   const analysis=state.analysis.data?.analysis;

@@ -1,3 +1,5 @@
+import {useTranslation} from 'react-i18next';
+import {portfolioAllocation} from '../utils/portfolioMetrics.js';
 // Gráfico de dona SVG — sin dependencias externas
 
 const COLORS = [
@@ -31,19 +33,23 @@ function buildArc(cx, cy, r, startDeg, endDeg) {
 }
 
 export function DonutChart({ positions }) {
+  const {t}=useTranslation();
+  const allocation=portfolioAllocation(positions);
+  if(positions?.length&&!allocation)return <p role="status" className="p-4 text-xs text-amber-300">{t('audit_allocation_missing')}</p>;
+  positions=allocation??[];
   if (!positions || positions.length === 0) return (
     <div className="flex items-center justify-center h-40 text-slate-500 text-xs">
       Sin posiciones
     </div>
   );
 
-  const total = positions.reduce((s, p) => s + (p.currentValue ?? p.costBasis), 0);
+  const total = positions.reduce((s, p) => s + (p.currentValue), 0);
   if (total === 0) return null;
 
   // Calcular porcentajes y ángulos
   let cumDeg = 0;
   const slices = positions.map((p, i) => {
-    const value   = p.currentValue ?? p.costBasis;
+    const value   = p.currentValue;
     const pct     = (value / total) * 100;
     const degrees = (value / total) * 360;
     const start   = cumDeg;
@@ -83,7 +89,7 @@ export function DonutChart({ positions }) {
         <circle cx={CX} cy={CY} r="28" fill="#0f172a" />
         <text x={CX} y={CY - 4} textAnchor="middle" className="fill-white text-[9px] font-bold" fontSize="9">Total</text>
         <text x={CX} y={CY + 8} textAnchor="middle" className="fill-slate-400 text-[7px]" fontSize="7">
-          {positions.length} activos
+          {t('audit_asset_count',{count:positions.length})}
         </text>
       </svg>
 

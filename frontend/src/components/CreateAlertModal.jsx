@@ -1,3 +1,4 @@
+import {useTranslation} from 'react-i18next';
 import { useState, useEffect } from 'react';
 
 const ALERT_TYPES = [
@@ -19,27 +20,24 @@ function formatPrice(price) {
 }
 
 export function CreateAlertModal({ isOpen, onClose, onSave, assets }) {
+  const {t}=useTranslation();
   const [selectedAssetId, setSelectedAssetId] = useState('');
   const [alertType, setAlertType]             = useState('price_above');
   const [targetValue, setTargetValue]         = useState('');
   const [validationError, setValidationError] = useState('');
   const [submitting, setSubmitting]           = useState(false);
 
-  // Initialise defaults when modal opens / assets load
-  useEffect(() => {
-    if (isOpen && assets && assets.length > 0) {
-      setSelectedAssetId(assets[0].id);
-      setAlertType('price_above');
-      setTargetValue('');
-      setValidationError('');
-    }
-  }, [isOpen, assets]);
+  useEffect(()=>{if(isOpen){setSelectedAssetId('');setAlertType('price_above');setTargetValue('');setValidationError('');}},[isOpen]);
+  useEffect(()=>{if(isOpen&&!selectedAssetId&&assets?.length)setSelectedAssetId(assets[0].id);},[isOpen,assets,selectedAssetId]);
 
   if (!isOpen) return null;
 
   const selectedAsset      = assets?.find(a => a.id === selectedAssetId) ?? null;
   const alertTypeMeta      = ALERT_TYPES.find(t => t.value === alertType) ?? ALERT_TYPES[0];
   const requiresTargetValue = alertTypeMeta.needsValue;
+
+  const usdPriceAllowed=selectedAsset?.currency==='USD'||selectedAsset?.type==='crypto';
+  const unsupportedPrice=!usdPriceAllowed&&alertType.startsWith('price_');
 
   function handleBackdropClick(e) {
     if (e.target === e.currentTarget) onClose();
@@ -48,10 +46,11 @@ export function CreateAlertModal({ isOpen, onClose, onSave, assets }) {
   async function handleSubmit(e) {
     e.preventDefault();
     setValidationError('');
+    if(unsupportedPrice){setValidationError(t('audit_alert_usd_only'));return;}
 
     if (requiresTargetValue) {
       const parsed = parseFloat(targetValue);
-      if (targetValue === '' || isNaN(parsed)) {
+      if (targetValue === '' || !Number.isFinite(parsed)||(alertType.startsWith('price_')&&parsed<=0)) {
         setValidationError('Introduce un valor numérico válido.');
         return;
       }
@@ -139,6 +138,7 @@ export function CreateAlertModal({ isOpen, onClose, onSave, assets }) {
           </div>
 
           {/* Target value input (conditional) */}
+          {unsupportedPrice&&<p role="status" className="text-xs leading-5 text-amber-300">{t('audit_alert_usd_only')}</p>}
           {requiresTargetValue && (
             <div>
               <label className="block text-slate-400 text-sm mb-1.5">
@@ -159,7 +159,7 @@ export function CreateAlertModal({ isOpen, onClose, onSave, assets }) {
                     setValidationError('');
                   }}
                   placeholder={
-                    alertTypeMeta.unit === '$' && selectedAsset?.price != null
+                    alertTypeMeta.unit === '$' && usdPriceAllowed && selectedAsset?.price != null
                       ? formatPrice(selectedAsset.price)
                       : alertTypeMeta.unit === '%'
                       ? '5'
@@ -169,7 +169,7 @@ export function CreateAlertModal({ isOpen, onClose, onSave, assets }) {
                 />
               </div>
               {/* Price hint */}
-              {alertTypeMeta.unit === '$' && selectedAsset?.price != null && (
+              {alertTypeMeta.unit === '$' && usdPriceAllowed && selectedAsset?.price != null && (
                 <p className="mt-1 text-slate-500 text-xs">
                   Precio actual: ${formatPrice(selectedAsset.price)}
                 </p>
@@ -192,7 +192,7 @@ export function CreateAlertModal({ isOpen, onClose, onSave, assets }) {
           {/* Submit */}
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting||unsupportedPrice}
             className="w-full bg-brand-600 hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
           >
             {submitting ? 'Creando...' : 'Crear Alerta'}

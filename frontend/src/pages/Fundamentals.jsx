@@ -1,3 +1,4 @@
+import {useAssetRoute} from '../hooks/useAssetRoute.js';
 import {cachedPublicNews} from '../utils/publicNewsCache.js';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -67,8 +68,9 @@ export function Fundamentals({initialAsset=null}) {
   const lang = languageCode(i18n.resolvedLanguage || i18n.language);
   const t = COPY[lang];
   const analysisLabels = { ...ANALYSIS_LABELS[lang], ...FALLBACK_LABELS[lang] };
-  const assets = useMemo(() => {const list=ALL_ASSETS.filter(asset=>asset.analysisType);return initialAsset&&!list.some(a=>a.id===initialAsset.id)?[initialAsset,...list]:list;}, [initialAsset]);
-  const [assetId, setAssetId] = useState(initialAsset?.id??'bitcoin');
+  const baseAssets = useMemo(() => {const list=ALL_ASSETS.filter(asset=>asset.analysisType);return initialAsset&&!list.some(a=>a.id===initialAsset.id)?[initialAsset,...list]:list;}, [initialAsset]);
+  const [selectedAsset,selectAsset]=useAssetRoute(initialAsset??baseAssets[0],baseAssets);
+  const assets=selectedAsset&&!baseAssets.some(a=>a.id===selectedAsset.id)?[selectedAsset,...baseAssets]:baseAssets;
   const [periodId, setPeriodId] = useState('day');
   const [refreshKey, setRefreshKey] = useState(0);
   const [articles, setArticles] = useState([]);
@@ -80,7 +82,9 @@ export function Fundamentals({initialAsset=null}) {
   const [priceError, setPriceError] = useState('');
   const [newsAsOf,setNewsAsOf]=useState(null),[cachedView,setCachedView]=useState(false);
 
-  const asset = assets.find(item => item.id === assetId) ?? assets[0];
+  const asset = selectedAsset??assets[0];
+  const assetId=asset.id;
+  const setAssetId=id=>selectAsset(assets.find(a=>a.id===id));
   const selectedWindow = WINDOWS.find(window => window.id === periodId) ?? WINDOWS[0];
   const selectedPeriodLabel = selectedWindow.label[lang];
 
@@ -96,7 +100,7 @@ export function Fundamentals({initialAsset=null}) {
       const read=async()=>{
         try{const result=await fetchFundamentalsNews(asset,type,lang,'snapshot');if(cancelled)return;
           setArticles(current=>JSON.stringify(current)===JSON.stringify(result.news)?current:result.news??[]);setNewsAsOf(result.checkedAt);setCachedView(result.stale);setLoading(false);setAnalyzing(result.revalidating);
-          setNewsError(result.sourceStatus==='unavailable'?translate('cycle_news_stale'):'');
+          setNewsError(result.sourceStatus==='unavailable'?translate('cycle_news_stale'):['partial','stale'].includes(result.sourceStatus)?translate('audit_news_partial'):'');
           if(result.revalidating)timer=setTimeout(read,5000);
         }catch{if(!cancelled){setLoading(false);setAnalyzing(false);setNewsError(translate('fundamentals_news_error'));}}
       };
@@ -105,7 +109,7 @@ export function Fundamentals({initialAsset=null}) {
 
     load();
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [asset?.id, refreshKey, lang]);
+  }, [asset?.id,asset?.type,asset?.analysisType, refreshKey, lang]);
 
   useEffect(() => {
     const pending = articles.filter(article => article.title && !translatedTitles[`${lang}:${articleKey(article)}`] && lang !== 'en'

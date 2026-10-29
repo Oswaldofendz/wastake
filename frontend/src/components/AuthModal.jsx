@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState,useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
 // ─── Íconos ───────────────────────────────────────────────────────────────────
@@ -45,10 +45,11 @@ function IconCheck() {
 
 // ─── Input con ícono ──────────────────────────────────────────────────────────
 
-function InputField({ icon, label, type, value, onChange, placeholder, minLength, required, rightSlot }) {
+function InputField({ icon, label, type, value, onChange, placeholder, minLength, required, rightSlot,autoComplete }) {
+  const id=useId();
   return (
     <div>
-      <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+      <label htmlFor={id} className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
         {label}
       </label>
       <div className="relative">
@@ -56,6 +57,8 @@ function InputField({ icon, label, type, value, onChange, placeholder, minLength
           {icon}
         </span>
         <input
+          id={id}
+          autoComplete={autoComplete}
           type={type}
           required={required}
           minLength={minLength}
@@ -83,6 +86,7 @@ function InputField({ icon, label, type, value, onChange, placeholder, minLength
 // ─── Pantalla de confirmación ─────────────────────────────────────────────────
 
 function ConfirmScreen({ onBack }) {
+  const {t}=useTranslation();
   return (
     <div className="flex flex-col items-center justify-center text-center py-8 px-4">
       <div
@@ -91,16 +95,16 @@ function ConfirmScreen({ onBack }) {
       >
         <span style={{ color: 'var(--accent-silver)' }}><IconCheck /></span>
       </div>
-      <h3 className="text-white font-semibold text-lg mb-2">¡Cuenta creada!</h3>
+      <h3 className="text-white font-semibold text-lg mb-2">{t('audit_auth_created')}</h3>
       <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
-        Revisa tu bandeja de entrada y confirma tu email para activar tu cuenta.
+        {t('audit_auth_confirm')}
       </p>
       <button
         onClick={onBack}
         className="text-sm font-medium underline transition-colors"
         style={{ color: 'var(--accent-silver)' }}
       >
-        Volver al inicio de sesión
+        {t('audit_auth_back')}
       </button>
     </div>
   );
@@ -145,8 +149,8 @@ export function AuthModal({ onSignIn, onSignUp, onBackToAnalysis }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto px-4 pt-16 pb-8 sm:py-8"
-      style={{ background: 'linear-gradient(160deg, #090909 0%, #0c0c0d 40%, #09090a 100%)' }}
+      role="dialog" aria-modal="true" aria-labelledby="auth-page-title" className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto px-4 pt-16 pb-8 sm:py-8"
+      style={{ background: 'var(--bg-primary)' }}
     >
       {/* Fondo decorativo con glow teal sutil */}
       <div
@@ -175,12 +179,12 @@ export function AuthModal({ onSignIn, onSignUp, onBackToAnalysis }) {
             style={{
               height: '80px',
               width: 'auto',
-              mixBlendMode: 'lighten',
-              filter: 'brightness(1.4) contrast(1.1)',
+              mixBlendMode: 'normal',
+              filter: 'none',
             }}
           />
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Análisis de mercados financieros
+          <p id="auth-page-title" className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            {t('audit_auth_title')}
           </p>
         </div>
 
@@ -213,7 +217,7 @@ export function AuthModal({ onSignIn, onSignUp, onBackToAnalysis }) {
                   border: 'none',
                 }}
               >
-                {m === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
+                {t(m==='login'?'audit_auth_login':'audit_auth_signup')}
                 {mode === m && (
                   <span
                     className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 w-3/4 rounded-full"
@@ -234,16 +238,18 @@ export function AuthModal({ onSignIn, onSignUp, onBackToAnalysis }) {
                 <InputField
                   icon={<IconMail />}
                   label="Email"
+                  autoComplete="email"
                   type="email"
                   required
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="tu@email.com"
+                  placeholder="email@example.com"
                 />
 
                 <InputField
                   icon={<IconLock />}
-                  label="Contraseña"
+                  label={t('audit_auth_password')}
+                  autoComplete={mode==='signup'?'new-password':'current-password'}
                   type={showPass ? 'text' : 'password'}
                   required
                   minLength={6}
@@ -253,6 +259,7 @@ export function AuthModal({ onSignIn, onSignUp, onBackToAnalysis }) {
                   rightSlot={
                     <button
                       type="button"
+                      aria-label={t(showPass?'audit_auth_hide':'audit_auth_show')}
                       onClick={() => setShowPass(v => !v)}
                       className="transition-colors"
                       style={{ color: 'var(--silver-400)', background: 'none', border: 'none', cursor: 'pointer' }}
@@ -264,13 +271,13 @@ export function AuthModal({ onSignIn, onSignUp, onBackToAnalysis }) {
 
                 {mode === 'signup' && (
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    Mínimo 6 caracteres. Recibirás un email de confirmación.
+                    {t('audit_auth_minimum')}
                   </p>
                 )}
 
                 {error && (
                   <div
-                    className="rounded-xl px-4 py-3 text-sm"
+                    role="alert" className="rounded-xl px-4 py-3 text-sm"
                     style={{
                       background: 'rgba(239,68,68,0.08)',
                       border: '1px solid rgba(239,68,68,0.25)',
@@ -303,32 +310,32 @@ export function AuthModal({ onSignIn, onSignUp, onBackToAnalysis }) {
                         className="w-4 h-4 rounded-full border-2 animate-spin"
                         style={{ borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#fff' }}
                       />
-                      Procesando...
+                      {t('audit_auth_processing')}
                     </>
                   ) : mode === 'login' ? (
-                    'Iniciar sesión'
+                    t('audit_auth_login')
                   ) : (
-                    'Crear cuenta'
+                    t('audit_auth_signup')
                   )}
                 </button>
 
                 {/* Separador */}
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
-                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>o</span>
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('audit_auth_or')}</span>
                   <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
                 </div>
 
                 {/* Toggle rápido */}
                 <p className="text-center text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {mode === 'login' ? '¿No tienes cuenta? ' : '¿Ya tienes cuenta? '}
+                  {t(mode==='login'?'audit_auth_no_account':'audit_auth_have_account')}{' '}
                   <button
                     type="button"
                     onClick={() => switchMode(mode === 'login' ? 'signup' : 'login')}
                     className="font-medium underline transition-colors"
                     style={{ color: 'var(--accent-silver)', background: 'none', border: 'none', cursor: 'pointer' }}
                   >
-                    {mode === 'login' ? 'Regístrate gratis' : 'Inicia sesión'}
+                    {t(mode==='login'?'audit_auth_register':'audit_auth_login')}
                   </button>
                 </p>
               </form>
@@ -338,7 +345,7 @@ export function AuthModal({ onSignIn, onSignUp, onBackToAnalysis }) {
 
         {/* Disclaimer */}
         <p className="text-center text-xs mt-5" style={{ color: 'var(--text-muted)' }}>
-          WaStake no es asesoría financiera. Usa los datos bajo tu propia responsabilidad.
+          {t('audit_auth_disclaimer')}
         </p>
       </div>
     </div>

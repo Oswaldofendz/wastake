@@ -9,6 +9,8 @@ import { PortfolioChart } from '../components/ContributionHistory.jsx';
 import { useToast }       from '../components/Toast.jsx';
 import { useTranslation } from 'react-i18next';
 import { PortfolioOverview } from '../components/PortfolioOverview.jsx';
+import {useCurrencyRates} from '../hooks/useCurrencyRates.js';
+import {portfolioPriceChange} from '../utils/portfolioCurrency.js';
 
 // ─── Helpers numéricos ────────────────────────────────────────────────────────
 
@@ -36,7 +38,7 @@ function holdingDays(createdAt) {
 
 function annualizedROI(pnlPct, days) {
   if (pnlPct == null || !days || days < 1) return null;
-  return (Math.pow(1 + pnlPct / 100, 365 / days) - 1) * 100;
+  const value=(Math.pow(1 + pnlPct / 100, 365 / days) - 1) * 100;return Number.isFinite(value)?value:null;
 }
 
 function fmtConverted(usdValue, currency, rates) {
@@ -56,24 +58,6 @@ function fmtConverted(usdValue, currency, rates) {
 }
 
 // ─── Hook: tipo de cambio ─────────────────────────────────────────────────────
-
-function useCurrencyRates(allAssets) {
-  const [rates, setRates] = useState({ EUR: null, BTC: null });
-
-  useEffect(() => {
-    fetch('https://open.er-api.com/v6/latest/USD')
-      .then(r => r.json())
-      .then(d => { if (d?.rates?.EUR) setRates(p => ({ ...p, EUR: d.rates.EUR })); })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    const btc = allAssets?.find(a => a.id === 'bitcoin');
-    if (btc?.price) setRates(p => ({ ...p, BTC: 1 / btc.price }));
-  }, [allAssets]);
-
-  return rates;
-}
 
 // ─── Export CSV ───────────────────────────────────────────────────────────────
 
@@ -460,12 +444,12 @@ function PortfolioSelector({ portfolios, selected, setSelected, onCreate, onRena
                   {selected?.id === p.id ? '✓ ' : '  '}{p.name}
                 </button>
               )}
-              <button
+              <button hidden={p.virtual}
                 className="opacity-0 group-hover:opacity-70 hover:!opacity-100 text-slate-400 text-xs px-1 transition-opacity"
                 onClick={() => { setRenaming(p.id); setNewName(p.name); }}
                 title="Renombrar"
               >✎</button>
-              {portfolios.length > 1 && (
+              {!p.virtual&&portfolios.filter(p=>!p.virtual).length > 1 && (
                 <button
                   className="opacity-0 group-hover:opacity-70 hover:!opacity-100 text-red-400 text-xs px-1 transition-opacity"
                   onClick={() => { if (confirm(`¿Eliminar "${p.name}"?`)) onDelete(p.id); }}
@@ -504,18 +488,18 @@ function PortfolioSelector({ portfolios, selected, setSelected, onCreate, onRena
 }
 
 export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate }) {
-  const { t } = useTranslation();
+  const { t,i18n } = useTranslation();
   const toast = useToast();
   const rates = useCurrencyRates(allAssets);
 
-  const { portfolios, selected: activePortfolio, setSelected, createPortfolio, renamePortfolio, deletePortfolio } = usePortfolios(user);
+  const { portfolios, selected: activePortfolio, setSelected, createPortfolio, renamePortfolio, deletePortfolio,loading:portfolioListLoading,error:portfolioListError,refresh:reloadPortfolios } = usePortfolios(user);
 
   const {
     positions, real, paper,
     loading, error,
     addPosition, removePosition,
     totalValue, totalCost, totalPnl, totalPnlPct,
-  } = usePortfolio(user, allAssets, activePortfolio?.id ?? null);
+  } = usePortfolio(user, allAssets, activePortfolio?.id ?? null,rates);
 
   const [showAdd,    setShowAdd]    = useState(false);
   const [showDca,    setShowDca]    = useState(false);
@@ -562,12 +546,7 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate
   const filteredPaper = useMemo(() => paper.sort(sortFn), [paper, sortBy, sortDir]);
 
   // ── Benchmark 24h ponderado ─────────────────────────────────────
-  const portfolioChange24h = useMemo(() => {
-    const weighted = real.filter(p => p.change24h != null && p.currentValue);
-    const totalW   = weighted.reduce((s, p) => s + p.currentValue, 0);
-    if (!totalW) return null;
-    return weighted.reduce((s, p) => s + (p.change24h * p.currentValue) / totalW, 0);
-  }, [real]);
+  const portfolioChange24h = useMemo(()=>portfolioPriceChange(real),[real]);
 
   // ── Handlers ───────────────────────────────────────────────────
   async function handleAdd(data) {
@@ -599,11 +578,13 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate
   if (!user) return <AuthModal onSignIn={signIn} onSignUp={signUp} onBackToAnalysis={() => onNavigate?.('dashboard')} />;
 
   // ── Cargando ───────────────────────────────────────────────────
-  if (loading) return (
+  if (loading||portfolioListLoading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-6 h-6 border-2 border-slate-700 border-t-transparent rounded-full animate-spin" style={{ borderTopColor: 'var(--accent-silver)' }} />
     </div>
   );
+
+  if(portfolioListError)return <section role="alert" className="m-4 rounded-xl border border-amber-700 p-5"><p>{t('audit_portfolio_load_error')}</p><button type="button" onClick={reloadPortfolios} className="mt-3 min-h-11 underline">{t('retry')}</button></section>;
 
   const allPositions = [...real, ...paper];
   const dcaPositions = real.filter(position => position.tags?.includes('DCA'));
@@ -612,6 +593,8 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate
   return (
     <div className="flex flex-col h-full p-4 max-w-4xl mx-auto w-full">
 
+      <p className="mb-3 text-xs leading-5 text-slate-400">{t('audit_portfolio_currency_method')} {rates.date&&<><a href={rates.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-sky-300 underline">Rates By Exchange Rate API</a> · {new Date(rates.date).toLocaleDateString(i18n.language)}</>}</p>
+      {positions.some(p=>p.fxConverted)&&<p role="status" className="mb-3 rounded-lg border border-amber-700/50 p-3 text-xs leading-5 text-amber-200">{t('audit_portfolio_foreign_cost')}</p>}
       {/* ── Header ── */}
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <div className="flex items-center gap-3">
@@ -689,7 +672,7 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate
           </button>
 
           <button
-            onClick={signOut}
+            onClick={async()=>{try{await signOut();}catch{toast.error(t('audit_signout_failed'));}}}
             className="text-xs px-3 py-2 rounded-lg border transition-colors"
             style={{ color: 'var(--text-muted)', borderColor: 'var(--border-subtle)', background: 'transparent', cursor: 'pointer' }}
             onMouseEnter={e => e.currentTarget.style.color = '#fff'}
@@ -829,10 +812,10 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate
       )}
 
       {showAdd && (
-        <AddPositionModal onAdd={handleAdd} onClose={() => setShowAdd(false)} />
+        <AddPositionModal rates={rates} onAdd={handleAdd} onClose={() => setShowAdd(false)} />
       )}
       {showDca && (
-        <DcaEntryModal assets={allAssets} positions={positions} onAdd={handleAdd} onClose={() => setShowDca(false)} />
+        <DcaEntryModal rates={rates} assets={allAssets} positions={positions} onAdd={handleAdd} onClose={() => setShowDca(false)} />
       )}
     </div>
   );

@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { hierarchy, treemap } from 'd3';
+import {compactNumber} from '../utils/compactNumber.js';
 import { useTranslation } from 'react-i18next';
 import { fetchAllPrices, fetchRankings } from '../services/api.js';
 import { getAssetGroup } from '../data/assetSectors.js';
 
 const color=n=>!Number.isFinite(n)?'#475569':n===0?'#334155':n>0?(n>3?'#057a55':'#16654b'):(n< -3?'#b42335':'#792635');
-const cap=n=>Number.isFinite(n)&&n>0?new Intl.NumberFormat(undefined,{style:'currency',currency:'USD',notation:'compact',maximumFractionDigits:2}).format(n):'—';
-const change=n=>Number.isFinite(n)?`${n>=0?'+':''}${n.toFixed(2)}%`:'—';
 
 export function MarketHeatmap({ assets: provided }) {
   const {t,i18n}=useTranslation();
+  const cap=n=>Number.isFinite(n)&&n>0?'$'+compactNumber(n,i18n.language):'—';
+  const change=n=>Number.isFinite(n)?`${n>=0?'+':''}${n.toLocaleString(i18n.language,{minimumFractionDigits:2,maximumFractionDigits:2})}%`:'—';
   const [fallback,setFallback]=useState([]);
   const [universe,setUniverse]=useState(null);
   const [loading,setLoading]=useState(true);
@@ -52,13 +53,13 @@ export function MarketHeatmap({ assets: provided }) {
     <div ref={ref} className="w-full min-w-0">
       <p className="mb-2 text-[11px] leading-5 text-slate-400">{t('map_display',{shown:visible.length,total:eligible.length})}</p>
       {visible.length?<svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${t('map_title')} · ${visible.length}`}>
-        {root.leaves().map(n=>{const a=n.data,w=n.x1-n.x0,h=n.y1-n.y0;return <g key={a.id} tabIndex={0} role="img" aria-label={`${a.name}, ${a.symbol}, ${change(a.change24h)}`}><title>{a.name} ({a.symbol}) · {change(a.change24h)} · {t('map_cap')}: {cap(a.verifiedCap)}</title><rect x={n.x0} y={n.y0} width={w} height={h} rx="5" fill={color(a.change24h)}/>{w>40&&h>35&&<text translate="no" x={n.x0+w/2} y={n.y0+h/2-2} textAnchor="middle" fill="white" fontSize={w>100?16:11} fontWeight="700">{a.symbol}</text>}{w>45&&h>52&&<text x={n.x0+w/2} y={n.y0+h/2+17} textAnchor="middle" fill="white" fontSize="11">{change(a.change24h)}</text>}</g>;})}
+        {root.leaves().map(n=>{const a=n.data,w=n.x1-n.x0,h=n.y1-n.y0;return <g key={a.id} role="img" aria-label={`${a.name}, ${a.symbol}, ${change(a.change24h)}`}><title>{a.name} ({a.symbol}) · {change(a.change24h)} · {t('map_cap')}: {cap(a.verifiedCap)}</title><rect x={n.x0} y={n.y0} width={w} height={h} rx="5" fill={color(a.change24h)}/>{w>40&&h>35&&<text translate="no" x={n.x0+w/2} y={n.y0+h/2-2} textAnchor="middle" fill="white" fontSize={w>100?16:11} fontWeight="700">{a.symbol}</text>}{w>45&&h>52&&<text x={n.x0+w/2} y={n.y0+h/2+17} textAnchor="middle" fill="white" fontSize="11">{change(a.change24h)}</text>}</g>;})}
       </svg>:<p className="py-14 text-center text-sm text-slate-400">{t(size==='cap'?'map_no_cap':'map_empty')}</p>}
     </div>
     {size==='cap'&&missing>0&&<p className="mt-2 text-xs text-amber-300">{t('map_missing',{count:missing})}</p>}
     <details className="mt-3 text-xs"><summary className="cursor-pointer text-sky-300">{t('map_table')} · {eligible.length}</summary><ul className="mt-2 max-h-80 divide-y divide-slate-700/40 overflow-y-auto">{eligible.map(a=><li key={a.id} className="flex items-center justify-between gap-2 py-2"><span translate="no" className="min-w-0 truncate">{a.symbol} · {a.name}</span><span className="shrink-0 font-mono">{change(a.change24h)}</span></li>)}</ul></details>
     <div className="mt-6 flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{t('map_rank')} · {t('map_top')}</h3><button type="button" disabled={loading} className="min-h-10 rounded border border-slate-600 px-3 text-xs" onClick={()=>setAttempt(n=>n+1)}>{t('retry')}</button></div>
-    <p className="mt-2 text-xs leading-5 text-slate-400">{t('map_rank_scope')}</p>
+    <p className="mt-2 text-xs leading-5 text-slate-400">{t('map_rank_scope')} {t('audit_compact_legend')}</p>
     {loading&&<p className="my-3 text-sm text-sky-300" role="status">{t('map_loading')}</p>}
     {universe?.partial&&<p className="my-2 text-xs text-amber-300" role="status">{t('map_partial')}</p>}
     {!loading&&!ranked.length&&<p className="py-6 text-sm text-slate-400">{t('map_no_cap')}</p>}

@@ -34,7 +34,8 @@ test('missing portfolio quotes never become losses; concentration aggregates lot
   const positions=[{asset_id:'BTC',currentValue:200,costBasis:100},{asset_id:'BTC',currentValue:300,costBasis:200},{asset_id:'ETF',currentValue:null,costBasis:100}];
   const metrics=portfolioMetrics(positions);
   assert.equal(metrics.totalValue,null);assert.equal(metrics.totalPnl,null);assert.equal(metrics.totalPnlPct,null);
-  assert.equal(metrics.assets,2);assert.equal(metrics.concentration,100);assert.equal(metrics.quoted,2);
+  assert.equal(metrics.assets,2);assert.equal(metrics.concentration,null);assert.equal(metrics.quoted,2);
+  assert.equal(portfolioMetrics(positions.slice(0,2)).concentration,100);
   assert.equal(plannedContributions(100,'weekly',12),5200);assert.equal(plannedContributions(100,'monthly',12),1200);
   assert.equal(plannedContributions(-1,'monthly',12),null);
 });

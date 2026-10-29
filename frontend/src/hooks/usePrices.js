@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { fetchAllPrices } from '../services/api.js';
 
 export function usePrices(intervalMs = 60_000) {
@@ -8,7 +8,9 @@ export function usePrices(intervalMs = 60_000) {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isStale, setIsStale]         = useState(false);
 
+  const running=useRef(false);
   const load = useCallback(async () => {
+    if(running.current)return;running.current=true;
     setLoading(true);
     try {
       const result = await fetchAllPrices();
@@ -23,7 +25,7 @@ export function usePrices(intervalMs = 60_000) {
       setError(err.message);
       setIsStale(true);
     } finally {
-      setLoading(false);
+      running.current=false;setLoading(false);
     }
   }, []);
 
@@ -41,12 +43,12 @@ export function usePrices(intervalMs = 60_000) {
     return () => clearTimeout(id);
   }, [isStale, lastUpdated, load]);
 
-  const allAssets = data
+  const allAssets = useMemo(()=>data
     ? [
         ...Object.values(data.crypto ?? {}).filter(a => a?.id),
         ...Object.values(data.traditional ?? {}).filter(a => a?.id),
       ].sort((a, b) => (b.marketCap ?? 0) - (a.marketCap ?? 0))
-    : [];
+    : [],[data]);
 
   return { data, allAssets, loading, error, lastUpdated, isStale, refresh: load };
 }

@@ -1,3 +1,4 @@
+import {useAssetRoute} from '../hooks/useAssetRoute.js';
 import {AssetLogo as AssetAvatar} from '../components/AssetLogo.jsx';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -143,15 +144,9 @@ export function Screener({marketData}) {
   const { allAssets, loading, error, isStale, refresh } = marketData;
 
   const [search, setSearch]           = useState('');
-  const [inspectedAsset, setInspectedAsset] = useState(null);
+  const [inspectedAsset, setInspectedAsset] = useAssetRoute(null,allAssets);
   const [analysisSnapshot,setAnalysisSnapshot]=useState(null);
-  const inspectionRef=useRef(null),deepLinkRead=useRef(false);
-  useEffect(()=>{
-    if(deepLinkRead.current||!allAssets.length)return;
-    const params=new URLSearchParams(window.location.search),id=params.get('inspect'),kind=params.get('kind');
-    const found=allAssets.find(a=>a.id===id&&a.type===kind);
-    if(found){deepLinkRead.current=true;setInspectedAsset(found);}
-  },[allAssets]);
+  const inspectionRef=useRef(null);
   useEffect(()=>{ if(inspectedAsset)inspectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },[inspectedAsset]);
   const [typeFilter, setTypeFilter]   = useState('all');
   const [changeFilter, setChangeFilter] = useState('all');

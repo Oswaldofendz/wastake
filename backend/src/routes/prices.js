@@ -37,10 +37,13 @@ priceRouter.get('/all', async (req, res) => {
     console.warn('[/all] Traditional failed, serving crypto only:', traditionalResult.reason?.message);
 
   const { _isStale, _staleTs, ...crypto } = cryptoRaw;
-  const isStale = _isStale ?? (cryptoResult.status === 'rejected') ?? false;
+  const {_isStale:traditionalStale,_staleTs:traditionalTs,...traditionalData}=traditional;
+  const cryptoUnavailable=cryptoResult.status==='rejected'||!Object.values(crypto).some(a=>a?.price>0);
+  const traditionalUnavailable=traditionalResult.status==='rejected'||!Object.values(traditionalData).some(a=>a?.price>0);
+  const isStale=Boolean(_isStale||traditionalStale||cryptoUnavailable||traditionalUnavailable||Object.values(traditionalData).some(a=>a?.isStale));
 
-  const completeCrypto=Object.fromEntries(Object.entries(CRYPTO_ASSETS).map(([id,meta])=>[id,{...meta,id,type:'crypto',price:null,change24h:null,...crypto[id]}]));
-  res.json({ crypto:completeCrypto, traditional, catalogue:catalogueMeta, ts: Date.now(), isStale, staleTs: _staleTs ?? null });
+  const completeCrypto=Object.fromEntries(Object.entries(CRYPTO_ASSETS).map(([id,meta])=>[id,{...meta,id,type:'crypto',price:null,change24h:null,...crypto[id],isStale:Boolean(_isStale||crypto[id]?.isStale)}]));
+  res.json({ crypto:completeCrypto, traditional:Object.fromEntries(Object.entries(traditionalData).map(([id,a])=>[id,{...a,isStale:Boolean(traditionalStale||a.isStale)}])), catalogue:catalogueMeta, ts: Date.now(), isStale, staleTs: _staleTs ?? traditionalTs ?? null });
 });
 
 // GET /api/prices/crypto — solo crypto

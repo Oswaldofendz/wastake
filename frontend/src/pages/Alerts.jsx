@@ -1,3 +1,4 @@
+import {useTranslation} from 'react-i18next';
 import { useState } from 'react';
 import { useAlerts } from '../hooks/useAlerts.js';
 import { CreateAlertModal } from '../components/CreateAlertModal.jsx';
@@ -260,6 +261,7 @@ function TriggeredAlertsSection({ alerts, onMarkRead }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function Alerts({ user, signIn, signUp, signOut, allAssets, onNavigate }) {
+  const {t}=useTranslation();
   const toast = useToast();
   const {
     active,
@@ -279,7 +281,7 @@ export function Alerts({ user, signIn, signUp, signOut, allAssets, onNavigate })
       await createAlert(data);
       toast.success('Alerta creada', `Monitoreando ${data.asset_name}`);
     } catch (err) {
-      toast.error('Error al crear alerta', err.message);
+      toast.error('Error al crear alerta', err.message);throw err;
     }
   }
 
@@ -304,6 +306,7 @@ export function Alerts({ user, signIn, signUp, signOut, allAssets, onNavigate })
 
   return (
     <div className="flex flex-col h-full p-4 max-w-4xl mx-auto w-full">
+      <p className="mb-4 text-xs leading-5 text-slate-400">{t('audit_alert_data_method')}</p>
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>

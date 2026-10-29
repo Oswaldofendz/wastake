@@ -231,8 +231,8 @@ async function fetchYahooPrices(symbols) {
         result[sym] = {
           price,
           change:    prev > 0 ? ((price - prev) / prev) * 100 : null,
-          volume:    meta.regularMarketVolume ?? 0,
-          marketCap: meta.marketCap ?? 0,
+          volume:    Number.isFinite(meta.regularMarketVolume)?meta.regularMarketVolume:null,
+          marketCap: Number.isFinite(meta.marketCap)?meta.marketCap:null,
           currency: meta.currency ?? null,
           quoteAsOf: meta.regularMarketTime ? new Date(meta.regularMarketTime * 1000).toISOString() : null,
           source: 'Yahoo Finance',
@@ -494,15 +494,17 @@ export async function getTraditionalOHLCV(symbol) {
 export async function getSingleQuote(id, type = 'stock') {
   if (type === 'crypto') {
     const data = await getCryptoPrices([id]);
-    return data[id] ? { ...data[id], currency: 'USD' } : null;
+    return data[id] ? { ...data[id], currency: 'USD',isStale:Boolean(data._isStale||data[id].isStale) } : null;
   }
   const key = `single_quote_${id}`;
   const hit = fromCache(key);
   if (hit) return hit;
+  return pricesOnce(key,async()=>{
   const prices = await fetchYahooPrices([id]);
   const q = prices[id];
   if (!q) return null;
   const value = { id, price: q.price, change24h: q.change, volume24h: q.volume, currency: q.currency, quoteAsOf: q.quoteAsOf, source: q.source };
   toCache(key, value, 60_000);
   return value;
+  });
 }

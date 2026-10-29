@@ -1,3 +1,4 @@
+import {useAssetRoute} from '../hooks/useAssetRoute.js';
 import {CHART_INTERVALS,intervalInfo} from '../utils/chartIntervals.js';
 import {useEffect,useRef,useState} from 'react';
 import {useTranslation} from 'react-i18next';
@@ -16,7 +17,7 @@ function AlbertoIcon({busy}){return <svg viewBox="0 0 96 80" className={`alberto
 
 export default function AgentCharts({marketData,guided=false}){
  const {t,i18n}=useTranslation(),lang=(i18n.resolvedLanguage||i18n.language).split('-')[0];
- const [asset,setAsset]=useState(starter),[venue,setVenue]=useState('auto'),[timeline,setTimeline]=useState({current:initialWorkspace(),past:[]});
+ const [asset,setAsset]=useAssetRoute(starter,marketData.allAssets),[venue,setVenue]=useState('auto'),[timeline,setTimeline]=useState({current:initialWorkspace(),past:[]});
  const workspace=timeline.current;
  const [automatic,setAutomatic]=useState(!guided),[refreshFailed,setRefreshFailed]=useState(false);
  const automaticSeen=useRef(''),busyRef=useRef(false);
@@ -29,6 +30,7 @@ export default function AgentCharts({marketData,guided=false}){
  busyRef.current=busy;
  const contextKey=`${getAnalysisType(asset)}:${asset.id}:${workspace.interval}:${venue}:${lang}`;currentContext.current=contextKey;
  const matchesSnapshot=chartContextMatches(snapshot,{id:asset.id,type:getAnalysisType(asset),interval:workspace.interval,venue});
+ useEffect(()=>{controller.current?.abort();messageSequence.current++;setMessages([]);setQuery('');setError(false);setSelectedId(null);setTimeline({current:initialWorkspace(),past:[]});setVenue('auto');},[asset.id,asset.type,asset.analysisType]);
  const fmt=n=>Number.isFinite(n)?n.toLocaleString(i18n.language,{maximumFractionDigits:Math.abs(n)<1?8:2}):'—';
  const date=(stamp,interval=workspace.interval)=>new Date(stamp*1000).toLocaleString(i18n.language,{timeZone:'UTC',dateStyle:'short',...(intervalInfo(interval)?.seconds>=86400?{}:{timeStyle:'short'})});
  const quoteKeys=['close','low','high','ema20','ema50','support','resistance','atr','vwap','fvgLow','fvgHigh','liquidityLow','liquidityHigh','donchian','keltner'];

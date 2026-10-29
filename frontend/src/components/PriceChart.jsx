@@ -93,7 +93,7 @@ export function CandleChart({ asset, timeframe = '3M',interval='1d' }) {
       {levelsOn&&<p className="mt-1 text-[11px] leading-5 text-slate-400">{t('chart_zone_hint')}</p>}
       {interval==='1d'&&<p className="mt-1 text-[11px] leading-5 text-slate-400">{t('audit_history_cache')}</p>}
       {levelsOn&&<div className="mt-2 grid gap-2 sm:grid-cols-2">{levels.map(l=><div key={l.kind} className={`rounded-lg border p-2 text-xs ${l.kind==='support'?'border-emerald-800/50 text-emerald-300':'border-rose-800/50 text-rose-300'}`}><p className="font-semibold">{t(`chart_${l.kind}`)}: {fmt(l.low)}–{fmt(l.high)} {result?.currency??''}</p><p className="mt-1 text-[11px] text-slate-400">{t('chart_level_evidence',{count:l.touches,date:date(l.confirmedAt),distance:l.distancePct.toLocaleString(i18n.language,{maximumFractionDigits:2})})}</p>{result.candles.at(-1).close>=l.low&&result.candles.at(-1).close<=l.high&&<p className="mt-1 text-[11px] text-amber-300">{t('chart_testing')}</p>}</div>)}</div>}
-      <details className="mt-2 text-[11px] text-slate-400"><summary className="cursor-pointer">{t('chart_levels')} · {t('methodology','Método')}</summary><p className="mt-1 leading-5">{t(interval==='1d'?'chart_method':'intraday_method')}</p></details>
+      <details className="mt-2 text-[11px] text-slate-400"><summary className="cursor-pointer">{t('chart_levels')} · {t('audit_method')}</summary><p className="mt-1 leading-5">{t(interval==='1d'?'chart_method':'intraday_method')}</p></details>
       <p className="mt-1 text-[10px] text-slate-500">TradingView Lightweight Charts™ · Copyright © 2023 TradingView, Inc. <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer" className="underline">TradingView</a></p>
     </>}
   </div>;

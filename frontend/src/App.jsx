@@ -93,7 +93,7 @@ export default function App() {
   useEffect(() => {
     const sync = () => {
       const route = window.location.hash.slice(1);
-      if (['dashboard', 'panorama', 'markets', 'portfolio', 'alerts', 'screener', 'fundamentals', 'chart-ai'].includes(route)) setCurrentPage(route);
+      setCurrentPage(['dashboard', 'panorama', 'markets', 'portfolio', 'alerts', 'screener', 'fundamentals', 'chart-ai'].includes(route)?route:'dashboard');
     };
     window.addEventListener('hashchange', sync);
     return () => window.removeEventListener('hashchange', sync);

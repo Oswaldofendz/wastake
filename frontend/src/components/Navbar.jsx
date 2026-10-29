@@ -132,7 +132,7 @@ export function Navbar({
                   <span>{t('screener_stale_data')}</span>
                 </span>
               ) : (
-                <span className="text-slate-500">{t('last_updated')}: {lastUpdated.toLocaleTimeString()}</span>
+                <span className="text-slate-500">{t('audit_market_checked')}: {lastUpdated.toLocaleTimeString()}</span>
               )}
             </div>
           )}

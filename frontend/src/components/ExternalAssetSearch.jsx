@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ALL_ASSETS } from '../data/assetCatalog.js';
 import { searchAssets, fetchAssetQuote } from '../services/api.js';
 
-export function AssetSearch({ onSelect, query, onQueryChange, catalogueAssets=ALL_ASSETS }) {
+export function AssetSearch({ onSelect, query, onQueryChange, catalogueAssets=ALL_ASSETS,withQuote=false }) {
   const { t }=useTranslation();
   const id=useId();
   const wrapper=useRef(null);
@@ -23,11 +23,12 @@ export function AssetSearch({ onSelect, query, onQueryChange, catalogueAssets=AL
     return ()=>document.removeEventListener('pointerdown',outside);
   },[]);
   useEffect(()=>()=>{selectVersion.current++;},[]);
+  useEffect(()=>{selectVersion.current++;setSelecting(false);},[value]);
   useEffect(()=>{
     let cancelled=false;
     const q=value.trim().toLowerCase();
     setActive(-1);setPartial(false);setQuoteError(false);
-    selectVersion.current++;setSelecting(false);
+
     const local=catalogueAssets.filter(a=>!q||[a.name,a.symbol,a.id].some(s=>s?.toLowerCase().includes(q))).slice(0,12);
     setResults(local);
     if(!q){setLoading(false);return;}
@@ -41,6 +42,7 @@ export function AssetSearch({ onSelect, query, onQueryChange, catalogueAssets=AL
   async function choose(asset){
     const version=++selectVersion.current;
     setSelecting(true);setQuoteError(false);
+    if(!withQuote){setSelecting(false);setOpen(false);onSelect?.(asset);return;}
     let selected=asset;
     try {selected={...asset,...await fetchAssetQuote(asset),name:asset.name,symbol:asset.symbol};}
     catch {selected={...asset,quoteUnavailable:true};}
@@ -50,9 +52,9 @@ export function AssetSearch({ onSelect, query, onQueryChange, catalogueAssets=AL
   }
   return <div ref={wrapper} className="relative min-w-0">
     <label htmlFor={id} className="mb-1.5 block text-xs font-medium text-slate-400">{t('discovery_label')}</label>
-    <input id={id} type="search" role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={`${id}-results`} aria-activedescendant={active>=0?`${id}-${active}`:undefined} autoComplete="off" maxLength={80} spellCheck={false}
+    <input id={id} type="search" role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={`${id}-results`} aria-activedescendant={open&&active>=0?`${id}-${active}`:undefined} autoComplete="off" maxLength={80} spellCheck={false}
       value={value} onFocus={()=>setOpen(true)} onChange={e=>{onQueryChange?onQueryChange(e.target.value):setText(e.target.value);setOpen(true);}}
-      onKeyDown={e=>{if(e.key==='Escape'){setOpen(false);return;}if(e.key==='ArrowDown'){e.preventDefault();setOpen(true);setActive(i=>Math.min(results.length-1,i+1));}if(e.key==='ArrowUp'){e.preventDefault();setActive(i=>Math.max(0,i-1));}if(e.key==='Enter'&&open&&active>=0){e.preventDefault();choose(results[active]);}}}
+      onKeyDown={e=>{if(e.key==='Escape'){setOpen(false);setActive(-1);return;}if(e.key==='ArrowDown'){e.preventDefault();setOpen(true);setActive(i=>Math.min(results.length-1,i+1));}if(e.key==='ArrowUp'){e.preventDefault();setActive(i=>Math.max(0,i-1));}if(e.key==='Enter'&&open&&active>=0){e.preventDefault();choose(results[active]);}}}
       placeholder={t('discovery_placeholder')} className="min-h-11 w-full rounded-lg border border-slate-600 bg-slate-800 px-3 text-sm text-white placeholder-slate-400 focus:border-sky-400"/>
     {open&&<div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-xl border border-slate-600 bg-[var(--bg-card)] p-2 shadow-2xl">
       <p role="status" className="px-2 py-1 text-xs text-slate-400">{loading||selecting?t('discovery_loading'):t('discovery_help')}</p>

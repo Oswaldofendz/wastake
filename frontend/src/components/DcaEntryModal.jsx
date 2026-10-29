@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {quoteInUsd} from '../utils/portfolioCurrency.js';
+import {formatQuote} from '../utils/panoramaAnalysis.js';
 
 const FREQS = ['weekly', 'biweekly', 'monthly'];
 
@@ -8,8 +10,8 @@ function number(value) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-export function DcaEntryModal({ assets, positions, onAdd, onClose }) {
-  const { t } = useTranslation();
+export function DcaEntryModal({ assets, positions, onAdd, onClose,rates }) {
+  const { t,i18n } = useTranslation();
   const [asset, setAsset] = useState(null);
   const [amount, setAmount] = useState('100');
   const [frequency, setFrequency] = useState('weekly');
@@ -23,7 +25,7 @@ export function DcaEntryModal({ assets, positions, onAdd, onClose }) {
   function selectAsset(assetId) {
     const next = assets.find(item => item.id === assetId) ?? null;
     setAsset(next);
-    setExecutionPrice(next?.price ? String(next.price) : '');
+    const usd=quoteInUsd(next,rates);setExecutionPrice(usd==null?'':String(usd));
     if (!next) return;
     const lastDca = positions.find(position => position.asset_id === next.id
       && !position.is_simulation
@@ -64,7 +66,7 @@ export function DcaEntryModal({ assets, positions, onAdd, onClose }) {
         entryPrice: effectivePrice.toPrecision(12),
         purchaseDate,
         isPaper: false,
-        notes: `${t(`dca_frequency_${frequency}`)} · ${t('dca_purchase_date')}: ${purchaseDate} · ${t('dca_invested_amount')}: $${contribution.toFixed(2)} · ${t('dca_quote_at_entry')}: $${asset.price?.toFixed?.(6) ?? asset.price ?? '—'} · ${t('dca_execution_price')}: $${fill.toFixed(6)} · ${t('dca_fees')}: $${feeValue.toFixed(2)}`,
+        notes: `${t(`dca_frequency_${frequency}`)} · ${t('dca_purchase_date')}: ${purchaseDate} · ${t('dca_invested_amount')}: $${contribution.toFixed(2)} · ${t('dca_quote_at_entry')}: $${quoteInUsd(asset,rates)?.toFixed?.(6)??'—'} · ${t('dca_execution_price')}: $${fill.toFixed(6)} · ${t('dca_fees')}: $${feeValue.toFixed(2)}`,
         tags: ['DCA', `DCA|${frequency}|${contribution}`],
         targetPrice: null,
       });
@@ -100,7 +102,7 @@ export function DcaEntryModal({ assets, positions, onAdd, onClose }) {
           {asset && (
             <div className="rounded-lg border border-slate-700/60 bg-slate-950/60 px-3 py-2">
               <p className="text-xs text-slate-400">{t('dca_live_quote')}</p>
-              <p className="mt-0.5 font-mono text-sm font-semibold text-white">{asset.price == null ? '—' : `$${Number(asset.price).toLocaleString(undefined, { maximumFractionDigits: 8 })}`}</p>
+              <p className="mt-0.5 font-mono text-sm font-semibold text-white">{formatQuote(quoteInUsd(asset,rates),'USD',i18n.language)}</p>
             </div>
           )}
 
@@ -132,7 +134,7 @@ export function DcaEntryModal({ assets, positions, onAdd, onClose }) {
               <input type="number" min="0" step="any" value={fee} onChange={event => setFee(event.target.value)} className="mt-1.5 min-h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 font-mono text-sm text-white focus:border-brand-400 focus:outline-none" />
             </label>
           </div>
-          <p className="text-[11px] leading-relaxed text-amber-300/90">{t('dca_quote_warning')}</p>
+          <p className="text-[11px] leading-relaxed text-amber-300/90">{t('dca_quote_warning')} {asset?.currency&&asset.currency!=='USD'&&t('audit_entry_usd_note',{currency:asset.currency})}</p>
 
           <div className="grid grid-cols-2 gap-3 rounded-lg border border-slate-700/50 bg-slate-800/40 p-3 text-xs">
             <div><p className="text-slate-500">{t('dca_estimated_units')}</p><p className="mt-1 font-mono text-white">{quantity == null ? '—' : quantity.toLocaleString(undefined, { maximumSignificantDigits: 10 })}</p></div>

@@ -37,7 +37,7 @@ function timeAgo(isoDate, language) {
 
 // ─── Translation hook ─────────────────────────────────────────
 const newsKey = article => (article.link ?? '') + '|' + article.title;
-function useTranslations(articles, lang) {
+function useTranslations(articles, lang,asset) {
   const [titles, setTitles] = useState({});
   const identities=articles?.map(newsKey).join('\n');
   useEffect(() => {
@@ -49,7 +49,7 @@ function useTranslations(articles, lang) {
       for (let start = 0; start < articles.length; start += 3) {
         await Promise.allSettled(articles.slice(start, start + 3).map(async article => {
           try {
-            const result = await translateText(article.title, shortLang);
+            const result = await translateText(article.title, shortLang,'en',[asset.name,asset.symbol]);
             if (result.translated && result.translatedText) results[shortLang + ':' + newsKey(article)] = result.translatedText;
           } catch { /* the original remains explicitly identified */ }
         }));
@@ -59,7 +59,7 @@ function useTranslations(articles, lang) {
     }
     translateAll();
     return () => { cancelled = true; };
-  }, [identities, lang]);
+  }, [identities, lang,asset.name,asset.symbol]);
   return titles;
 }
 
@@ -177,7 +177,7 @@ function Skeleton() {
 export function NewsPanel({ asset }) {
   const { data, loading, error,analyzing,analysisError,retry } = useNews(asset);
   const { t, i18n } = useTranslation();
-  const translatedTitles = useTranslations(data, i18n.language);
+  const translatedTitles = useTranslations(data, i18n.language,asset);
   const shortLang = i18n.language.split('-')[0];
   const titleFor = article => shortLang === 'en' ? undefined : translatedTitles[shortLang + ':' + newsKey(article)];
 

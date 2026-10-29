@@ -1,5 +1,6 @@
 import axios from 'axios';
 import Parser from 'rss-parser';
+import {createPublicFeedCache} from './publicFeedCache.js';
 import { callLLM } from './llmService.js';
 import { createSingleFlight } from './singleFlight.js';
 
@@ -12,12 +13,9 @@ const rssParser = new Parser({ timeout: 3500 });
 const CRYPTO_FEEDS = [
   { name: 'CoinDesk',      url: 'https://www.coindesk.com/arc/outboundfeeds/rss/' },
   { name: 'CoinTelegraph', url: 'https://cointelegraph.com/rss' },
-  { name: 'Yahoo Finance', url: 'https://finance.yahoo.com/rss/topstories' },
 ];
 
 const TRADITIONAL_FEEDS = [
-  { name: 'Yahoo Finance',  url: 'https://finance.yahoo.com/rss/topstories' },
-  { name: 'Reuters Markets',url: 'https://feeds.reuters.com/reuters/businessNews' },
   { name: 'CNBC',           url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html' },
   { name: 'MarketWatch',    url: 'https://feeds.marketwatch.com/marketwatch/topstories/' },
   { name: 'Investing.com',  url: 'https://www.investing.com/rss/news.rss' },
@@ -36,43 +34,32 @@ const ASSET_KEYWORDS = {
   eem:      ['emerging market', 'eem', 'mercados emergentes'],
 };
 
-// ─── Cache  (30 min) ──────────────────────────────────────────────────────────
+// ─── Cache  (2 min) ──────────────────────────────────────────────────────────
 
 const cache = new Map();
-const feedCache = new Map();
 const CACHE_TTL = 2 * 60 * 1000;
-const feedOnce=createSingleFlight();
 
 // ─── RSS fetch ────────────────────────────────────────────────────────────────
+
+export function normalizeFeedArticle(item,source,now=Date.now()){
+ const title=typeof item?.title==='string'?item.title.trim():'';
+ const publishedAt=Date.parse(item?.pubDate??item?.isoDate??'');
+ if(!title||!Number.isFinite(publishedAt)||publishedAt>now)return null;
+ let link;try{link=new URL(item.link);if(!['https:','http:'].includes(link.protocol)||link.username||link.password)return null;}catch{return null;}
+ return {title,link:link.href,source,pubDate:new Date(publishedAt).toISOString(),snippet:String(item.contentSnippet??item.content??'').replace(/\s+/g,' ').trim().slice(0,1800)};
+}
 
 async function fetchFeed(feed) {
   try {
     const parsed = await rssParser.parseURL(feed.url);
-    return parsed.items.map(item => {
-      const publishedAt = Date.parse(item.pubDate ?? '');
-      return {
-        title:    (item.title ?? '').trim(),
-        link:     item.link ?? '',
-        source:   feed.name,
-        pubDate:  Number.isFinite(publishedAt) ? new Date(publishedAt).toISOString() : null,
-        // RSS descriptions are public source material. Keep a bounded excerpt for
-        // the explainable fundamentals analysis instead of only the headline.
-        snippet:  (item.contentSnippet ?? item.content ?? '').replace(/\s+/g, ' ').trim().slice(0, 1800),
-      };
-    });
+    return (parsed.items??[]).map(item=>normalizeFeedArticle(item,feed.name)).filter(Boolean);
   } catch (err) {
     console.warn(`[news] feed "${feed.name}" failed: ${err.message}`);
-    return [];
+    throw err;
   }
 }
 
-async function fetchFeedCached(feed) {
-  const cached=feedCache.get(feed.url);
-  if(cached&&cached.expiresAt>Date.now())return cached.data;
-  const refresh=()=>feedOnce(feed.url,async()=>{const data=await fetchFeed(feed);const previous=feedCache.get(feed.url);if(feedCache.size>500)feedCache.delete(feedCache.keys().next().value);feedCache.set(feed.url,{data:data.length?data:previous?.data??[],expiresAt:Date.now()+(data.length?CACHE_TTL:15000)});return data.length?data:previous?.data??[];});
-  if(cached?.data.length){void refresh();return cached.data;}
-  return refresh();
-}
+const fetchFeedCached=createPublicFeedCache(fetchFeed);
 // Warm public feeds only: no model calls, no periodic keep-alive or paid infrastructure.
 export const warmNewsFeeds=()=>Promise.allSettled([...new Map([...CRYPTO_FEEDS,...TRADITIONAL_FEEDS].map(f=>[f.url,f])).values()].map(fetchFeedCached));
 
@@ -136,8 +123,10 @@ async function analyzeSentiment(articles) {
     return articles.map(a => ({ ...a, sentiment: 'neutral', impact: 'low', aiSummary: '', analysisStatus: 'unavailable' }));
   }
 
+  const budget=AbortSignal.timeout(45000);
   const results = [];
   for (let i = 0; i < articles.length; i++) {
+    if(budget.aborted){results.push(...articles.slice(i).map(a=>({...a,sentiment:null,impact:null,aiSummary:'',analysisStatus:'unavailable'})));break;}
     if (i > 0) await sleep(GEMINI_DELAY_MS);
     let parsed = { sentiment: 'neutral', impact: 'low', aiSummary: '' };
     let analysisStatus = 'unavailable';
@@ -147,6 +136,7 @@ async function analyzeSentiment(articles) {
         maxTokens: 150,
         temperature: 0.3,
         tag: '[news-sentiment]',
+        signal:budget,
       });
       parsed = parseAIJson(result.text);
       if (['positive','neutral','negative'].includes(parsed.sentiment)) analysisStatus = 'assessed';
@@ -176,7 +166,8 @@ export async function getRawNewsForAsset(assetId, type = 'crypto', aliases = [])
   if (cached && cached.expiresAt > Date.now()) return cached.data;
 
   const feeds = type === 'crypto' ? CRYPTO_FEEDS : [...TRADITIONAL_FEEDS, {name:'Yahoo Finance', url:`https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(assetId)}&region=US&lang=en-US`}];
-  const allArticles = (await Promise.all(feeds.map(fetchFeedCached))).flat();
+  const snapshots=await Promise.all(feeds.map(fetchFeedCached));
+  const allArticles=snapshots.flatMap(result=>result.articles);
   const seenTitles = new Set();
   const filtered = filterByAsset(allArticles, assetId, safeAliases)
     .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
@@ -188,7 +179,11 @@ export async function getRawNewsForAsset(assetId, type = 'crypto', aliases = [])
     })
     .slice(0, 10);
 
-  cache.set(cacheKey, { data: filtered, expiresAt: Date.now() + CACHE_TTL });
+  const statuses=snapshots.map(r=>r.status);
+  const sourceStatus=statuses.every(s=>s==='ok')?'ok':statuses.every(s=>s==='unavailable')?'unavailable':statuses.some(s=>s==='ok')?'partial':'stale';
+  Object.assign(filtered,{sourceStatus,sourceCheckedAt:new Date().toISOString(),dataAsOf:snapshots.map(r=>r.dataAsOf).filter(Boolean).sort()[0]??null,stale:filtered.some(a=>a.sourceStale)||sourceStatus==='unavailable'||sourceStatus==='stale',refreshing:snapshots.some(r=>r.refreshing)});
+  if(cache.size>=300)cache.delete(cache.keys().next().value);
+  cache.set(cacheKey, { data: filtered, expiresAt: Date.now() + (filtered.refreshing?5000:sourceStatus==='ok'?CACHE_TTL:15000) });
   return filtered;
 }
 
@@ -199,7 +194,7 @@ export async function getNewsForAsset(assetId, type = 'crypto') {
 
   return enrichOnce(cacheKey, async () => {
     const filtered = await getRawNewsForAsset(assetId, type);
-    const enriched = await analyzeSentiment(filtered);
+    const enriched = Object.assign(await analyzeSentiment(filtered),{sourceStatus:filtered.sourceStatus,sourceCheckedAt:filtered.sourceCheckedAt,stale:filtered.stale});
     cache.set(cacheKey, { data: enriched, expiresAt: Date.now() + CACHE_TTL });
     return enriched;
   });
