@@ -3,6 +3,7 @@ import {useEffect,useMemo,useRef,useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {fetchGlobalNews} from '../services/api.js';
 import {useNewsTitles} from '../hooks/useNewsTitles.js';
+import {NewsPulse} from './NewsPulse.jsx';
 const categories=['all','security','geopolitics','corporate','macro','market_moves'];
 const excerptArticle=a=>({...a,title:a.snippet?.slice(0,240)??'',localizedTitle:null});
 const icons={security:'🛡️',geopolitics:'🌐',corporate:'🏢',macro:'🏦',market_moves:'📊'};
@@ -30,6 +31,7 @@ export function GlobalNews(){
    <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-semibold tracking-wide text-teal-200">🌍 WASTAKE · {t('world_live')}</p><h1 className="mt-2 text-2xl font-bold sm:text-3xl">{t('world_title')}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">{t('world_intro')}</p></div><button type="button" disabled={loading} onClick={()=>setAttempt(n=>n+1)} className="min-h-11 rounded-lg border border-teal-700 px-3 text-sm text-teal-100">↻ {t('impact_refresh')}</button></div>
    <dl className="mt-5 grid grid-cols-3 gap-2"><div><dt className="text-[11px] text-slate-400">{t('world_latest')}</dt><dd className="mt-1 text-2xl font-semibold">{data?articles.length:'—'}</dd></div><div><dt className="text-[11px] text-slate-400">{t('world_sources')}</dt><dd className="mt-1 text-2xl font-semibold">{data?sources.filter(s=>s.status==='ok').length:'—'}<small className="text-xs text-slate-400"> / {sources.length||'—'}</small></dd></div><div><dt className="text-[11px] text-slate-400">{t('world_reviewed')}</dt><dd className="mt-1 text-2xl font-semibold">{data?ready:'—'}</dd></div></dl>
   </header>
+  <NewsPulse articles={articles} checkedAt={data?.checkedAt} stale={Boolean(data?.stale||data?.fromCache||error||data?.sourceStatus==='unavailable')} titleFor={titleFor}/>
   <div className="my-4 flex min-w-0 flex-wrap items-center justify-between gap-3"><div className="flex max-w-full gap-2 overflow-x-auto pb-1" role="group" aria-label={t('world_all')}>{categories.map(key=><button type="button" key={key} aria-pressed={category===key} onClick={()=>setCategory(key)} className={`min-h-10 shrink-0 rounded-full border px-3 text-xs ${category===key?'border-teal-600 bg-teal-900/40 text-teal-100':'border-slate-700 text-slate-300'}`}>{t('world_'+key)}</button>)}</div><select aria-label={t('world_priority_sort')} value={sort} onChange={e=>setSort(e.target.value)} className="min-h-10 max-w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs"><option value="newest">{t('world_newest')}</option><option value="priority">{t('world_priority_sort')}</option></select></div>
   {data?.checkedAt&&<p className="mb-3 text-xs text-slate-400">{t(data.fromCache?'cycle_cached_news':'impact_checked')}: {when(data.checkedAt)} · {t('world_live')}{data.revalidating?` · ${t('fundamentals_analyzing')}`:''}</p>}
   {(error||data?.sourceStatus==='unavailable')&&<p role="status" className="mb-3 rounded-xl border border-amber-800 p-3 text-sm text-amber-200">{t('world_unavailable')}</p>}

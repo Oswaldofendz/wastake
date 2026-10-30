@@ -33,7 +33,7 @@ export function createNewsSnapshotService({read=getRawNewsForAsset,readGlobal=re
    entry.analysisJob=Promise.resolve().then(()=>analyze(input,lang,target)).then(result=>{
     if(!Array.isArray(result?.news))throw new Error('Invalid news analysis');
     const assessed=new Map(result.news.map(a=>[signature(a),a]));
-    const fields=['localizedTitle','sentiment','impact','score','relevance','confidence','category','summary','mechanism','watch','horizon','scenarios','evidenceQuote','factors','limitations','analysisDepth','analysisProvider','analysisVersion','analysisReviewedAt'];
+    const fields=['localizedTitle','sentiment','impact','score','relevance','confidence','category','summary','mechanism','watch','horizon','scenarios','evidenceQuote','factors','limitations','analysisDepth','analysisProvider','analysisVersion','analysisReviewedAt','marketAssessments','eventKey'];
     // Apply a completed assessment only to the exact story still present. A new
     // headline must neither erase valid context nor receive another story's AI.
     entry.news=entry.news.map(current=>{const assessment=assessed.get(signature(current));return assessment?{...current,...Object.fromEntries(fields.filter(key=>assessment[key]!==undefined).map(key=>[key,assessment[key]]))}:current;});

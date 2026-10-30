@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import { callLLM } from './llmService.js';
 import { isLikelyLanguage, localizedHorizon, preservesFinancialNames, preservesFinancialNumbers } from './financialLanguageService.js';
 
-const VERSION = 'event-analysis-v6-bounded';
+const VERSION = 'event-analysis-v7-market-pulse';
 const CACHE_TTL = 4 * 60 * 60 * 1000;
 const MAX_REPAIRS_PER_REQUEST = 3;
 const analysisCache = new Map();
@@ -22,6 +22,24 @@ const FACTOR_ALIASES = {
   persistence: ['persistence', 'likelyPersistence', 'duration'],
   evidence: ['evidence', 'evidenceQuality', 'evidenceStrength'],
 };
+const MARKET_KEYS = ['stocks', 'crypto', 'forex', 'commodities', 'bonds', 'indices', 'etfs'];
+const isRange = (n, min, max) => typeof n === 'number' && Number.isFinite(n) && n >= min && n <= max;
+
+export function validateMarketAssessments(items, article, factors, lang) {
+  const result = {};
+  if (!items || typeof items !== 'object' || Array.isArray(items)) return result;
+  for (const market of MARKET_KEYS) {
+    const item = items[market];
+    if (!item || !isRange(item.direction, -100, 100) || !isRange(item.confidence, 1, 100) || !isRange(item.marketLink, 30, 100)) continue;
+    const reason = safeText(item.reason, 280), evidenceQuote = verifiedEvidence(item.evidenceQuote, article.analysisText);
+    if (!reason || !isLikelyLanguage(reason, lang) || !evidenceQuote) continue;
+    const marketFactors = {...factors, assetLink: item.marketLink};
+    result[market] = {direction: item.direction, marketLink: item.marketLink,
+      relevance: Math.round(Object.entries(FACTOR_WEIGHTS).reduce((sum, [key, weight]) => sum + marketFactors[key] * weight, 0)),
+      confidence: Math.min(item.confidence, article.analysisDepth === 'article' ? 85 : 60), reason, evidenceQuote};
+  }
+  return result;
+}
 
 function decodeEntities(value) {
   return value
@@ -145,6 +163,8 @@ export function validateItem(item, index, article, lang) {
   const sentiment = direction >= 15 ? 'positive' : direction <= -15 ? 'negative' : 'neutral';
 
   return {
+    marketAssessments: validateMarketAssessments(item.marketAssessments, article, factors, lang),
+    eventKey: typeof item.eventKey === 'string' && /^[a-z0-9][a-z0-9-]{7,119}$/.test(item.eventKey) ? item.eventKey : null,
     localizedTitle,
     sentiment,
     impact,
@@ -176,6 +196,10 @@ Write EVERY user-facing field in ${langName}, including summary, mechanism, watc
 For each article return: index, localizedTitle (faithful translation, no new claims), category (short localized label), sentiment (positive|negative|neutral, direction conditional on the evidence), direction (integer -100 to 100; magnitude is directional confidence, not expected return), confidence (0-100, confidence in interpretation), factors (an object with exactly these camelCase numeric keys, each an integer from 0 to 100: severity, assetLink, surprise, persistence, evidence), summary (what happened), mechanism (how the event could affect the asset, or why the link is weak), horizon (near/medium/long term, localized), scenarios (either null or positive/base/negative conditional scenarios, not forecasts). Return null when the supplied evidence cannot support three distinct, event-specific scenarios. Never use generic claims such as "the news drives a rally", "the market stays unchanged", or "the news causes a selloff". Scenarios must describe conditional pathways grounded in facts from this story and observations that would distinguish them. Do not claim causality or predict a price direction. Also return watch (specific confirming/disconfirming data or event), evidenceQuote (one short exact quote from the supplied source text; empty if no usable source text), limitations (missing context, source caveats, or uncertainty).
 
 Scoring calibration: routine commentary and generic market roundups should have low severity and relevance. A company/asset-specific material event can score higher when the text supports it. Never score a story highly only because the headline uses dramatic language. A price move after publication is not proof the story caused it.
+
+Also return eventKey: a stable lowercase English kebab-case key describing the underlying event and its occurrence date (e.g. issuer-security-breach-YYYY-MM-DD). Reports about the same incident should share a key; unrelated events must not. This groups repeated coverage, not independent confirmations.
+
+For global financial markets only, add marketAssessments: an object with at most THREE directly supported market keys: stocks (company equities), crypto (crypto assets), forex (currencies; identify the currency/pair in reason), commodities (identify gold/oil/etc. in reason), bonds (bond PRICES, not yields; identify the instrument), indices (broad equity indices), etfs (identify the ETF AND its underlying exposure). Do NOT mechanically copy a global tone to all markets, treat a company-specific event as a whole-index event, equate bond yields with bond prices, or invert the equity assessment to invent a gold assessment. Omit every market whose direction cannot be supported by the supplied text. Omission is unknown, never neutral. Each included market has direction (-100..100, signed strength of the described favorable/adverse news context, NOT a return or probability), marketLink (30..100, specificity of the documented link), confidence (1..100), reason (one concise sentence in ${langName}, name the actual affected instruments and what the text supports; <=160 characters), evidenceQuote (exact original-language supporting quote from SOURCE TEXT, <=130 characters). Zero direction is allowed only for an explicitly assessed mixed/neutral context. Evidence quotes must support this market-specific interpretation. Different markets may have opposite directions. For a single asset target, omit marketAssessments; the existing direction refers only to that target.
 
 Articles:\n${material}`;
 }
@@ -236,7 +260,7 @@ async function analyzeFreshNews(news, lang = 'es', target = '') {
       try {
         result = await callLLM(buildPrompt(batch.map(({ article }) => article), locale, target), {
           jsonMode: true,
-          maxTokens: 2800,
+          maxTokens: target?.type === 'market' ? 4200 : 2800,
           temperature: 0.2,
           tag: '[fundamentals-events]',
           signal: budget,
@@ -270,7 +294,7 @@ async function analyzeFreshNews(news, lang = 'es', target = '') {
           try {
             const repaired = await callLLM(buildPrompt([article], locale, target), {
               jsonMode: true,
-              maxTokens: 1200,
+              maxTokens: target?.type === 'market' ? 1800 : 1200,
               temperature: 0.2,
               tag: '[fundamentals-events-repair]',
               signal: budget,
@@ -324,7 +348,7 @@ return async function enrich(news,lang='es',target=''){
   missing.forEach(({index,article},i)=>{
    const analyzed=result.news[i];if(!analyzed)return;output[index]=analyzed;
    if(analyzed.analysisProvider){analyzed.analysisReviewedAt??=new Date(now()).toISOString();}
-   if(analyzed.analysisProvider){const fields=['localizedTitle','sentiment','impact','score','relevance','confidence','category','summary','mechanism','watch','horizon','scenarios','evidenceQuote','factors','limitations','analysisDepth','analysisProvider','analysisVersion','analysisReviewedAt'];const value=Object.fromEntries(fields.filter(key=>analyzed[key]!==undefined).map(key=>[key,analyzed[key]]));storyAnalysis.set(key(article),{value,until:now()+60*60000});}
+   if(analyzed.analysisProvider){const fields=['localizedTitle','sentiment','impact','score','relevance','confidence','category','summary','mechanism','watch','horizon','scenarios','evidenceQuote','factors','limitations','analysisDepth','analysisProvider','analysisVersion','analysisReviewedAt','marketAssessments','eventKey'];const value=Object.fromEntries(fields.filter(key=>analyzed[key]!==undefined).map(key=>[key,analyzed[key]]));storyAnalysis.set(key(article),{value,until:now()+60*60000});}
   });
  }
  while(storyAnalysis.size>600)storyAnalysis.delete(storyAnalysis.keys().next().value);
