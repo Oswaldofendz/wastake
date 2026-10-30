@@ -1,0 +1,52 @@
+import {cachedPublicNews} from '../utils/publicNewsCache.js';
+import {useEffect,useMemo,useRef,useState} from 'react';
+import {useTranslation} from 'react-i18next';
+import {fetchGlobalNews} from '../services/api.js';
+import {useNewsTitles} from '../hooks/useNewsTitles.js';
+const categories=['all','security','geopolitics','corporate','macro','market_moves'];
+const excerptArticle=a=>({...a,title:a.snippet?.slice(0,240)??'',localizedTitle:null});
+const icons={security:'🛡️',geopolitics:'🌐',corporate:'🏢',macro:'🏦',market_moves:'📊'};
+export function GlobalNews(){
+ const {t,i18n}=useTranslation(),lang=i18n.language.split('-')[0];
+ const [data,setData]=useState(()=>{const cached=cachedPublicNews({id:'global'},'market',lang);return cached?{...cached,fromCache:true}:null;}),[error,setError]=useState(false),[loading,setLoading]=useState(true),[attempt,setAttempt]=useState(0),[category,setCategory]=useState('all'),[sort,setSort]=useState('newest'),[shown,setShown]=useState(16);
+ const request=useRef(0);
+ useEffect(()=>setShown(16),[category]);
+ useEffect(()=>{
+  let alive=true,timer,running=false;const generation=++request.current,cached=cachedPublicNews({id:'global'},'market',lang);setData(cached?{...cached,fromCache:true}:null);setLoading(!cached);
+  const read=async()=>{if(running)return;if(document.visibilityState==='hidden'){timer=setTimeout(read,60000);return;}running=true;
+   try{const result=await fetchGlobalNews(lang);if(alive&&generation===request.current){setData(old=>result.sourceStatus==='unavailable'&&!result.news?.length&&old?.news?.length?{...old,sourceStatus:'unavailable',fromCache:true}:result);setError(false);timer=setTimeout(read,result.revalidating?5000:60000);}}
+   catch{if(alive){setError(true);timer=setTimeout(read,60000);}}finally{running=false;if(alive)setLoading(false);}
+  };
+  const visible=()=>{if(document.visibilityState==='visible'){clearTimeout(timer);void read();}};
+  void read();document.addEventListener('visibilitychange',visible);return()=>{alive=false;clearTimeout(timer);document.removeEventListener('visibilitychange',visible);};
+ },[lang,attempt]);
+ const articles=useMemo(()=>{const now=Date.now();return(data?.news??[]).filter(a=>Date.parse(a.pubDate)<=now&&now-Date.parse(a.pubDate)<86400000).sort((a,b)=>sort==='priority'?(b.analysisProvider?b.relevance:b.priority??0)-(a.analysisProvider?a.relevance:a.priority??0)||Date.parse(b.pubDate)-Date.parse(a.pubDate):Date.parse(b.pubDate)-Date.parse(a.pubDate));},[data,sort]);
+ const visible=articles.filter(a=>category==='all'||a.category===category||a.marketCategory===category);
+ const titleFor=useNewsTitles(visible,lang,Math.min(shown,32)),when=value=>Number.isFinite(Date.parse(value))?new Date(value).toLocaleString(i18n.language,{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+ const excerptFor=useNewsTitles(visible.filter(a=>!a.analysisProvider&&a.snippet).map(excerptArticle),lang,Math.min(shown,16));
+ const sources=data?.sources??[],ready=articles.filter(a=>a.analysisProvider).length;
+ return <main className="mx-auto w-full min-w-0 max-w-6xl px-4 pb-8 text-white">
+  <header className="rounded-2xl border border-teal-800/60 bg-gradient-to-br from-teal-950/60 via-slate-900/50 to-sky-950/30 p-5 sm:p-6">
+   <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-semibold tracking-wide text-teal-200">🌍 WASTAKE · {t('world_live')}</p><h1 className="mt-2 text-2xl font-bold sm:text-3xl">{t('world_title')}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">{t('world_intro')}</p></div><button type="button" disabled={loading} onClick={()=>setAttempt(n=>n+1)} className="min-h-11 rounded-lg border border-teal-700 px-3 text-sm text-teal-100">↻ {t('impact_refresh')}</button></div>
+   <dl className="mt-5 grid grid-cols-3 gap-2"><div><dt className="text-[11px] text-slate-400">{t('world_latest')}</dt><dd className="mt-1 text-2xl font-semibold">{data?articles.length:'—'}</dd></div><div><dt className="text-[11px] text-slate-400">{t('world_sources')}</dt><dd className="mt-1 text-2xl font-semibold">{data?sources.filter(s=>s.status==='ok').length:'—'}<small className="text-xs text-slate-400"> / {sources.length||'—'}</small></dd></div><div><dt className="text-[11px] text-slate-400">{t('world_reviewed')}</dt><dd className="mt-1 text-2xl font-semibold">{data?ready:'—'}</dd></div></dl>
+  </header>
+  <div className="my-4 flex min-w-0 flex-wrap items-center justify-between gap-3"><div className="flex max-w-full gap-2 overflow-x-auto pb-1" role="group" aria-label={t('world_all')}>{categories.map(key=><button type="button" key={key} aria-pressed={category===key} onClick={()=>setCategory(key)} className={`min-h-10 shrink-0 rounded-full border px-3 text-xs ${category===key?'border-teal-600 bg-teal-900/40 text-teal-100':'border-slate-700 text-slate-300'}`}>{t('world_'+key)}</button>)}</div><select aria-label={t('world_priority_sort')} value={sort} onChange={e=>setSort(e.target.value)} className="min-h-10 max-w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs"><option value="newest">{t('world_newest')}</option><option value="priority">{t('world_priority_sort')}</option></select></div>
+  {data?.checkedAt&&<p className="mb-3 text-xs text-slate-400">{t(data.fromCache?'cycle_cached_news':'impact_checked')}: {when(data.checkedAt)} · {t('world_live')}{data.revalidating?` · ${t('fundamentals_analyzing')}`:''}</p>}
+  {(error||data?.sourceStatus==='unavailable')&&<p role="status" className="mb-3 rounded-xl border border-amber-800 p-3 text-sm text-amber-200">{t('world_unavailable')}</p>}
+  {data?.sourceStatus==='partial'&&<p role="status" className="mb-3 text-xs text-amber-200">{t('impact_partial')}</p>}
+  {loading&&!data?<p role="status" className="py-8 text-center text-slate-300">{t('world_loading')}</p>:!visible.length?<p role="status" className="rounded-xl border border-slate-700 p-6 text-sm text-slate-300">{t('world_empty')}</p>:<div className="grid gap-4 lg:grid-cols-2">{visible.slice(0,shown).map((article,index)=>{
+   const contextual=!!article.analysisProvider,group=article.marketCategory??article.category??'macro',title=titleFor(article),priority=contextual?article.relevance:article.priority,original=lang!=='en'&&title===article.title;
+   return <article key={article.link} className={`min-w-0 overflow-hidden rounded-2xl border bg-slate-900/35 ${index===0?'border-teal-700/60 lg:col-span-2':'border-slate-700/60'}`}>
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700/40 px-4 py-3 text-xs"><span className="text-slate-400"><span translate="no">{article.source}</span> · <time dateTime={article.pubDate}>{when(article.pubDate)}</time></span><span className="text-teal-200">{icons[group]??'📰'} {t('world_'+(contextual?'ai':'priority'))} · {Number.isFinite(priority)?priority:'—'}/100</span></div>
+    <div className="p-4 sm:p-5"><p className="mb-2 text-[11px] text-slate-400">{t('world_'+(article.reportType??'reported'))}{article.sourceStale?` · ${t('cycle_cached_news')}`:''}</p><a href={article.link} target="_blank" rel="noopener noreferrer" className={`block font-semibold leading-7 text-sky-100 hover:underline ${index===0?'text-xl':'text-base'}`}>{title} ↗</a>{original&&<p className="mt-1 text-[11px] text-amber-200">{t('world_original')}</p>}
+    {contextual?<p className="mt-3 text-sm leading-6 text-slate-200">{article.summary}</p>:article.snippet&&<div className="mt-3 text-sm leading-6 text-slate-300"><p className="text-[10px] text-slate-500">{t(excerptFor(excerptArticle(article))===article.snippet.slice(0,240)&&lang!=='en'?'world_excerpt':'world_translated_excerpt')}</p><p lang={excerptFor(excerptArticle(article))===article.snippet.slice(0,240)?'en':lang} translate="no">{excerptFor(excerptArticle(article))}{article.snippet.length>240?'…':''}</p></div>}
+    <div className="mt-4 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border border-slate-700/50 p-3"><h2 className="text-xs font-semibold text-teal-200">💡 {t('world_why')}</h2><p className="mt-2 text-sm leading-6 text-slate-300">{contextual?article.mechanism:t('world_why_'+group)}</p></div><div className="rounded-xl border border-slate-700/50 p-3"><h2 className="text-xs font-semibold text-sky-200">👀 {t('world_watch')}</h2><p className="mt-2 text-sm leading-6 text-slate-300">{contextual?article.watch:t('world_watch_'+group)}</p></div></div>
+    {!contextual&&<p className="mt-3 text-[11px] leading-5 text-amber-200">{t('world_no_ai')}</p>}
+    {article.assets?.length>0&&<div className="mt-3"><p className="text-[10px] text-slate-500">{t('world_refs')}</p><div className="mt-1 flex flex-wrap gap-1">{article.assets.map(symbol=><span key={symbol} translate="no" className="rounded border border-slate-700 px-2 py-1 text-[11px] text-slate-200">{symbol}</span>)}</div></div>}
+    <details className="mt-3 text-xs leading-6 text-slate-400"><summary className="min-h-9 cursor-pointer text-sky-200">{t('world_read')} · {t('world_method')}</summary><p translate="no">{article.title}</p><p>{t('world_evidence')}</p>{article.evidenceQuote&&<blockquote translate="no" className="my-2 border-l-2 border-teal-700 pl-3">{article.evidenceQuote}</blockquote>}{(contextual?article.factors:article.priorityFactors)&&<p className="font-mono">{Object.entries(contextual?article.factors:article.priorityFactors).map(([key,value])=>`${t('world_factor_'+key)}: ${value}`).join(' · ')}</p>}<a href={article.link} target="_blank" rel="noopener noreferrer" className="inline-block min-h-9 text-sky-200 underline">{t('world_read')} ↗</a></details>
+    </div></article>;
+  })}</div>}
+  {visible.length>shown&&<button type="button" onClick={()=>setShown(n=>n+16)} className="mt-5 min-h-11 w-full rounded-xl border border-teal-800 text-sm text-teal-200">{t('world_more')} · {Math.min(shown,visible.length)} / {visible.length}</button>}
+  <details className="mt-5 rounded-xl border border-slate-700 p-4 text-xs leading-6 text-slate-400"><summary className="min-h-9 cursor-pointer font-semibold text-sky-200">📐 {t('world_method')}</summary><p className="my-2">{t('world_method_text')}</p><p className="mb-2">{t('world_ai_method')}</p>{sources.map(source=><p key={source.url}><a href={source.url} target="_blank" rel="noopener noreferrer" className="text-sky-200 underline" translate="no">{source.name}</a> · {t(source.status==='ok'?'impact_available':'impact_unavailable')} · {when(source.checkedAt)}</p>)}</details>
+ </main>;
+}

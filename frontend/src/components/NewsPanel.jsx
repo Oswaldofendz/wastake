@@ -65,6 +65,7 @@ function useTranslations(articles, lang,asset) {
 
 // ─── News hook ────────────────────────────────────────────────
 function useNews(asset) {
+  const [sourceStatus,setSourceStatus]=useState(null);
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
@@ -81,15 +82,15 @@ function useNews(asset) {
       setLoading(true);
       setData(null);
       setError(null);
-      setAnalyzing(false);setAnalysisError(false);
+      setAnalyzing(false);setAnalysisError(false);setSourceStatus(null);
       try {
         const type   = getAnalysisType(asset);
         const result = await fetchNews(asset.id,type,{stage:'headlines',signal:controller.signal});
         if(cancelled)return;
-        setData(result.news??[]);setLoading(false);
+        setData(result.news??[]);setSourceStatus(result.sourceStatus??'ok');setLoading(false);
         if(result.news?.length){
           setAnalyzing(true);
-          try{const enriched=await fetchNews(asset.id,type,{signal:controller.signal});if(!cancelled){setData(enriched.news??result.news);setAnalysisError(enriched.news?.length>0&&enriched.news.every(a=>!newsAssessment(a).impact));}}
+          try{const enriched=await fetchNews(asset.id,type,{signal:controller.signal});if(!cancelled){setData(enriched.news??result.news);setSourceStatus(enriched.sourceStatus??'ok');setAnalysisError(enriched.news?.length>0&&enriched.news.every(a=>!newsAssessment(a).impact));}}
           catch{if(!cancelled)setAnalysisError(true);}
           finally{if(!cancelled)setAnalyzing(false);}
         }
@@ -104,7 +105,7 @@ function useNews(asset) {
     return () => { cancelled = true;controller.abort(); };
   }, [asset?.id,asset?.type,asset?.analysisType,attempt]);
 
-  return { data, loading, error,analyzing,analysisError,retry:()=>setAttempt(n=>n+1) };
+  return { data, loading, error,analyzing,analysisError,sourceStatus,retry:()=>setAttempt(n=>n+1) };
 }
 
 // ─── Sub-components ───────────────────────────────────────────
@@ -175,7 +176,7 @@ function Skeleton() {
 
 // ─── Main component ───────────────────────────────────────────
 export function NewsPanel({ asset }) {
-  const { data, loading, error,analyzing,analysisError,retry } = useNews(asset);
+  const { data, loading, error,analyzing,analysisError,sourceStatus,retry } = useNews(asset);
   const { t, i18n } = useTranslation();
   const translatedTitles = useTranslations(data, i18n.language,asset);
   const shortLang = i18n.language.split('-')[0];
@@ -196,7 +197,7 @@ export function NewsPanel({ asset }) {
 
   if (!data || data.length === 0) return (
     <div className="mt-3 bg-slate-800/50 border border-slate-700/30 rounded-xl p-4">
-      <p className="text-xs text-slate-500 text-center">{t('news_empty')}</p>
+      <p className="text-xs text-slate-400 text-center">{t(sourceStatus==='unavailable'?'world_unavailable':'world_asset_empty')}</p><a href="?news=global#fundamentals" className="mt-2 block text-center text-xs text-sky-200 underline">{t('world_tab')}</a>
     </div>
   );
 
@@ -220,6 +221,7 @@ export function NewsPanel({ asset }) {
         </span>
       </div>
 
+      {sourceStatus&&sourceStatus!=='ok'&&<p role="status" className="mb-3 text-xs text-amber-200">{t('audit_news_partial')}</p>}
       {(analyzing||analysisError)&&<p className="mb-3 text-xs text-amber-300" role="status">{t(analyzing?'audit_news_analyzing':'audit_news_analysis_unavailable')}</p>}
       {enriched.some(a=>!a.computedImpact)&&<section className="mb-3 rounded-xl border border-slate-700 p-3"><h4 className="mb-2 text-xs font-semibold text-slate-300">{t(analysisError?'audit_news_unclassified':'audit_news_pending_title')}</h4><div className="grid max-h-[32rem] gap-2 overflow-y-auto sm:grid-cols-2">{enriched.filter(a=>!a.computedImpact).map((article,i)=><NewsCard key={article.link||i} article={article} translatedTitle={titleFor(article)} impact={null}/>)}</div></section>}
       {/* Classified articles use the shared backend assessment, not title keywords. */}

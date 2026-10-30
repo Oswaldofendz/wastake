@@ -1,3 +1,4 @@
+import {GlobalNews} from '../components/GlobalNews.jsx';
 import {useAssetRoute} from '../hooks/useAssetRoute.js';
 import {cachedPublicNews} from '../utils/publicNewsCache.js';
 import { useEffect, useMemo, useState } from 'react';
@@ -63,7 +64,7 @@ function scoreTone(value) {
   return value > 0 ? 'text-green-400' : 'text-red-400';
 }
 
-export function Fundamentals({initialAsset=null}) {
+function AssetFundamentals({initialAsset=null}) {
   const { i18n, t: translate } = useTranslation();
   const lang = languageCode(i18n.resolvedLanguage || i18n.language);
   const t = COPY[lang];
@@ -92,17 +93,20 @@ export function Fundamentals({initialAsset=null}) {
     if (!asset) return undefined;
     let cancelled = false;
 
-    let timer;
+    let timer,running=false;
     async function load() {
       const type=getAnalysisType(asset),cached=cachedPublicNews(asset,type,lang);
       setLoading(!cached);setAnalyzing(true);setArticles(cached?.news??[]);setCachedView(Boolean(cached));setNewsAsOf(cached?.checkedAt??null);setCandles([]);setNewsError('');setPriceError('');
       fetchOHLCV(asset.id,type,{days:90,interval:'1d',range:'3mo'}).then(result=>{if(!cancelled)setCandles(result?.candles??[]);}).catch(()=>{if(!cancelled)setPriceError(translate('fundamentals_price_error'));});
       const read=async()=>{
+        if(cancelled||running)return;
+        if(document.visibilityState==='hidden'){timer=setTimeout(read,60000);return;}
+        running=true;
         try{const result=await fetchFundamentalsNews(asset,type,lang,'snapshot');if(cancelled)return;
           setArticles(current=>JSON.stringify(current)===JSON.stringify(result.news)?current:result.news??[]);setNewsAsOf(result.checkedAt);setCachedView(result.stale);setLoading(false);setAnalyzing(result.revalidating);
           setNewsError(result.sourceStatus==='unavailable'?translate('cycle_news_stale'):['partial','stale'].includes(result.sourceStatus)?translate('audit_news_partial'):'');
-          if(result.revalidating)timer=setTimeout(read,5000);
-        }catch{if(!cancelled){setLoading(false);setAnalyzing(false);setNewsError(translate('fundamentals_news_error'));}}
+          timer=setTimeout(read,result.revalidating?5000:60000);
+        }catch{if(!cancelled){setLoading(false);setAnalyzing(false);setNewsError(translate('fundamentals_news_error'));timer=setTimeout(read,60000);}}finally{running=false;}
       };
       await read();
     }
@@ -193,4 +197,9 @@ export function Fundamentals({initialAsset=null}) {
     <details className="mt-5 rounded-xl border border-slate-700 p-4 text-xs leading-6 text-slate-400"><summary className="min-h-9 cursor-pointer font-semibold text-slate-200">📐 {translate('ui_fund_history')}</summary><p className="mt-2">{translate('ui_fund_method')}</p><p className="mt-2">{t.reaction}: {formatPercent(meanReaction,translate('fundamentals_pending'))} · {reactions.length} {t.available}. {t.reactionHelp}</p></details>
     <p className="mt-5 text-[11px] leading-6 text-slate-500">{t.disclaimer}</p>
   </main>;
+}
+
+export function Fundamentals({initialAsset=null}){
+ const {t}=useTranslation(),[scope,setScope]=useState(()=>initialAsset?'asset':'global');
+ return <><nav aria-label={t('world_all')} className="mx-auto flex w-full max-w-6xl flex-wrap gap-2 px-4 py-4">{['global','asset'].map(key=><button type="button" key={key} onClick={()=>setScope(key)} aria-pressed={scope===key} className={`min-h-11 rounded-xl border px-4 text-sm ${scope===key?'border-teal-600 bg-teal-950/40 text-teal-100':'border-slate-700 text-slate-300'}`}>{t(key==='global'?'world_tab':'world_asset_tab')}</button>)}</nav>{scope==='global'?<GlobalNews/>:<AssetFundamentals initialAsset={initialAsset}/>}</>;
 }

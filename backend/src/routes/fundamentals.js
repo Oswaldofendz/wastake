@@ -6,7 +6,7 @@ export const fundamentalsRouter = Router();
 // GET /api/fundamentals/:id?type=crypto|stock&name=Bitcoin&symbol=BTC&lang=es|pt|en
 fundamentalsRouter.get('/:id', async (req, res) => {
   const { id } = req.params;
-  const type = req.query.type === 'crypto' ? 'crypto' : 'stock';
+  const type = id==='global'&&req.query.scope==='market'?'market':req.query.type === 'crypto' ? 'crypto' : 'stock';
   const aliases = [req.query.name, req.query.symbol]
     .filter(value => typeof value === 'string')
     .map(value => value.trim().slice(0, 80))

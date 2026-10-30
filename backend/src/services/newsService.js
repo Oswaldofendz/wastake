@@ -1,4 +1,6 @@
 import axios from 'axios';
+import {getMarketImpactAlerts} from './marketImpactService.js';
+import {TRADITIONAL_ASSETS,CRYPTO_ASSETS} from './priceService.js';
 import Parser from 'rss-parser';
 import {createPublicFeedCache} from './publicFeedCache.js';
 import { callLLM } from './llmService.js';
@@ -25,6 +27,11 @@ const TRADITIONAL_FEEDS = [
 
 const ASSET_KEYWORDS = {
   bitcoin:  ['bitcoin', 'btc'],
+  googl: ['alphabet','google','googl'],
+  goog: ['alphabet','google','goog'],
+  amzn: ['amazon','aws','amzn'],
+  binancecoin: ['binance','bnb','bnb chain'],
+  ripple: ['ripple','xrp'],
   ethereum: ['ethereum', 'eth', 'ether'],
   solana:   ['solana', 'sol'],
   'gc=f':   ['gold', 'oro', 'xau'],
@@ -66,7 +73,7 @@ export const warmNewsFeeds=()=>Promise.allSettled([...new Map([...CRYPTO_FEEDS,.
 // ─── Filtro por activo ────────────────────────────────────────────────────────
 
 function filterByAsset(articles, assetId, aliases = []) {
-  const configured = ASSET_KEYWORDS[assetId.toLowerCase()] ?? [assetId.toLowerCase()];
+  const configured = Object.hasOwn(ASSET_KEYWORDS,assetId.toLowerCase())?ASSET_KEYWORDS[assetId.toLowerCase()]:[assetId.toLowerCase()];
   const keywords = [...new Set([...configured, ...aliases])]
     .map(value => String(value ?? '').trim())
     .filter(value => value.length >= 3);
@@ -157,17 +164,23 @@ async function analyzeSentiment(articles) {
 
 // ─── Exportación principal ────────────────────────────────────────────────────
 
+export function newsAliases(assetId,type,aliases=[]){
+ const catalogue=type==='crypto'?CRYPTO_ASSETS:TRADITIONAL_ASSETS,identity=Object.hasOwn(catalogue,assetId)?catalogue[assetId]:null;
+ const related=Object.hasOwn(ASSET_KEYWORDS,assetId.toLowerCase())?ASSET_KEYWORDS[assetId.toLowerCase()]:[];
+ return [...new Set([...aliases,identity?.name,identity?.symbol,...related].map(value=>String(value??'').trim().slice(0,80)).filter(Boolean))];
+}
+
 export async function getRawNewsForAsset(assetId, type = 'crypto', aliases = []) {
-  const safeAliases = aliases
-    .map(value => String(value ?? '').trim().slice(0, 80))
-    .filter(Boolean);
+  const safeAliases=newsAliases(assetId,type,aliases);
   const cacheKey = `raw:${assetId}:${type}:${safeAliases.join('|')}`;
   const cached = cache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.data;
 
   const feeds = type === 'crypto' ? CRYPTO_FEEDS : [...TRADITIONAL_FEEDS, {name:'Yahoo Finance', url:`https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(assetId)}&region=US&lang=en-US`}];
   const snapshots=await Promise.all(feeds.map(fetchFeedCached));
-  const allArticles=snapshots.flatMap(result=>result.articles);
+  const global=await getMarketImpactAlerts().catch(()=>null);
+  const additional=(global?.alerts??[]).map(a=>({title:a.title,link:a.url,pubDate:a.publishedAt,snippet:a.snippet,source:a.source,sourceFetchedAt:a.sourceCheckedAt,sourceStale:a.feedStale,topic:a.topic,category:a.category,priority:a.priority,assets:a.assets}));
+  const allArticles=[...snapshots.flatMap(result=>result.articles),...additional];
   const seenTitles = new Set();
   const filtered = filterByAsset(allArticles, assetId, safeAliases)
     .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
@@ -179,8 +192,8 @@ export async function getRawNewsForAsset(assetId, type = 'crypto', aliases = [])
     })
     .slice(0, 10);
 
-  const statuses=snapshots.map(r=>r.status);
-  const sourceStatus=statuses.every(s=>s==='ok')?'ok':statuses.every(s=>s==='unavailable')?'unavailable':statuses.some(s=>s==='ok')?'partial':'stale';
+  const statuses=[...snapshots.map(r=>r.status),global?.status??'unavailable'];
+  const sourceStatus=statuses.every(s=>s==='ok')?'ok':statuses.every(s=>s==='unavailable')?'unavailable':statuses.some(s=>s==='ok'||s==='partial')?'partial':allArticles.length?'stale':'unavailable';
   Object.assign(filtered,{sourceStatus,sourceCheckedAt:new Date().toISOString(),dataAsOf:snapshots.map(r=>r.dataAsOf).filter(Boolean).sort()[0]??null,stale:filtered.some(a=>a.sourceStale)||sourceStatus==='unavailable'||sourceStatus==='stale',refreshing:snapshots.some(r=>r.refreshing)});
   if(cache.size>=300)cache.delete(cache.keys().next().value);
   cache.set(cacheKey, { data: filtered, expiresAt: Date.now() + (filtered.refreshing?5000:sourceStatus==='ok'?CACHE_TTL:15000) });

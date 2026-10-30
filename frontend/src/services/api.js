@@ -113,3 +113,5 @@ export const translateText = (q, to, from = 'en', identities = []) => {
 };
 
 export const fetchAssetResearch = (asset) => get(`/api/assets/research/${encodeURIComponent(asset.id)}?type=${encodeURIComponent(asset.type||'stock')}`,30_000);
+
+export const fetchGlobalNews=async(lang='es',stage='snapshot')=>{const result=await get(`/api/fundamentals/global?${new URLSearchParams({scope:'market',lang,stage})}`,25000);rememberPublicNews({id:'global'},'market',lang,result);return result;};
