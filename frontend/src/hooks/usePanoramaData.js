@@ -7,7 +7,7 @@ const pending = () => ({ loading:true, data:null, error:false, checkedAt:null, a
 const initial = key => ({ key, analysis:pending(), history:pending(), news:pending(), quote:pending() });
 
 // Independent states: optional news/AI must never block prices or technical analysis.
-export function usePanoramaData(asset, attempt) {
+export function usePanoramaData(asset, attempt, loadNews = true) {
   const type = getAnalysisType(asset);
   const key = `${type}:${asset.id}:${attempt}`;
   const [state, setState] = useState(() => initial(key));
@@ -27,6 +27,7 @@ export function usePanoramaData(asset, attempt) {
         if (!controller.signal.aborted) setState(current=>current.key===key?{...current,[name]:{loading:false,data:null,error:true,checkedAt:Date.now()}}:current);
       });
     });
+    if(!loadNews)return()=>controller.abort();
     // Fetch cached RSS first. A slow classifier keeps headlines visible and tone unevaluated.
     fetchNews(asset.id,type,{...options,stage:'headlines'}).then(data=>{
       if(controller.signal.aborted)return;
@@ -42,6 +43,6 @@ export function usePanoramaData(asset, attempt) {
       if(!controller.signal.aborted)setState(current=>current.key===key?{...current,news:{loading:false,data:null,error:true,checkedAt:Date.now(),analyzing:false,analysisError:false}}:current);
     });
     return () => controller.abort();
-  }, [key, asset.id, type]);
+  }, [key, asset.id, type, loadNews]);
   return state.key===key?state:initial(key);
 }

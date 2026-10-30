@@ -8,7 +8,7 @@ import { Portfolio } from './pages/Portfolio.jsx';
 import { Alerts }    from './pages/Alerts.jsx';
 import { Markets }   from './pages/Markets.jsx';
 import { Panorama }  from './pages/Panorama.jsx';
-import { Screener }  from './pages/Screener.jsx';
+import {canonicalPage} from './utils/navigation.js';
 import { Fundamentals } from './pages/Fundamentals.jsx';
 import { usePrices } from './hooks/usePrices.js';
 import { useAuth }   from './hooks/useAuth.js';
@@ -84,23 +84,21 @@ export default function App() {
   useDynamicFavicon(allAssets);
   useBrowserNotifications(triggered);
 
-  const [currentPage, setCurrentPage] = useState(() => {
-    const hash = window.location.hash.replace('#', '');
-    const valid = ['dashboard', 'panorama', 'markets', 'portfolio', 'alerts', 'screener', 'fundamentals', 'chart-ai'];
-    return valid.includes(hash) ? hash : 'dashboard';
-  });
+  const [currentPage, setPage] = useState(() => canonicalPage(window.location.hash));
+  const setCurrentPage=page=>setPage(canonicalPage(page));
 
   useEffect(() => {
     const sync = () => {
       const route = window.location.hash.slice(1);
-      setCurrentPage(['dashboard', 'panorama', 'markets', 'portfolio', 'alerts', 'screener', 'fundamentals', 'chart-ai'].includes(route)?route:'dashboard');
+      setPage(canonicalPage(route));
     };
     window.addEventListener('hashchange', sync);
     return () => window.removeEventListener('hashchange', sync);
   }, []);
 
   useEffect(() => {
-    window.location.hash = currentPage;
+    if(window.location.hash==='#screener')window.history.replaceState(null,'',window.location.pathname+window.location.search+'#panorama');
+    else window.location.hash = currentPage;
     window.scrollTo(0, 0);
   }, [currentPage]);
 
@@ -163,11 +161,9 @@ export default function App() {
         ) : currentPage === 'chart-ai' ? (
           <Suspense fallback={<p role="status" className="p-6 text-slate-400">…</p>}><AgentCharts marketData={marketData} guided={simple}/></Suspense>
         ) : currentPage === 'panorama' ? (
-          <Panorama />
+          <Panorama marketData={marketData}/>
         ) : currentPage === 'markets' ? (
           <Markets allAssets={allAssets} />
-        ) : currentPage === 'screener' ? (
-          <Screener marketData={marketData}/>
         ) : currentPage === 'alerts' ? (
           !authLoading && (
             <Alerts

@@ -1,3 +1,4 @@
+import {unifiedPanoramaCopy} from './unifiedPanoramaCopy.js';
 import {worldNewsCopy} from './worldNewsCopy.js';
 import {quantitativeCopy} from './quantitativeCopy.js';
 import {integrityCopy} from './integrityCopy.js';
@@ -761,6 +762,8 @@ for(const [lang,copy] of Object.entries(integrityCopy))Object.assign(resources[l
 
 for(const [lang,copy] of Object.entries(worldNewsCopy))Object.assign(resources[lang].translation,copy);
 for(const [lang,copy] of Object.entries(quantitativeCopy))Object.assign(resources[lang].translation,copy);
+
+for(const [lang,copy] of Object.entries(unifiedPanoramaCopy))Object.assign(resources[lang].translation,copy);
 
 i18n
   .use(LanguageDetector)

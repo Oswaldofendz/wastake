@@ -12,11 +12,10 @@ const NAV_GROUPS = [
   { id: 'explore', titleKey: 'nav_group_explore', items: [
     { id: 'dashboard', labelKey: 'dashboard', icon: '📊' },
     { id: 'markets', labelKey: 'nav_markets', icon: '🌍' },
-    { id: 'screener', labelKey: 'nav_screener', icon: '🔍' },
+    { id: 'panorama', labelKey: 'nav_panorama', icon: '🔍' },
   ] },
   { id: 'analyze', titleKey: 'nav_group_analyze', items: [
     { id: 'chart-ai', labelKey: 'chart_ai', icon: '✦' },
-    { id: 'panorama', labelKey: 'nav_panorama', icon: '🚦' },
     { id: 'fundamentals', labelKey: 'nav_fundamentals', icon: '🧭' },
   ] },
   { id: 'track', titleKey: 'nav_group_track', items: [

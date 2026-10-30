@@ -271,3 +271,4 @@ html.light .impact-ticker.has-news{background:#fff1f2}html.light .impact-ticker-
 
 .asset-logo{display:inline-grid;place-items:center;position:relative;flex:none;overflow:hidden;border-radius:50%;background:#64748b26;color:var(--text-primary);border:1px solid #64748b33;font-weight:650}.asset-logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#f8fafc;padding:2px}
 .explorer-workspace{align-items:stretch;margin-bottom:16px}.explorer-sidebar{position:static;max-height:440px;padding:12px;border:1px solid #64748b33;border-radius:12px;background:var(--bg-card)}.explorer-workspace>div>section{margin-bottom:0;height:100%}
+.panorama-workspace{align-items:start}.panorama-workspace .explorer-sidebar{position:sticky;top:88px;max-height:calc(100dvh - 104px)}.panorama-workspace>div>section{height:auto;margin-bottom:16px}

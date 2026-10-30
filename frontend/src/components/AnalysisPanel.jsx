@@ -258,10 +258,11 @@ function Skeleton() {
 
 // ── Main component ────────────────────────────────────────────
 
-export function AnalysisPanel({ asset, days = ANALYSIS_DAYS, onAnalysis }) {
+export function AnalysisPanel({ asset, days = ANALYSIS_DAYS, onAnalysis, provided, historyResult, historyLoading }) {
   const { t,i18n } = useTranslation();
   const fmtValue=v=>formatNumeric(v,i18n.language);
-  const { data, loading, error } = useAnalysis(asset, days);
+  const local=useAnalysis(provided?null:asset,days);
+  const {data,loading,error}=provided??local;
   const [activeInfo, setActiveInfo]   = useState(null); // { shortName, ...INDICATOR_INFO }
   useEffect(()=>{onAnalysis?.({id:asset?.id,type:asset?.type,analysis:data,loading:loading||(!data&&!error),error});},[asset?.id,asset?.type,data,loading,error,onAnalysis]);
 
@@ -360,7 +361,7 @@ export function AnalysisPanel({ asset, days = ANALYSIS_DAYS, onAnalysis }) {
               {asset?.type === 'crypto' && <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Fear & Greed</p>}
               {asset?.type === 'crypto' && <FearGreedInline />}
               {asset?.type === 'crypto' && <p className="mt-1 text-center text-[11px] text-slate-400">{t('asset_crypto_scope')}</p>}
-              {asset?.type !== 'crypto' && <AssetRangeContext asset={asset}/>}
+              {asset?.type !== 'crypto' && <AssetRangeContext asset={asset} historyResult={historyResult} historyLoading={historyLoading}/>}
             </div>
 
             {/* Composite technical score and its directional scale */}

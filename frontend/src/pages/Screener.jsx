@@ -1,16 +1,12 @@
+import {UnifiedAssetView} from '../components/UnifiedAssetView.jsx';
 import {useAssetRoute} from '../hooks/useAssetRoute.js';
 import {AssetLogo as AssetAvatar} from '../components/AssetLogo.jsx';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getAssetGroup } from '../data/assetSectors.js';
 import { AssetSearch } from '../components/AssetSearch.jsx';
-import { AnalysisPanel } from '../components/AnalysisPanel.jsx';
-import { CandleChart } from '../components/PriceChart.jsx';
-import { AssetValuationCard } from '../components/AssetValuationCard.jsx';
 import { MarketLeaders } from '../components/MarketLeaders.jsx';
 import {OpportunityPanel} from '../components/OpportunityPanel.jsx';
-import { ImportantNews } from '../components/ImportantNews.jsx';
-import { AnalysisNarrative } from '../components/AnalysisNarrative.jsx';
 import { formatQuote } from '../utils/panoramaAnalysis.js';
 import { currentSelection } from '../utils/marketConventions.js';
 
@@ -145,9 +141,9 @@ export function Screener({marketData}) {
 
   const [search, setSearch]           = useState('');
   const [inspectedAsset, setInspectedAsset] = useAssetRoute(null,allAssets);
-  const [analysisSnapshot,setAnalysisSnapshot]=useState(null);
+  const [activeTab,setActiveTab]=useState('summary');
   const inspectionRef=useRef(null);
-  useEffect(()=>{ if(inspectedAsset)inspectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },[inspectedAsset]);
+  useEffect(()=>{ if(inspectedAsset)inspectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },[inspectedAsset?.id,inspectedAsset?.type]);
   const [typeFilter, setTypeFilter]   = useState('all');
   const [changeFilter, setChangeFilter] = useState('all');
   const [sortBy, setSortBy]           = useState('mktcap_desc');
@@ -290,7 +286,7 @@ export function Screener({marketData}) {
 </>);
 
   return (
-    <div className="flex flex-col h-full p-4 max-w-[1480px] mx-auto w-full">
+    <main className="flex flex-col h-full p-4 max-w-[1480px] mx-auto w-full">
 
       {/* ── Header ── */}
       <div className="mb-5">
@@ -315,7 +311,7 @@ export function Screener({marketData}) {
         )}
 
       </div>
-      <div className="explorer-workspace">
+      <div className="explorer-workspace panorama-workspace">
         <aside className="explorer-sidebar" aria-label={t('browse_catalogue')}><h2 className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold"><span>📂 {t('ui_catalogue_short')}</span><span className="rounded-full bg-slate-800 px-2 py-1 text-xs text-slate-400">{filtered.length}</span></h2><p className="mb-3 text-xs leading-5 text-slate-400">{t('ui_catalogue_help')}</p>{catalogue}</aside>
         <div className="min-w-0">
       {/* ── Panel de búsqueda y filtros ── */}
@@ -374,16 +370,13 @@ export function Screener({marketData}) {
         </p>
       )}
       </section>
-      </div></div>
       {!inspectedAsset&&<OpportunityPanel embedded/>}
       {!inspectedAsset&&<MarketLeaders compact marketData={marketData} onSelect={setInspectedAsset}/>}
       {inspectedAsset && <section ref={inspectionRef} className="mb-4 scroll-mt-24 rounded-xl border border-sky-700/50 p-3">
-        <div className="mb-3 flex items-center justify-between gap-2"><h2 translate="no" className="flex items-center gap-2 font-semibold"><AssetAvatar asset={inspectedAsset}/>{inspectedAsset.name} · {inspectedAsset.symbol}</h2><button type="button" onClick={()=>{setInspectedAsset(null);resetFilters();}} className="min-h-10 px-3" aria-label={t('catalogue_return')}>← {t('catalogue_return')}</button></div>
-        <OpportunityPanel asset={inspectedAsset}/>
-        <ImportantNews key={`news:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)}/>
-        <AssetValuationCard key={`valuation:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)} technical={analysisSnapshot?.id===inspectedAsset.id&&analysisSnapshot?.type===inspectedAsset.type?analysisSnapshot:null}/><CandleChart key={`chart:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)}/><details className="mt-3 rounded-xl border border-slate-700 p-3"><summary className="min-h-8 cursor-pointer text-sm font-semibold">{t('audit_technical_details')}</summary><AnalysisPanel key={`analysis:${inspectedAsset.type}:${inspectedAsset.id}`} asset={currentSelection(inspectedAsset,allAssets)} onAnalysis={setAnalysisSnapshot}/></details>
-        <AnalysisNarrative key={`narrative:${inspectedAsset.type}:${inspectedAsset.id}`} asset={inspectedAsset}/>
+        <div className="mb-3 flex items-center justify-between gap-2"><h2 translate="no" className="flex min-w-0 flex-1 items-center gap-2 font-semibold"><AssetAvatar asset={inspectedAsset}/><span className="min-w-0 break-words">{inspectedAsset.name} · {inspectedAsset.symbol}</span></h2><button type="button" onClick={()=>{setInspectedAsset(null);document.getElementById('screener-filters-title')?.scrollIntoView({behavior:'smooth',block:'center'});}} className="min-h-10 px-3" aria-label={t('catalogue_return')}>← {t('catalogue_return')}</button></div>
+        <UnifiedAssetView key={inspectedAsset.type+':'+inspectedAsset.id} asset={currentSelection(inspectedAsset,allAssets)} tab={activeTab} onTabChange={setActiveTab}/>
       </section>}
-    </div>
+      </div></div>
+    </main>
   );
 }

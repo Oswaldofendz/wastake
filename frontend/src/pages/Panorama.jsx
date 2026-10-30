@@ -1,1 +1,1 @@
-export { Panorama } from '../components/PanoramaOverview.jsx';
+export { Screener as Panorama } from './Screener.jsx';
