@@ -7,7 +7,7 @@ import { getAnalysisType } from '../data/assetCatalog.js';
 import { cleanCandles, emaSeries, significantLevels } from '../utils/chartLevels.js';
 import {timedCandles} from '../utils/timedCandles.js';
 import {DrawingToolbar,DrawingOverlay} from './ChartDrawings.jsx';
-import {quotePrecision} from '../utils/numberFormat.js';
+import {chartPriceFormat} from '../utils/numberFormat.js';
 
 const DAYS = { '1D':1,'1S': 7, '1M': 30, '3M': 90, '6M': 180, '1A': 365 };
 export function CandleChart({ asset, timeframe = '3M',interval='1d' }) {
@@ -56,7 +56,7 @@ export function CandleChart({ asset, timeframe = '3M',interval='1d' }) {
       rightPriceScale:{borderVisible:false,scaleMargins:{top:0.12,bottom:0.1}},
       timeScale:{borderVisible:false,timeVisible:interval!=='1d',secondsVisible:false},localization:{locale:i18n.language}});
     const close=all.at(-1).close;
-    const precision=quotePrecision(close),priceFormat={type:'price',precision,minMove:10**(-precision)};
+    const priceFormat=chartPriceFormat(close,i18n.language);
     const series=chart.addCandlestickSeries({upColor:'#16b981',downColor:'#f05262',borderVisible:false,wickUpColor:'#16b981',wickDownColor:'#f05262',priceFormat});
     series.setData(all);
     setHandle({id:crypto.randomUUID(),chart,series,candles:all});

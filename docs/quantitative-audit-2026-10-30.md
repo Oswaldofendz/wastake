@@ -10,7 +10,7 @@ La revisión abarcó precios y velas, indicadores del servidor y gráficos, señ
 
 | Prioridad | Problema comprobado | Corrección |
 |---|---|---|
-| Crítica | Se redondeaban precio, EMA, MACD y ATR a cuatro decimales antes de elaborar la señal. Una cripto pequeña podía convertirse en cero. | Precisión significativa en los cálculos y decimales adaptativos en indicadores/gráficos. |
+| Crítica | Se redondeaban precio, EMA, MACD y ATR a cuatro decimales antes de elaborar la señal. Una cripto pequeña podía convertirse en cero. | Precisión significativa en los cálculos y decimales adaptativos en indicadores/gráficos; formateador de ejes propio para evitar errores binarios de la librería con microprecios. |
 | Alta | El resumen antiguo y el índice 0–10 aplicaban modelos diferentes: una misma serie podía ser alcista y mostrar «venta». | El resumen antiguo deriva ahora del mismo índice; no calcula otra señal incompatible. |
 | Alta | Una serie completamente plana producía una lectura alcista y bandas de ancho cero podían interpretarse como señal. | RSI plano = 50; banda sin anchura no vota; ADX indefinido queda ausente. Resultado plano: 5/10. |
 | Alta | P/FCF podía mezclar capitalización en USD con flujo de caja en EUR; algunos márgenes mezclaban periodos. | Compatibilidad de moneda y periodo antes de dividir. Si falta compatibilidad, se muestra ausencia. |
@@ -136,6 +136,6 @@ El filtro actual es una selección técnica con controles de datos: nota ≥6, R
 
 ## 9. Validación entregada
 
-165 pruebas automatizadas aprobadas, incluidas 22 nuevas de auditoría; compilación de producción correcta. Hay invariancia ante cambios de escala de precio, series planas, cálculo independiente de componentes, comparación manual del DCF, monedas/subunidades, datos faltantes, fechas, unidades y casos de suministro incoherente. Se contrastaron tres historiales públicos conservando la misma última vela.
+166 pruebas automatizadas aprobadas, incluidas 23 nuevas de auditoría; compilación de producción correcta. Hay invariancia ante cambios de escala de precio, series planas, cálculo independiente de componentes, comparación manual del DCF, monedas/subunidades, datos faltantes, fechas, unidades y casos de suministro incoherente. Se contrastaron tres historiales públicos conservando la misma última vela.
 
 Las pruebas aseguran los casos cubiertos y previenen regresiones; no certifican exactitud universal de cada proveedor ni predicen éxito de inversión. No se añadieron suscripciones, dependencias de pago ni credenciales.

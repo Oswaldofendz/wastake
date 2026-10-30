@@ -1,4 +1,4 @@
-import {quotePrecision} from '../utils/numberFormat.js';
+import {chartPriceFormat} from '../utils/numberFormat.js';
 import {expandedStudies} from '../utils/expandedChartMath.js';
 import {atrAdxPoints,stochasticPoints,obvPoints,vwapPoints} from '../utils/advancedChartMath.js';
 import {forwardRef,useEffect,useMemo,useImperativeHandle,useRef,useState} from 'react';
@@ -51,11 +51,11 @@ export const AgentCanvas=forwardRef(function AgentCanvas({snapshot,asset,workspa
      chart.addLineSeries({color:'#c084fc',lineWidth:2,title:`${workspace.compare?.asset.symbol??asset.symbol} · ${comparison.source}`,priceFormat:format}).setData(performance.right);
      setHandle(null);
    }else{
-     const close=all.at(-1).close,precision=quotePrecision(close),priceFormat={type:'price',precision,minMove:10**-precision};
+     const close=all.at(-1).close,priceFormat=chartPriceFormat(close,i18n.language);
      series=chart.addCandlestickSeries({upColor:'#20c997',downColor:'#f16d83',borderVisible:false,wickUpColor:'#20c997',wickDownColor:'#f16d83',priceFormat});series.setData(all);
      for(const period of workspace.ema){const line=chart.addLineSeries({color:({20:'#38bdf8',50:'#a78bfa',200:'#fbbf24'})[period],lineWidth:1,title:`EMA ${period}`,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,priceFormat});line.setData(emaSeries(closed,period));}
      for(const period of workspace.sma??[]){const line=chart.addLineSeries({color:'#fb923c',lineWidth:1,lineStyle:LineStyle.Dashed,title:`SMA ${period}`,priceLineVisible:false,lastValueVisible:false,priceFormat});line.setData(smaPoints(closed,period));}
-     if(workspace.bollinger)for(const key of ['upper','middle','lower']){const line=chart.addLineSeries({color:key==='middle'?'#94a3b8':'#38bdf85c',lineWidth:1,lineStyle:LineStyle.Dotted,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});line.setData(bollingerPoints(closed).map(b=>({time:b.time,value:b[key]})));}
+     if(workspace.bollinger)for(const key of ['upper','middle','lower']){const line=chart.addLineSeries({color:key==='middle'?'#94a3b8':'#38bdf85c',lineWidth:1,lineStyle:LineStyle.Dotted,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,priceFormat});line.setData(bollingerPoints(closed).map(b=>({time:b.time,value:b[key]})));}
      for(const kind of ['donchian','keltner'])if(workspace[kind])for(const field of ['upper','middle','lower']){const line=chart.addLineSeries({color:kind==='donchian'?'#fbbf24aa':'#fb923caa',lineWidth:1,lineStyle:LineStyle.Dashed,title:kind==='donchian'?'Donchian 20':'Keltner 20/10/2',priceLineVisible:false,lastValueVisible:false,priceFormat});line.setData(advanced[kind].map(p=>({time:p.time,value:p[field]})));}
      if(workspace.vwap&&advanced.vwap.length){const v=chart.addLineSeries({color:'#fbbf24',lineWidth:2,title:'VWAP · UTC',priceLineVisible:false,priceFormat});v.setData(advanced.vwap);}
      if(workspace.volume){const volume=chart.addHistogramSeries({priceScaleId:'volume',priceFormat:{type:'volume'},priceLineVisible:false,lastValueVisible:false});volume.priceScale().applyOptions({scaleMargins:{top:.84,bottom:0}});volume.setData(all.filter(c=>Number.isFinite(c.volume)).map(c=>({time:c.time,value:c.volume,color:c.close>=c.open?'#20c99738':'#fb718538'})));}
@@ -72,13 +72,13 @@ export const AgentCanvas=forwardRef(function AgentCanvas({snapshot,asset,workspa
    }
    if(!compareMode&&workspace.macd&&macd.current){
      const pane=makeChart(macd.current,{handleScroll:false,handleScale:false,rightPriceScale:{borderVisible:false,scaleMargins:{top:.1,bottom:.1}}}),data=macdPoints(closed);
-     pane.addHistogramSeries({priceLineVisible:false,lastValueVisible:false}).setData(data.histogram.map(p=>({...p,color:p.value>=0?'#20c99766':'#fb718566'})));
-     pane.addLineSeries({color:'#38bdf8',lineWidth:1,priceLineVisible:false,lastValueVisible:false}).setData(data.line);
-     pane.addLineSeries({color:'#fbbf24',lineWidth:1,priceLineVisible:false,lastValueVisible:false}).setData(data.signal);oscillators.push({chart:pane,label:'MACD 12/26/9'});
+     pane.addHistogramSeries({priceLineVisible:false,lastValueVisible:false,priceFormat:chartPriceFormat(data.histogram.at(-1)?.value??all.at(-1).close,i18n.language)}).setData(data.histogram.map(p=>({...p,color:p.value>=0?'#20c99766':'#fb718566'})));
+     pane.addLineSeries({color:'#38bdf8',lineWidth:1,priceLineVisible:false,lastValueVisible:false,priceFormat:chartPriceFormat(data.line.at(-1)?.value??all.at(-1).close,i18n.language)}).setData(data.line);
+     pane.addLineSeries({color:'#fbbf24',lineWidth:1,priceLineVisible:false,lastValueVisible:false,priceFormat:chartPriceFormat(data.signal.at(-1)?.value??all.at(-1).close,i18n.language)}).setData(data.signal);oscillators.push({chart:pane,label:'MACD 12/26/9'});
    }
    for(const key of ['atr','adx','stoch','obv','cci','mfi','williams','roc','cmf'])if(!compareMode&&workspace[key]&&advancedNodes.current[key]&&advanced[key].length){
      const pane=makeChart(advancedNodes.current[key],{handleScroll:false,handleScale:false,rightPriceScale:{borderVisible:false,scaleMargins:{top:.15,bottom:.15}}});
-     const bounded=['stoch','adx','mfi','williams','cmf'].includes(key),opts={priceLineVisible:false,lastValueVisible:true,lineWidth:1,...(bounded?{autoscaleInfoProvider:()=>({priceRange:{minValue:key==='williams'?-100:key==='cmf'?-1:0,maxValue:key==='williams'?0:key==='cmf'?1:100}})}:{}),...(key==='obv'?{priceFormat:{type:'volume'}}:{})};
+     const bounded=['stoch','adx','mfi','williams','cmf'].includes(key),opts={priceLineVisible:false,lastValueVisible:true,lineWidth:1,...(bounded?{autoscaleInfoProvider:()=>({priceRange:{minValue:key==='williams'?-100:key==='cmf'?-1:0,maxValue:key==='williams'?0:key==='cmf'?1:100}})}:{}),...(key==='obv'?{priceFormat:{type:'volume'}}:key==='atr'?{priceFormat:chartPriceFormat(advanced.atr.at(-1)?.value??all.at(-1).close,i18n.language)}:{})};
      pane.addLineSeries({...opts,color:'#38bdf8',title:key.toUpperCase()}).setData(advanced[key].map(p=>({time:p.time,value:p.value})));
      if(key==='adx')for(const [field,color] of [['pdi','#34d399'],['mdi','#fb7185']])pane.addLineSeries({...opts,color,title:field==='pdi'?'+DI':'−DI',lastValueVisible:false}).setData(advanced.adx.map(p=>({time:p.time,value:p[field]})));
      if(key==='stoch')pane.addLineSeries({...opts,color:'#fbbf24',title:'%D',lastValueVisible:false}).setData(advanced.stoch.filter(p=>Number.isFinite(p.signal)).map(p=>({time:p.time,value:p.signal})));

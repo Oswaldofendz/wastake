@@ -10,7 +10,7 @@ import {validateItem} from '../src/services/fundamentalsAnalysisService.js';
 import {evaluateAlertCondition} from '../src/services/alertConditions.js';
 import {compareEconomicValues,numericEventValue} from '../../frontend/src/utils/calendar.js';
 import {rsiPoints,bollingerPoints} from '../../frontend/src/utils/chartWorkspace.js';
-import {formatNumeric,quotePrecision} from '../../frontend/src/utils/numberFormat.js';
+import {formatNumeric,quotePrecision,chartPriceFormat} from '../../frontend/src/utils/numberFormat.js';
 import {entrySummary} from '../../frontend/src/utils/entrySummary.js';
 
 const near=(a,b,tolerance=1e-9)=>assert.ok(Number.isFinite(a)&&Number.isFinite(b)&&Math.abs(a-b)<=tolerance,`${a} != ${b}`);
@@ -172,4 +172,12 @@ test('an attractive technical reading cannot conceal stale or mismatched annual 
  assert.equal(entrySummary(input),'favorable');
  for(const yearEnd of ['2020-12-31','2027-12-31','bad'])assert.equal(entrySummary({...input,company:{...company,yearEnd}}),'incomplete');
  assert.equal(entrySummary({...input,company:{...company,flows:{...company.flows,earnings:fact(20,'USD','2024-12-31')}}}),'incomplete');
+});
+
+test('chart axis formatting preserves micro-prices despite floating-point tick-size multiplication',()=>{
+ for(const price of [4.761e-6,1.23456e-9,1.1155734,213.66]) {
+  const f=chartPriceFormat(price,'en');assert.equal(f.type,'custom');assert.ok(f.minMove>0);
+  const shown=Number(f.formatter(price).replaceAll(',',''));assert.ok(Math.abs(shown/price-1)<0.00001);
+ }
+ assert.equal(chartPriceFormat(4.761e-6,'en').formatter(4.761e-6),'0.000004761');
 });
