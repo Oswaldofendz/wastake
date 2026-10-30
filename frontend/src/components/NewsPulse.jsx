@@ -1,10 +1,13 @@
-import {useEffect, useMemo, useState} from 'react';
+import {useMemo, useState} from 'react';
 import {useTranslation} from 'react-i18next';
-import {NEWS_MARKETS, newsPulse} from '../utils/newsSentiment.js';
+import {newsPulse} from '../utils/newsSentiment.js';
 import {newsPulseCopy} from '../i18n/newsPulseCopy.js';
 
 const icons = {stocks:'🏢', crypto:'₿', forex:'💱', commodities:'🛢️', bonds:'🏛️', indices:'📊', etfs:'🧺', asset:'🧭'};
 const colors = ['#f43f5e','#fb923c','#eab308','#84cc16','#14b8a6'];
+// Keep the global overview focused on WaStake's main asset classes. Other
+// market assessments remain in the news data, without seven competing dials.
+const PRIMARY_MARKETS = ['stocks', 'crypto'];
 const point = (v, r = 78) => [100 - r * Math.cos(Math.PI * v), 98 - r * Math.sin(Math.PI * v)];
 const status = (pulse, copy) => pulse.value == null ? copy.empty : pulse.value <= 4 ? copy.adverse : pulse.value >= 6 ? copy.favorable : copy.mixed;
 
@@ -30,19 +33,18 @@ export function NewsPulse({articles = [], asset = false, windowHours = 24, check
   const [selected, setSelected] = useState(null);
   // Clock advances with each source refresh, never the user's unrelated UI filters.
   const now = Date.now();
-  const markets = asset ? ['asset'] : NEWS_MARKETS;
+  const markets = asset ? ['asset'] : PRIMARY_MARKETS;
   const pulses = useMemo(()=>Object.fromEntries(markets.map(market=>[market,newsPulse(articles,{market,asset,now,windowHours})])),[articles,asset,windowHours,checkedAt]);
-  useEffect(()=>{if(!asset&&!selected){const assessed=NEWS_MARKETS.find(market=>pulses[market].value!=null);if(assessed)setSelected(assessed);}},[pulses,selected,asset]);
-  const current = asset ? 'asset' : selected??'stocks', pulse = pulses[current];
+  const current = asset ? 'asset' : markets.includes(selected)?selected:markets.find(market=>pulses[market].value!=null)??markets[0], pulse = pulses[current];
   const format = (n,d=0)=>new Intl.NumberFormat(i18n.language,{minimumFractionDigits:d,maximumFractionDigits:d}).format(n);
   const percent = n => `${format(n*100,1)}%`;
   const rowTitle = row => titleFor?.(row.article) ?? row.article.localizedTitle ?? row.article.title;
   return <section className="my-5 min-w-0 overflow-hidden rounded-2xl border border-teal-800/60 bg-gradient-to-br from-slate-900/70 via-slate-950/70 to-teal-950/35 p-4 sm:p-5" aria-label={asset?copy.asset:copy.title}>
-    <header><p className="text-[10px] font-semibold uppercase tracking-widest text-teal-300">🧭 NEWS PULSE · {asset?`WaStake · ${windowHours/24} d`:copy.window}</p><h2 className="mt-2 text-xl font-semibold">{asset?copy.asset:copy.title}</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">{copy.intro}</p></header>
-    <div className={`mt-4 grid gap-3 ${asset?'max-w-sm':'grid-cols-2 md:grid-cols-3 xl:grid-cols-4'}`}>
+    <header><p className="text-[10px] font-semibold uppercase tracking-widest text-teal-300">🧭 NEWS PULSE · {asset?`WaStake · ${windowHours/24} d`:copy.window}</p><h2 className="mt-2 text-xl font-semibold">{asset?copy.asset:copy.title}</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">{asset?copy.intro:copy.focusIntro}</p></header>
+    <div className={`mt-4 grid gap-3 ${asset?'max-w-sm':'min-[480px]:grid-cols-2'}`}>
       {markets.map(market=>{const p=pulses[market], active=market===current;return <button type="button" key={market} aria-pressed={active} onClick={()=>setSelected(market)} className={`min-w-0 rounded-xl border p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400 ${active?'border-teal-600 bg-teal-950/35':'border-slate-700/70 bg-slate-900/40 hover:border-slate-500'}`}>
-        <h3 className="truncate text-sm font-semibold text-slate-200">{icons[market]} {copy[market]}</h3><Dial pulse={p} label={copy[market]} copy={copy} format={format}/>
-        <p className={`mt-2 text-center text-[11px] leading-4 ${p.value==null?'text-slate-500':'text-slate-300'}`}>{p.value==null?copy.empty:`${p.events} ${p.events===1?copy.event:copy.events}`}</p>
+        <h3 className="truncate text-sm font-semibold text-slate-200">{icons[market]} {copy[market]}</h3>
+        {p.value==null?<div className="mt-3 rounded-lg bg-slate-800/40 p-4"><p className="text-sm font-medium text-slate-300">{copy.empty}</p><p className="mt-2 text-xs leading-5 text-slate-400">{p.available?copy.emptyHelp:copy.noNews}</p></div>:<><Dial pulse={p} label={copy[market]} copy={copy} format={format}/><p className="mt-2 text-center text-[11px] leading-4 text-slate-300">{p.events} {p.events===1?copy.event:copy.events}</p></>}
         {p.value!=null&&p.limited&&<p className="mt-1 text-center text-[10px] text-amber-300">◐ {copy.limited}</p>}
       </button>;})}
     </div>

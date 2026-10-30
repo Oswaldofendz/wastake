@@ -1,5 +1,6 @@
 const rows = {
- title: ['¿Qué tono domina en cada mercado?', 'Which news tone leads each market?', 'Que tom domina em cada mercado?'],
+ title: ['Pulso de acciones y cripto', 'Stocks and crypto news pulse', 'Pulso de ações e cripto'],
+ focusIntro: ['Dos mercados, una lectura clara. La nota pondera la relevancia y la evidencia de las noticias. Selecciona un mercado para ver qué mueve su aguja.', 'Two markets, one clear view. Scores weight news relevance and evidence. Select a market to see what moves its needle.', 'Dois mercados, uma leitura clara. A nota pondera a relevância e a evidência das notícias. Selecione um mercado para ver o que move a sua agulha.'],
  intro: ['La influencia importa más que contar titulares. Selecciona un tacómetro para ver las noticias que lo mueven.', 'Influence matters more than headline counts. Select a gauge to see the reports behind it.', 'A influência importa mais do que contar títulos. Selecione um indicador para ver as notícias que o movem.'],
  stocks: ['Acciones', 'Stocks', 'Ações'], crypto: ['Cripto', 'Crypto', 'Cripto'], forex: ['Divisas', 'Currencies', 'Divisas'],
  commodities: ['Materias primas', 'Commodities', 'Matérias-primas'], bonds: ['Bonos', 'Bonds', 'Obrigações'], indices: ['Índices', 'Indices', 'Índices'], etfs: ['ETF', 'ETFs', 'ETF'],
