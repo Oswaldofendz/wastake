@@ -228,9 +228,10 @@ async function analyzeFreshNews(news, lang = 'es', target = '') {
     const cacheItems = {};
     let analyzedCount = 0;
     let repairAttempts = 0;
-    for (let start = 0; start < eligible.length; start += 5) {
+    const batchSize=target?.type==='market'?3:5;
+    for (let start = 0; start < eligible.length; start += batchSize) {
       if(budget.aborted)break;
-      const batch = eligible.slice(start, start + 5);
+      const batch = eligible.slice(start, start + batchSize);
       let result;
       try {
         result = await callLLM(buildPrompt(batch.map(({ article }) => article), locale, target), {
@@ -241,7 +242,7 @@ async function analyzeFreshNews(news, lang = 'es', target = '') {
           signal: budget,
         });
       } catch (error) {
-        console.warn(`[fundamentals-events] AI batch ${Math.floor(start / 5) + 1} unavailable: ${error.message}`);
+        console.warn(`[fundamentals-events] AI batch ${Math.floor(start / batchSize) + 1} unavailable: ${error.message}`);
         continue;
       }
 
@@ -312,7 +313,7 @@ async function analyzeFreshNews(news, lang = 'es', target = '') {
 export function createStoryAnalysisCache(analyze=analyzeFreshNews,{now=Date.now}={}){
 const storyAnalysis=new Map();
 return async function enrich(news,lang='es',target=''){
- const key=a=>crypto.createHash('sha256').update(JSON.stringify([VERSION,lang,target,a.link,a.title,a.pubDate,a.snippet])).digest('hex');
+ const key=a=>crypto.createHash('sha256').update(JSON.stringify([VERSION,lang,target,a.link,a.title,a.snippet])).digest('hex');
  const output=news.map(a=>({...a})),missing=[];
  for(let index=0;index<Math.min(10,output.length);index++){
   const article=output[index],cached=storyAnalysis.get(key(article));
@@ -322,7 +323,8 @@ return async function enrich(news,lang='es',target=''){
  if(missing.length){result=await analyze(missing.map(item=>item.article),lang,target);
   missing.forEach(({index,article},i)=>{
    const analyzed=result.news[i];if(!analyzed)return;output[index]=analyzed;
-   if(analyzed.analysisProvider){const fields=['localizedTitle','sentiment','impact','score','relevance','confidence','category','summary','mechanism','watch','horizon','scenarios','evidenceQuote','factors','limitations','analysisDepth','analysisProvider','analysisVersion'];const value=Object.fromEntries(fields.filter(key=>analyzed[key]!==undefined).map(key=>[key,analyzed[key]]));storyAnalysis.set(key(article),{value,until:now()+60*60000});}
+   if(analyzed.analysisProvider){analyzed.analysisReviewedAt??=new Date(now()).toISOString();}
+   if(analyzed.analysisProvider){const fields=['localizedTitle','sentiment','impact','score','relevance','confidence','category','summary','mechanism','watch','horizon','scenarios','evidenceQuote','factors','limitations','analysisDepth','analysisProvider','analysisVersion','analysisReviewedAt'];const value=Object.fromEntries(fields.filter(key=>analyzed[key]!==undefined).map(key=>[key,analyzed[key]]));storyAnalysis.set(key(article),{value,until:now()+60*60000});}
   });
  }
  while(storyAnalysis.size>600)storyAnalysis.delete(storyAnalysis.keys().next().value);

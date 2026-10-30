@@ -32,7 +32,15 @@ export function createNewsSnapshotService({read=getRawNewsForAsset,readGlobal=re
    const revision=entry.revision,input=entry.news.map(a=>({...a}));busy++;entry.aiStatus='pending';
    entry.analysisJob=Promise.resolve().then(()=>analyze(input,lang,target)).then(result=>{
     if(!Array.isArray(result?.news))throw new Error('Invalid news analysis');
-    if(entry.revision===revision){const latest=new Map(entry.news.map(a=>[signature(a),a]));entry.news=result.news.map(a=>({...a,sourceStale:latest.get(signature(a))?.sourceStale,sourceFetchedAt:latest.get(signature(a))?.sourceFetchedAt,priority:latest.get(signature(a))?.priority,priorityFactors:latest.get(signature(a))?.priorityFactors,marketCategory:latest.get(signature(a))?.marketCategory}));entry.aiStatus=result.aiStatus;entry.analysisRevision=revision;entry.analysisAsOf=new Date(now()).toISOString();entry.nextAnalysis=now()+(result.analyzedCount?300000:60000);}
+    const assessed=new Map(result.news.map(a=>[signature(a),a]));
+    const fields=['localizedTitle','sentiment','impact','score','relevance','confidence','category','summary','mechanism','watch','horizon','scenarios','evidenceQuote','factors','limitations','analysisDepth','analysisProvider','analysisVersion','analysisReviewedAt'];
+    // Apply a completed assessment only to the exact story still present. A new
+    // headline must neither erase valid context nor receive another story's AI.
+    entry.news=entry.news.map(current=>{const assessment=assessed.get(signature(current));return assessment?{...current,...Object.fromEntries(fields.filter(key=>assessment[key]!==undefined).map(key=>[key,assessment[key]]))}:current;});
+    const count=entry.news.filter(a=>a.analysisProvider).length;
+    entry.aiStatus=count>=Math.min(10,entry.news.length)?'ready':count?'partial':result.aiStatus;
+    entry.analysisRevision=revision;entry.analysisAsOf=new Date(now()).toISOString();
+    entry.nextAnalysis=entry.revision===revision?now()+(result.analyzedCount?300000:60000):now();
    }).catch(()=>{entry.aiStatus='unavailable';entry.nextAnalysis=now()+60000;}).finally(()=>{busy--;entry.analysisJob=null;});
   }
   return {id:target.id,type:target.type,lang,news:entry.news,count:entry.news.length,analyzedCount:entry.news.filter(a=>a.analysisProvider).length,aiStatus:entry.aiStatus,revalidating:Boolean(entry.sourceJob||entry.analysisJob||entry.queued||entry.feedRefreshing),checkedAt:entry.checkedAt,analysisAsOf:entry.analysisAsOf??null,sourceStatus:entry.sourceStatus,sources:entry.sources??[],dataAsOf:entry.dataAsOf??null,stale:Boolean(entry.sourceStale)||!entry.checkedAt||now()-Date.parse(entry.checkedAt)>(target.type==='market'?60000:120000),scoringVersion:'keyword-rules-v1'};

@@ -69,9 +69,19 @@ test('new reports analyze only uncached stories, with language, target, expiry a
  const enrich=createStoryAnalysisCache(async(news,lang,target)=>{calls.push(news.map(a=>a.title));return{news:news.map(a=>({...a,summary:'Synthetic reviewed context',analysisProvider:'test-provider',analysisVersion:'test'})),aiStatus:'ready',analyzedCount:news.length};},{now:()=>instant});
  const a={title:'Report A',link:'https://www.cnbc.com/a',pubDate:new Date(now-1000).toISOString(),snippet:'Source A'},b={...a,title:'Report B',link:'https://www.cnbc.com/b'},c={...a,title:'Report C',link:'https://www.cnbc.com/c'},target={id:'global',type:'market'};
  assert.equal((await enrich([a,b],'es',target)).analyzedCount,2);
- const fresh=await enrich([{...a,sourceStale:true,sourceFetchedAt:'new-source-time'},b,c],'es',target);
+ const fresh=await enrich([{...a,pubDate:new Date(now).toISOString(),sourceStale:true,sourceFetchedAt:'new-source-time'},b,c],'es',target);
  assert.deepEqual(calls[1],['Report C']);assert.equal(fresh.news[0].sourceStale,true);assert.equal(fresh.news[0].sourceFetchedAt,'new-source-time');assert.equal(fresh.analyzedCount,3);
  await enrich([a],'en',target);assert.equal(calls.length,3);
  await enrich([a],'es',{id:'AAPL',type:'stock'});assert.equal(calls.length,4);
  instant+=3600001;await enrich([a],'es',target);assert.equal(calls.length,5);
+});
+
+test('a new headline arriving during analysis preserves exact-story context without copying it onto the new report',async()=>{
+ let instant=now,finish;const pending=new Promise(resolve=>{finish=resolve;});
+ const a={title:'Report A',link:'https://www.cnbc.com/a',pubDate:new Date(now-1000).toISOString(),snippet:'Evidence A'},b={...a,title:'Report B',link:'https://www.cnbc.com/b',snippet:'Evidence B'};let rows=[a];
+ const service=createNewsSnapshotService({readGlobal:async()=>Object.assign(rows,{sourceStatus:'ok',sourceCheckedAt:new Date(instant).toISOString()}),analyze:async()=>pending,now:()=>instant});
+ const target={id:'global',type:'market',aliases:[]};await service(target);
+ instant+=61000;rows=[b,a];await service(target,'es',false);await new Promise(r=>setImmediate(r));
+ finish({news:[{...a,analysisProvider:'test-provider',summary:'Only A was reviewed',sourceStale:true}],analyzedCount:1,aiStatus:'ready'});await new Promise(r=>setImmediate(r));
+ const result=await service(target,'es',false);assert.equal(result.count,2);assert.equal(result.news.find(n=>n.title==='Report A').summary,'Only A was reviewed');assert.equal(result.news.find(n=>n.title==='Report B').analysisProvider,undefined);assert.equal(result.aiStatus,'partial');
 });

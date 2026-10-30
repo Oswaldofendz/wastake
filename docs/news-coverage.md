@@ -38,7 +38,7 @@ Los titulares aparecen antes que la IA. Se prioriza para análisis una muestra d
 
 Cuando hay análisis válido, su relevancia pondera gravedad 25%, vínculo 25%, sorpresa 20%, persistencia 15% y evidencia 15%. Cuando no lo hay, la interfaz muestra **prioridad preliminar**, extracto atribuido y una guía por categoría, diferenciada del contexto específico de IA.
 
-Los proveedores siguen siendo los configurados previamente en Render (Groq/Gemini). No se contratan planes ni se cambian sus límites. La disponibilidad depende de sus cuotas. El análisis válido de cada historia se reutiliza durante una hora, por idioma y objetivo; al llegar un titular nuevo se analizan las historias no almacenadas. El contenido modificado invalida la clave. Caché acotada a 600 análisis.
+Los proveedores siguen siendo los configurados previamente en Render (Groq/Gemini). No se contratan planes ni se cambian sus límites. La disponibilidad depende de sus cuotas. El análisis válido de cada historia se reutiliza durante una hora, por idioma y objetivo; al llegar un titular nuevo se analizan las historias no almacenadas. El título, extracto o enlace modificado invalida la clave; un cambio solo de fecha de publicación conserva el contexto y su hora de revisión. La llegada de otro titular no descarta una evaluación válida de una historia que siga presente. Los lotes globales son de hasta tres historias para reducir respuestas truncadas. Caché acotada a 600 análisis.
 
 ## Actualización y velocidad
 
