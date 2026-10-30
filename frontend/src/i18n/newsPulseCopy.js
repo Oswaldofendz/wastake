@@ -9,7 +9,7 @@ const rows = {
  empty: ['Sin evaluación suficiente', 'Not enough assessment', 'Sem avaliação suficiente'],
  emptyHelp: ['Hay titulares, pero aún no una lectura contextual con evidencia para este mercado. No significa que esté neutral.', 'Headlines exist, but there is no evidence-backed contextual reading for this market yet. This does not mean neutral.', 'Há títulos, mas ainda não existe uma leitura contextual com evidência para este mercado. Não significa neutralidade.'],
  noNews: ['Sin noticias válidas en este periodo.', 'No valid news in this period.', 'Sem notícias válidas neste período.'],
- limited: ['Muestra limitada', 'Limited sample', 'Amostra limitada'], events: ['eventos evaluados', 'assessed events', 'eventos avaliados'],
+ limited: ['Muestra limitada', 'Limited sample', 'Amostra limitada'], event: ['evento evaluado', 'assessed event', 'evento avaliado'], events: ['eventos evaluados', 'assessed events', 'eventos avaliados'],
  evaluated: ['titulares con evaluación', 'assessed reports', 'títulos com avaliação'], available: ['titulares disponibles', 'available reports', 'títulos disponíveis'],
  weight: ['Peso en el tacómetro', 'Weight in the gauge', 'Peso no indicador'], contribution: ['Aporte a la nota', 'Score contribution', 'Contributo para a nota'],
  why: ['Qué está moviendo la aguja', 'What moves the needle', 'O que move a agulha'],

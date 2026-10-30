@@ -1,4 +1,4 @@
-import {useMemo, useState} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {NEWS_MARKETS, newsPulse} from '../utils/newsSentiment.js';
 import {newsPulseCopy} from '../i18n/newsPulseCopy.js';
@@ -27,12 +27,13 @@ function Dial({pulse, label, copy, format}) {
 
 export function NewsPulse({articles = [], asset = false, windowHours = 24, checkedAt, stale = false, titleFor}) {
   const {i18n} = useTranslation(), lang = i18n.language.split('-')[0], copy = newsPulseCopy(lang);
-  const [selected, setSelected] = useState('stocks');
+  const [selected, setSelected] = useState(null);
   // Clock advances with each source refresh, never the user's unrelated UI filters.
   const now = Date.now();
   const markets = asset ? ['asset'] : NEWS_MARKETS;
   const pulses = useMemo(()=>Object.fromEntries(markets.map(market=>[market,newsPulse(articles,{market,asset,now,windowHours})])),[articles,asset,windowHours,checkedAt]);
-  const current = asset ? 'asset' : selected, pulse = pulses[current];
+  useEffect(()=>{if(!asset&&!selected){const assessed=NEWS_MARKETS.find(market=>pulses[market].value!=null);if(assessed)setSelected(assessed);}},[pulses,selected,asset]);
+  const current = asset ? 'asset' : selected??'stocks', pulse = pulses[current];
   const format = (n,d=0)=>new Intl.NumberFormat(i18n.language,{minimumFractionDigits:d,maximumFractionDigits:d}).format(n);
   const percent = n => `${format(n*100,1)}%`;
   const rowTitle = row => titleFor?.(row.article) ?? row.article.localizedTitle ?? row.article.title;
@@ -41,7 +42,7 @@ export function NewsPulse({articles = [], asset = false, windowHours = 24, check
     <div className={`mt-4 grid gap-3 ${asset?'max-w-sm':'grid-cols-2 md:grid-cols-3 xl:grid-cols-4'}`}>
       {markets.map(market=>{const p=pulses[market], active=market===current;return <button type="button" key={market} aria-pressed={active} onClick={()=>setSelected(market)} className={`min-w-0 rounded-xl border p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400 ${active?'border-teal-600 bg-teal-950/35':'border-slate-700/70 bg-slate-900/40 hover:border-slate-500'}`}>
         <h3 className="truncate text-sm font-semibold text-slate-200">{icons[market]} {copy[market]}</h3><Dial pulse={p} label={copy[market]} copy={copy} format={format}/>
-        <p className={`mt-2 text-center text-[11px] leading-4 ${p.value==null?'text-slate-500':'text-slate-300'}`}>{p.value==null?copy.empty:`${p.events} ${copy.events}`}</p>
+        <p className={`mt-2 text-center text-[11px] leading-4 ${p.value==null?'text-slate-500':'text-slate-300'}`}>{p.value==null?copy.empty:`${p.events} ${p.events===1?copy.event:copy.events}`}</p>
         {p.value!=null&&p.limited&&<p className="mt-1 text-center text-[10px] text-amber-300">◐ {copy.limited}</p>}
       </button>;})}
     </div>
