@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchOHLCV } from '../services/api.js';
+import {closedPriceSeries,pairedReturnCorrelation} from '../utils/returnStatistics.js';
 
 const ASSETS = [
   { id: 'bitcoin',  symbol: 'BTC',  type: 'crypto' },
@@ -13,52 +14,6 @@ const ASSETS = [
 
 // Compute returns between shared UTC closing dates. This aligns Friday-to-Monday
 // moves across crypto and exchange-traded assets instead of pairing unlike days.
-function pearson(a, b) {
-  const sharedDates = [...a.keys()].filter(date => b.has(date)).sort().slice(-90);
-  if (sharedDates.length < 11) return null;
-  const ax = [];
-  const bx = [];
-  for (let i = 1; i < sharedDates.length; i++) {
-    const previous = sharedDates[i - 1];
-    const current = sharedDates[i];
-    const aPrev = a.get(previous);
-    const bPrev = b.get(previous);
-    const aNow = a.get(current);
-    const bNow = b.get(current);
-    if (aPrev > 0 && bPrev > 0) {
-      ax.push((aNow - aPrev) / aPrev);
-      bx.push((bNow - bPrev) / bPrev);
-    }
-  }
-  const n = ax.length;
-  if (n < 10) return null;
-  const ma = ax.reduce((s, v) => s + v, 0) / n;
-  const mb = bx.reduce((s, v) => s + v, 0) / n;
-  let num = 0, da = 0, db = 0;
-  for (let i = 0; i < n; i++) {
-    const ra = ax[i] - ma;
-    const rb = bx[i] - mb;
-    num += ra * rb;
-    da  += ra * ra;
-    db  += rb * rb;
-  }
-  if (da < 1e-10 || db < 1e-10) return null;
-  const r = num / Math.sqrt(da * db);
-  return isNaN(r) ? null : Math.max(-1, Math.min(1, r));
-}
-
-// Closing prices keyed by UTC day; pairs use only shared observation dates.
-function closeSeries(candles) {
-  const ordered = [...candles]
-    .filter(c => Number.isFinite(c.time) && Number.isFinite(c.close) && c.close > 0)
-    .sort((a, b) => a.time - b.time);
-  const result = new Map();
-  for (const current of ordered) {
-    const date = new Date(current.time * 1000).toISOString().slice(0, 10);
-    result.set(date, current.close);
-  }
-  return result;
-}
 
 function dailyReturns(series) {
   const closes = [...series.values()];
@@ -130,6 +85,7 @@ export function CorrelationMatrix() {
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState(null);
   const [availableCount, setAvailableCount] = useState(0);
+  const [pairCounts,setPairCounts]=useState(null);
 
   const load = useCallback(async () => {
       setLoading(true);
@@ -145,7 +101,7 @@ export function CorrelationMatrix() {
               );
               const candles = Array.isArray(raw) ? raw : raw?.candles ?? [];
               if (candles.length < 10) return new Map();
-              return closeSeries(candles);
+              return closedPriceSeries(candles);
             } catch {
               return new Map();
             }
@@ -157,13 +113,13 @@ export function CorrelationMatrix() {
         setAvailableCount(usableCount);
 
         const n = ASSETS.length;
-        const mat = Array.from({ length: n }, (_, i) =>
+        const stats = Array.from({ length: n }, (_, i) =>
           Array.from({ length: n }, (_, j) => {
-            if (i === j) return allReturns[i].size ? 1 : null;
-            if (!allReturns[i].size || !allReturns[j].size) return null;
-            return pearson(allReturns[i], allReturns[j]);
+            return pairedReturnCorrelation(allReturns[i],allReturns[j]);
           })
         );
+        const mat=stats.map(row=>row.map(cell=>cell.value));
+        setPairCounts(stats.map(row=>row.map(cell=>cell.count)));
         setMatrix(mat);
         const cumulativeReturns = allReturns.map(rets => {
           if (!rets.size) return [];
@@ -254,7 +210,7 @@ export function CorrelationMatrix() {
                     <td key={col.id} className="p-0.5">
                       <div
                         className={`h-10 rounded flex items-center justify-center font-mono font-bold text-xs ${corrColor(r)} ${isDiag && r != null ? 'opacity-40' : ''}`}
-                        title={`${row.symbol} / ${col.symbol}: ${r != null ? r.toFixed(4) : '—'}`}
+                        title={`${row.symbol} / ${col.symbol}: ${r != null ? r.toFixed(4) : '—'} · n=${pairCounts?.[i]?.[j]??0}`}
                       >
                         {corrLabel(r)}
                       </div>

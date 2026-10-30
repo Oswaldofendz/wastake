@@ -5,6 +5,7 @@ import { getAnalysisType } from '../data/assetCatalog.js';
 import { AssetRangeContext } from './AssetRangeContext.jsx';
 import { ScoreGauge, ComponentScore } from './TechnicalScore.jsx';
 import { ANALYSIS_DAYS } from '../utils/marketConventions.js';
+import {formatNumeric} from '../utils/numberFormat.js';
 
 // ── Indicator education content ───────────────────────────────
 const INDICATOR_INFO = {
@@ -119,10 +120,6 @@ function useAnalysis(asset, days = ANALYSIS_DAYS) {
 
 // ── Helpers ───────────────────────────────────────────────────
 
-function fmtValue(v) {
-  if (v == null) return '—';
-  return typeof v === 'number' ? v.toFixed(2) : v;
-}
 
 // ── Fear & Greed inline ───────────────────────────────────────
 function FearGreedInline() {
@@ -262,7 +259,8 @@ function Skeleton() {
 // ── Main component ────────────────────────────────────────────
 
 export function AnalysisPanel({ asset, days = ANALYSIS_DAYS, onAnalysis }) {
-  const { t } = useTranslation();
+  const { t,i18n } = useTranslation();
+  const fmtValue=v=>formatNumeric(v,i18n.language);
   const { data, loading, error } = useAnalysis(asset, days);
   const [activeInfo, setActiveInfo]   = useState(null); // { shortName, ...INDICATOR_INFO }
   useEffect(()=>{onAnalysis?.({id:asset?.id,type:asset?.type,analysis:data,loading:loading||(!data&&!error),error});},[asset?.id,asset?.type,data,loading,error,onAnalysis]);

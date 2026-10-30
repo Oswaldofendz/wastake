@@ -18,6 +18,7 @@ export function PortfolioOverview({ positions, onAdd, onDca, onExplore }) {
       ['portfolio_assets',metrics.assets],['portfolio_concentration',metrics.concentration==null?'—':`${metrics.concentration.toFixed(1)}%`],['portfolio_coverage',`${metrics.quoted} / ${metrics.count}`],
     ].map(([label,value])=><div key={label} className="rounded-lg border border-slate-700/50 p-3"><p className="text-xs text-slate-400">{t(label)}</p><p className="mt-1 font-mono text-xl">{value}</p></div>)}</div>
     {metrics.quoted<metrics.count&&<p role="status" className="mt-3 text-sm text-amber-300">{t('portfolio_missing')}</p>}
+    {!metrics.costComplete&&<p role="status" className="mt-3 text-sm text-amber-300">{t('quant_missing_cost')}</p>}
     <p className="mt-3 text-xs leading-5 text-slate-400">{t('portfolio_method')}</p></>}
     <details className="mt-4 border-t border-slate-700/50 pt-3" open={empty?true:undefined}>
       <summary className="cursor-pointer text-sm font-semibold">{t('portfolio_plan')}</summary>

@@ -20,6 +20,8 @@ export function CryptoResearchCard({asset}){
   <h3 className="text-xl font-semibold">{t('crypto_title')}</h3><p className="mt-2 text-sm leading-relaxed text-slate-300">{t('crypto_intro')}</p>
   {!data&&!error?<p role="status" className="py-5 text-sky-200">{t('crypto_loading')}</p>:error?<p role="status" className="mt-4 text-amber-200">{t('crypto_error')} <button type="button" className="min-h-10 underline" onClick={()=>setAttempt(n=>n+1)}>{t('retry')}</button></p>:<>
   <ResearchCoverage data={data} type="crypto"/>
+  {data.supplyConsistent===false&&<p role="status" className="mt-3 text-xs leading-6 text-amber-200">{t('quant_supply_invalid')}</p>}
+  {!data.fdvMethod&&<p className="mt-3 text-xs leading-6 text-slate-400">{t('quant_fdv_reported')}</p>}
   <p translate="no" className="mt-4 font-semibold">{data.name} · {data.symbol}{data.rank?` · #${data.rank}`:''}</p>
   {data.description&&<p translate="no" lang={description?lang:'en'} className="mt-2 text-sm leading-relaxed text-slate-300">{description||data.description}</p>}
   {lang!=='en'&&data.description&&!description&&<div className="mt-1 text-xs text-amber-200" role="status"><p>{t(translating?'valuation.translating':'valuation.original')}</p>{!translating&&<button type="button" className="min-h-10 underline" onClick={()=>setTranslationAttempt(n=>n+1)}>{t('valuation.retryTranslation')}</button>}</div>}

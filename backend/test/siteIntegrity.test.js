@@ -78,7 +78,7 @@ test('missing RSI and quote fields cannot trigger price, percentage or technical
  const base={asset_id:'AAPL',asset_type:'stock',target_value:100},quote={id:'AAPL',currency:'USD',price:100,change24h:0,quoteAsOf:new Date(now-60000).toISOString()};
  assert.equal(evaluateAlertCondition({...base,alert_type:'price_below'},{...quote,price:null},null,now),false);
  assert.equal(evaluateAlertCondition({...base,alert_type:'rsi_oversold'},null,{indicators:{rsi:{current:null}}},now),false);
- assert.equal(evaluateAlertCondition({...base,alert_type:'rsi_oversold'},null,{indicators:{rsi:{current:0}}},now),true);
+ assert.equal(evaluateAlertCondition({...base,alert_type:'rsi_oversold'},null,{meta:{to:now/1000-86400},indicators:{rsi:{current:0}}},now),true);
  assert.equal(evaluateAlertCondition({...base,alert_type:'change_below',target_value:2},{...quote,change24h:null},null,now),false);
  assert.equal(evaluateAlertCondition({...base,alert_type:'price_above'},quote,null,now),true);
  assert.equal(evaluateAlertCondition({...base,alert_type:'price_above'},{...quote,currency:'JPY'},null,now),false);

@@ -22,10 +22,20 @@ export function calendarTitle(event, t, language) {
 
 export function numericEventValue(value) {
   if (value == null || !String(value).trim()) return null;
-  const source = String(value).trim().replace(/,/g, '');
-  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)\s*(?:%|[KMB])?$/i.test(source)) return null;
+  // The upstream feed uses English numeric notation. Validate grouping before
+  // removing commas; a localized/ambiguous 5,2% must not become 52%.
+  const original=String(value).trim();
+  if (!/^[+-]?(?:\d{1,3}(?:,\d{3})+(?:\.\d*)?|\d+(?:\.\d*)?|\.\d+)\s*(?:%|[KMB])?$/i.test(original)) return null;
+  const source = original.replace(/,/g, '');
   const unit = source.match(/[KMB]$/i)?.[0].toUpperCase();
-  return parseFloat(source) * ({ K: 1e3, M: 1e6, B: 1e9 }[unit] ?? 1);
+  const number=parseFloat(source) * ({ K: 1e3, M: 1e6, B: 1e9 }[unit] ?? 1);
+  return Number.isFinite(number)?number:null;
+}
+
+export function compareEconomicValues(actual,forecast) {
+  const a=numericEventValue(actual),f=numericEventValue(forecast);
+  if(a===null||f===null||String(actual).trim().endsWith('%')!==String(forecast).trim().endsWith('%'))return null;
+  return a===f?'inline':a>f?'above':'below';
 }
 
 export function classifyEconomicEvent(title = '') {

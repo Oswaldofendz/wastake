@@ -68,7 +68,7 @@ function scoreTone(value) {
 function AssetFundamentals({initialAsset=null}) {
   const { i18n, t: translate } = useTranslation();
   const lang = languageCode(i18n.resolvedLanguage || i18n.language);
-  const t = COPY[lang];
+  const t = {...COPY[lang],after:translate('quant_daily_reaction'),methodDetails:translate('quant_daily_reaction_method')};
   const analysisLabels = { ...ANALYSIS_LABELS[lang], ...FALLBACK_LABELS[lang] };
   const baseAssets = useMemo(() => {const list=ALL_ASSETS.filter(asset=>asset.analysisType);return initialAsset&&!list.some(a=>a.id===initialAsset.id)?[initialAsset,...list]:list;}, [initialAsset]);
   const [selectedAsset,selectAsset]=useAssetRoute(initialAsset??baseAssets[0],baseAssets);

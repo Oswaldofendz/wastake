@@ -13,6 +13,8 @@ export function evaluateAlertCondition(alert,quote,analysis,now=Date.now()){
   if(!Number.isFinite(quote.change24h))return false;
   return type==='change_above'?quote.change24h>=target:type==='change_below'?quote.change24h<=target:false;
  }
+ const asOf=analysis?.meta?.to*1000,maxAge=(alert.asset_type==='crypto'?3:5)*86400000;
+ if(!Number.isFinite(asOf)||asOf>now||now-asOf>maxAge)return false;
  const rsi=analysis?.indicators?.rsi?.current,histogram=analysis?.indicators?.macd?.current?.histogram;
  if(type==='rsi_overbought')return Number.isFinite(rsi)&&rsi>=70;
  if(type==='rsi_oversold')return Number.isFinite(rsi)&&rsi<=30;

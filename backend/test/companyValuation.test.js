@@ -16,7 +16,7 @@ test('quick reading uses the existing score boundaries and never invents missing
   assert.equal(entrySummary({analysis:{summary:{score10:9,coverage:65}}}),'incomplete');
 });
 test('bullish technicals cannot conceal losses, negative cash flow or unavailable company accounts',()=>{
-  const input={isStock:true,analysis:{summary:{score10:8,coverage:100}},company:{yearEnd:'2025-12-31',company:{sector:'Technology'},flows:{earnings:fact(30),operatingCashFlow:fact(50),capex:fact(-10)}}};
+  const input={isStock:true,now:Date.UTC(2026,9,30),analysis:{summary:{score10:8,coverage:100}},company:{yearEnd:'2025-12-31',company:{sector:'Technology'},flows:{earnings:fact(30),operatingCashFlow:fact(50),capex:fact(-10)}}};
   assert.equal(entrySummary(input),'favorable');
   assert.equal(entrySummary({...input,company:null}),'incomplete');
   assert.equal(entrySummary({...input,company:{...input.company,company:null}}),'incomplete');

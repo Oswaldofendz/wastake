@@ -28,7 +28,7 @@ export function evaluateCandidate(asset,snapshot,research,now=Date.now()){
   if(research?.id!==asset.id)return reject('identity');
   if(/stablecoin|wrapped|pegged|rebasing/i.test([research.name,...research.categories??[]].join(' '))||/^(tether|usd-coin|dai|ethena-usde|usds|usdd|first-digital-usd|paypal-usd|pax-dollar|true-usd|frax|usd1|usdd-2)$/.test(asset.id))return reject('pegged');
   const age=now-Date.parse(research.dataAsOf),fdvToCap=research.fdv/research.marketCap;
-  if(!Number.isFinite(age)||age<0||age>36*3600000||!(research.marketCap>=100e6)||!(research.volume24h>=5e6)||!(research.circulating>0)||!(research.totalSupply>0||research.maxSupply>0)||!Number.isFinite(fdvToCap)||fdvToCap<.9||fdvToCap>3)return reject('crypto_data_risk');
+  if(research.supplyConsistent===false||(research.maxSupply>0&&research.circulating>research.maxSupply)||(research.totalSupply>0&&research.circulating>research.totalSupply)||!Number.isFinite(age)||age<0||age>36*3600000||!(research.marketCap>=100e6)||!(research.volume24h>=5e6)||!(research.circulating>0)||!(research.totalSupply>0||research.maxSupply>0)||!Number.isFinite(fdvToCap)||fdvToCap<.9||fdvToCap>3)return reject('crypto_data_risk');
   fundamentals={marketCap:research.marketCap,volume24h:research.volume24h,fdvToCap,period:research.dataAsOf,currency:'USD',source:research.source,url:research.sourceUrl};
  }
  return {eligible:true,asset:{id:asset.id,type:asset.type,name:asset.name,symbol:asset.symbol,image:asset.image},score:f.score,

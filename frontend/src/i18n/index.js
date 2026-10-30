@@ -1,4 +1,5 @@
 import {worldNewsCopy} from './worldNewsCopy.js';
+import {quantitativeCopy} from './quantitativeCopy.js';
 import {integrityCopy} from './integrityCopy.js';
 import {easyCopy} from './easyCopy.js';
 import {cycleCopy} from './cycleCopy.js';
@@ -759,6 +760,7 @@ for (const [lang,copy] of Object.entries(easyCopy)) Object.assign(resources[lang
 for(const [lang,copy] of Object.entries(integrityCopy))Object.assign(resources[lang].translation,copy);
 
 for(const [lang,copy] of Object.entries(worldNewsCopy))Object.assign(resources[lang].translation,copy);
+for(const [lang,copy] of Object.entries(quantitativeCopy))Object.assign(resources[lang].translation,copy);
 
 i18n
   .use(LanguageDetector)

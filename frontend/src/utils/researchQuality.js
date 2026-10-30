@@ -2,7 +2,7 @@ const finite=n=>Number.isFinite(n);
 export function researchQuality(data,type,now=Date.now()){
  const checks=type==='crypto'?{
   identity:!!data?.id&&!!data?.symbol,price:data?.price>0,capitalization:data?.marketCap>0,
-  volume:finite(data?.volume24h)&&data.volume24h>0,supply:data?.circulating>0,
+  volume:finite(data?.volume24h)&&data.volume24h>0,supply:data?.circulating>0&&data?.supplyConsistent!==false&&(!(data?.maxSupply>0)||data.circulating<=data.maxSupply)&&(!(data?.totalSupply>0)||data.circulating<=data.totalSupply),
   dilution:data?.fdv>0&&(data?.totalSupply>0||data?.maxSupply>0),
   date:finite(Date.parse(data?.dataAsOf))&&Date.parse(data.dataAsOf)<=now&&now-Date.parse(data.dataAsOf)<=36*3600000,
   profile:!!data?.description,

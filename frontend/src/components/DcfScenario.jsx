@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { evaluateDcf, dcfSensitivity } from '../utils/companyValuation.js';
+import { evaluateDcf, dcfSensitivity, financialQuote } from '../utils/companyValuation.js';
 
 const adjustments=['cash','debt','preferred','minority','nonOperatingAssets','otherClaims'];
 export function DcfScenario({data,onResult}) {
@@ -10,8 +10,8 @@ export function DcfScenario({data,onResult}) {
   const currency=data.flows?.revenue?.currency;
   const number=key=>fields[key]?.trim()?Number(fields[key]):NaN;
   const q=data.quote;
-  const quoteCurrency=q?.currency==='GBp'?'GBP':q?.currency;
-  const price=quoteCurrency===currency&&Number.isFinite(q?.price)?q.price/(q.currency==='GBp'?100:1):null;
+  const normalizedQuote=financialQuote(q);
+  const price=normalizedQuote.currency===currency?normalizedQuote.unitPrice:null;
   const input={cashFlows:[1,2,3,4,5].map(n=>number(`fcff${n}`)),wacc:number('wacc')/100,g:number('g')/100,shares:number('diluted'),margin:number('margin')/100,price,...Object.fromEntries(adjustments.map(key=>[key,number(key)]))};
   const result=useMemo(()=>evaluateDcf(input),[fields,data]);
   useEffect(()=>{onResult?.({...result,currency});},[result,currency,onResult]);

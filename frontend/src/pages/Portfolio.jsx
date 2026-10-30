@@ -739,7 +739,7 @@ export function Portfolio({ user, signIn, signUp, signOut, allAssets, onNavigate
                 subColor={pnlColor(totalPnl)}
               />
               <SummaryCard
-                label="Rentabilidad"
+                label={t('quant_simple_return')}
                 value={fmtPct(totalPnlPct)}
                 subColor={pnlColor(totalPnlPct)}
               />

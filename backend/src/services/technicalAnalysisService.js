@@ -23,15 +23,20 @@ function last(arr) {
   return arr.length ? arr[arr.length - 1] : null;
 }
 
-function round(n, decimals = 4) {
-  if (n == null || isNaN(n)) return null;
-  return parseFloat(n.toFixed(decimals));
+function round(n, decimals) {
+  if (!Number.isFinite(n)) return null;
+  // Price-unit indicators must remain invariant to the asset's denomination.
+  // Fixed four-decimal rounding turned micro-priced tokens into zero.
+  return decimals === undefined ? Number(n.toPrecision(14)) : Number(n.toFixed(decimals));
 }
 
 // ─── Cálculo de indicadores ───────────────────────────────────────────────────
 
 function calcRSI(closes) {
   const values = RSI.calculate({ values: closes, period: PERIODS.rsi });
+  // With no gains AND no losses, RS is 0/0. Use an explicit neutral convention
+  // instead of the library's 100, which falsely made a constant series bullish.
+  if (closes.every(value => value === closes[0])) return {series: values.map(()=>50), current:50};
   return { series: values, current: round(last(values), 2) };
 }
 
@@ -93,7 +98,7 @@ function calcADX(highs, lows, closes) {
   const cur = last(values);
   return {
     series: values,
-    current: cur
+    current: cur && [cur.adx, cur.pdi, cur.mdi].every(Number.isFinite)
       ? { adx: round(cur.adx, 2), pdi: round(cur.pdi, 2), mdi: round(cur.mdi, 2) }
       : null,
   };
@@ -102,10 +107,8 @@ function calcADX(highs, lows, closes) {
 function calcVolume(volumes) {
   const lastVolume = last(volumes);
   const current = Number.isFinite(lastVolume) && lastVolume >= 0 ? lastVolume : null;
-  const window = volumes.slice(0, -1)
-    .filter(value => Number.isFinite(value) && value >= 0)
-    .slice(-PERIODS.volume);
-  const average = window.length
+  const window = volumes.slice(-PERIODS.volume-1, -1);
+  const average = window.length === PERIODS.volume && window.every(value => Number.isFinite(value) && value >= 0)
     ? window.reduce((total, value) => total + value, 0) / window.length
     : null;
   return {
@@ -141,6 +144,7 @@ function interpretEMACross(ema20, ema50) {
 
 function interpretBB(price, bb) {
   if (!bb || price == null) return { signal: 'neutral', label: 'Sin datos' };
+  if (!(bb.upper > bb.lower)) return {signal:'neutral',label:'Bandas sin amplitud; no hay señal direccional'};
   const pct = round(((price - bb.lower) / (bb.upper - bb.lower)) * 100, 1);
   if (price >= bb.upper) return { signal: 'sell',    label: `Precio en banda superior (${pct}%)` };
   if (price <= bb.lower) return { signal: 'buy',     label: `Precio en banda inferior (${pct}%)` };
@@ -156,40 +160,11 @@ function interpretATR(atrValue, price) {
 }
 
 function computeOverallSignal(signals, indicators, lastPrice) {
-  const weights = { macd: 2, ema: 2, rsi: 1.5, bb: 1 };
   const counts = { buy: 0, sell: 0, neutral: 0 };
-  let weightedScore = 0;
-  let totalWeight = 0;
-
   for (const [key, s] of Object.entries(signals)) {
-    if (key === 'adx') continue; // Keep the existing -100..100 score stable for other consumers.
-    const w = weights[key] ?? 1;
+    if (key === 'adx') continue;
     counts[s.signal] = (counts[s.signal] || 0) + 1;
-    if (s.signal === 'buy')  weightedScore += w;
-    if (s.signal === 'sell') weightedScore -= w;
-    totalWeight += w;
   }
-
-  // Bonus: price vs EMA50 (trend confirmation)
-  if (lastPrice && indicators?.ema50?.current) {
-    const bonus = lastPrice > indicators.ema50.current ? 1 : -1;
-    weightedScore += bonus;
-    totalWeight += 1;
-  }
-
-  // Bonus: price vs Bollinger middle (momentum)
-  if (lastPrice && indicators?.bollingerBands?.current?.middle) {
-    const bonus = lastPrice > indicators.bollingerBands.current.middle ? 0.5 : -0.5;
-    weightedScore += bonus;
-    totalWeight += 0.5;
-  }
-
-  const score = round((weightedScore / totalWeight) * 100, 1);
-
-  let overall;
-  if (score > 15)       overall = 'buy';
-  else if (score < -15) overall = 'sell';
-  else                  overall = 'neutral';
 
   const directional = (value) => value == null ? null : Math.sign(value);
   const clamp = (value, min = -1, max = 1) => Math.min(max, Math.max(min, value));
@@ -235,8 +210,11 @@ function computeOverallSignal(signals, indicators, lastPrice) {
   const bias = score10 == null ? 'unavailable' : score10 <= 4 ? 'bearish' : score10 >= 6 ? 'bullish' : 'mixed';
 
   return {
-    overall,
-    score,
+    // Compatibility fields express the SAME index, rather than a second,
+    // contradictory contrarian model used by the older WaPulse endpoint.
+    overall: bias === 'bullish' ? 'buy' : bias === 'bearish' ? 'sell' : 'neutral',
+    score: score10 === null ? null : round((score10-5)*20, 1),
+    version: 'technical-index-v2-precision',
     score10,
     bias,
     coverage: availableWeight,
@@ -260,6 +238,9 @@ export function computeIndicators(candles) {
       `Se necesitan al menos ${MIN_CANDLES} velas. Se recibieron: ${candles?.length ?? 0}`
     );
   }
+  if (!candles.every((c,i)=>c && [c.time,c.open,c.high,c.low,c.close].every(Number.isFinite)
+    && c.low>0 && c.high>=Math.max(c.open,c.close) && c.low<=Math.min(c.open,c.close)
+    && (!i || c.time>candles[i-1].time))) throw new Error('Las velas deben ser válidas, únicas y estar ordenadas');
 
   const closes = candles.map(c => c.close);
   const highs   = candles.map(c => c.high);

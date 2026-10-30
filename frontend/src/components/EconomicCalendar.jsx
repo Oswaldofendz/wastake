@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchCalendar } from '../services/api.js';
-import { localCalendarEvent, localDayKey, calendarTitle, numericEventValue, classifyEconomicEvent } from '../utils/calendar.js';
+import { localCalendarEvent, localDayKey, calendarTitle, compareEconomicValues, classifyEconomicEvent } from '../utils/calendar.js';
 
 // ── Helpers ────────────────────────────────────────────────────
 const IMPACT_STYLES = {
@@ -48,18 +48,10 @@ function classifyEvent(title = '') {
   return classifyEconomicEvent(title);
 }
 
-function numericValue(value) {
-  return numericEventValue(value);
-}
-
 function getEventRead(ev) {
   const category = classifyEvent(ev.title);
-  const actual = numericValue(ev.actual);
-  const forecast = numericValue(ev.forecast);
   if (category === 'other') return { category, surprise: 'mixed' };
-  if (actual == null || forecast == null) return { category, surprise: 'missing' };
-  if (actual === forecast) return { category, surprise: 'inline' };
-  return { category, surprise: actual > forecast ? 'above' : 'below' };
+  return {category,surprise:compareEconomicValues(ev.actual,ev.forecast)??'missing'};
 }
 
 function sourceForEvent(ev, category) {

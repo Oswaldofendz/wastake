@@ -46,6 +46,7 @@ export function AssetValuationCard({asset,technical}) {
   if(asset.type==='crypto')return <><AssetQuickSummary asset={asset} technical={technical}/><CryptoResearchCard asset={asset}/></>;
   return <><AssetQuickSummary asset={asset} data={data} technical={technical} scenario={scenario}/><section className="mb-4 rounded-xl border border-sky-800/70 bg-slate-900/60 p-4 sm:p-5" aria-label={tr(asset.type==='stock'?'title':'assetTitle')}>
     <h3 className="text-xl font-semibold text-white">{tr(asset.type==='stock'?'title':'assetTitle')}</h3><p className="mt-1 text-sm leading-relaxed text-slate-300">{tr(asset.type==='stock'?'intro':'assetIntro')}</p>
+    {asset.id.endsWith('=F')&&<p role="note" className="mt-3 rounded-lg border border-amber-800 p-3 text-xs leading-6 text-amber-200">{t('quant_futures_reference')}</p>}
     {asset.type!=='stock'?<><p className="mt-4 rounded-lg bg-slate-800 p-4 text-sm leading-relaxed">{tr(['etf','crypto','bond'].includes(asset.type)?asset.type:'other')}</p><p className="mt-3 text-sm text-slate-400">{tr('technical')}</p></>:!data&&!state.error?<p role="status" className="py-6 text-sky-200">{tr('loading')}</p>:<>
       {(state.error||data?.partial)&&<div role="status" className="mt-3 rounded-lg border border-amber-800 p-3 text-sm text-amber-200">{tr('unavailable')} <button type="button" onClick={()=>setAttempt(n=>n+1)} className="min-h-10 px-2 underline">{tr('retry')}</button></div>}
       {data&&<><ResearchCoverage data={data} type="stock"/>

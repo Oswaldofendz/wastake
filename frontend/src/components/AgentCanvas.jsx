@@ -1,3 +1,4 @@
+import {quotePrecision} from '../utils/numberFormat.js';
 import {expandedStudies} from '../utils/expandedChartMath.js';
 import {atrAdxPoints,stochasticPoints,obvPoints,vwapPoints} from '../utils/advancedChartMath.js';
 import {forwardRef,useEffect,useMemo,useImperativeHandle,useRef,useState} from 'react';
@@ -50,7 +51,7 @@ export const AgentCanvas=forwardRef(function AgentCanvas({snapshot,asset,workspa
      chart.addLineSeries({color:'#c084fc',lineWidth:2,title:`${workspace.compare?.asset.symbol??asset.symbol} · ${comparison.source}`,priceFormat:format}).setData(performance.right);
      setHandle(null);
    }else{
-     const close=all.at(-1).close,precision=close>=1?2:Math.min(10,Math.max(4,-Math.floor(Math.log10(close))+2)),priceFormat={type:'price',precision,minMove:10**-precision};
+     const close=all.at(-1).close,precision=quotePrecision(close),priceFormat={type:'price',precision,minMove:10**-precision};
      series=chart.addCandlestickSeries({upColor:'#20c997',downColor:'#f16d83',borderVisible:false,wickUpColor:'#20c997',wickDownColor:'#f16d83',priceFormat});series.setData(all);
      for(const period of workspace.ema){const line=chart.addLineSeries({color:({20:'#38bdf8',50:'#a78bfa',200:'#fbbf24'})[period],lineWidth:1,title:`EMA ${period}`,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,priceFormat});line.setData(emaSeries(closed,period));}
      for(const period of workspace.sma??[]){const line=chart.addLineSeries({color:'#fb923c',lineWidth:1,lineStyle:LineStyle.Dashed,title:`SMA ${period}`,priceLineVisible:false,lastValueVisible:false,priceFormat});line.setData(smaPoints(closed,period));}

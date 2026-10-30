@@ -7,6 +7,7 @@ import { getAnalysisType } from '../data/assetCatalog.js';
 import { cleanCandles, emaSeries, significantLevels } from '../utils/chartLevels.js';
 import {timedCandles} from '../utils/timedCandles.js';
 import {DrawingToolbar,DrawingOverlay} from './ChartDrawings.jsx';
+import {quotePrecision} from '../utils/numberFormat.js';
 
 const DAYS = { '1D':1,'1S': 7, '1M': 30, '3M': 90, '6M': 180, '1A': 365 };
 export function CandleChart({ asset, timeframe = '3M',interval='1d' }) {
@@ -55,12 +56,12 @@ export function CandleChart({ asset, timeframe = '3M',interval='1d' }) {
       rightPriceScale:{borderVisible:false,scaleMargins:{top:0.12,bottom:0.1}},
       timeScale:{borderVisible:false,timeVisible:interval!=='1d',secondsVisible:false},localization:{locale:i18n.language}});
     const close=all.at(-1).close;
-    const precision=close>=1?2:Math.min(8,Math.max(4,-Math.floor(Math.log10(close))+2));
-    const series=chart.addCandlestickSeries({upColor:'#16b981',downColor:'#f05262',borderVisible:false,wickUpColor:'#16b981',wickDownColor:'#f05262',priceFormat:{type:'price',precision,minMove:10**(-precision)}});
+    const precision=quotePrecision(close),priceFormat={type:'price',precision,minMove:10**(-precision)};
+    const series=chart.addCandlestickSeries({upColor:'#16b981',downColor:'#f05262',borderVisible:false,wickUpColor:'#16b981',wickDownColor:'#f05262',priceFormat});
     series.setData(all);
     setHandle({id:crypto.randomUUID(),chart,series,candles:all});
     if(emaOn) [20,50].forEach((period,index)=>{
-      const line=chart.addLineSeries({color:index?'#a78bfa':'#38bdf8',lineWidth:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+      const line=chart.addLineSeries({color:index?'#a78bfa':'#38bdf8',lineWidth:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,priceFormat});
       line.setData(emaSeries(all,period).filter(p=>p.time>=cutoff));
     });
     const key=`${asset.type}:${asset.id}:${interval}:${timeframe}`;

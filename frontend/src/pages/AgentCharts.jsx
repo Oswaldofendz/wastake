@@ -8,6 +8,7 @@ import {DrawingToolbar} from '../components/ChartDrawings.jsx';
 import {fetchChartSnapshot,askChartAgent,searchAssets} from '../services/api.js';
 import {getAnalysisType} from '../data/assetCatalog.js';
 import {formatQuote} from '../utils/panoramaAnalysis.js';
+import {formatNumeric} from '../utils/numberFormat.js';
 import {mergeAutomaticAnalysis,chartContextMatches} from '../utils/automaticChart.js';
 import {initialWorkspace,applyChartActions} from '../utils/chartWorkspace.js';
 
@@ -31,7 +32,7 @@ export default function AgentCharts({marketData,guided=false}){
  const contextKey=`${getAnalysisType(asset)}:${asset.id}:${workspace.interval}:${venue}:${lang}`;currentContext.current=contextKey;
  const matchesSnapshot=chartContextMatches(snapshot,{id:asset.id,type:getAnalysisType(asset),interval:workspace.interval,venue});
  useEffect(()=>{controller.current?.abort();messageSequence.current++;setMessages([]);setQuery('');setError(false);setSelectedId(null);setTimeline({current:initialWorkspace(),past:[]});setVenue('auto');},[asset.id,asset.type,asset.analysisType]);
- const fmt=n=>Number.isFinite(n)?n.toLocaleString(i18n.language,{maximumFractionDigits:Math.abs(n)<1?8:2}):'—';
+ const fmt=n=>formatNumeric(n,i18n.language);
  const date=(stamp,interval=workspace.interval)=>new Date(stamp*1000).toLocaleString(i18n.language,{timeZone:'UTC',dateStyle:'short',...(intervalInfo(interval)?.seconds>=86400?{}:{timeStyle:'short'})});
  const quoteKeys=['close','low','high','ema20','ema50','support','resistance','atr','vwap','fvgLow','fvgHigh','liquidityLow','liquidityHigh','donchian','keltner'];
  const fact=(data,key)=>quoteKeys.includes(key)?formatQuote(data.facts[key],data.currency,i18n.language):`${fmt(data.facts[key])}${['change','drawdown','atrPercent'].includes(key)&&Number.isFinite(data.facts[key])?'%':''}`;

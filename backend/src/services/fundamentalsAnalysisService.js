@@ -131,14 +131,14 @@ export function verifiedEvidence(quote, source) {
 
 export function validateItem(item, index, article, lang) {
   if (!item || Number(item.index) !== index) return null;
-  if (item.language !== lang || article.analysisDepth === 'title') return null;
+  if (item.language !== lang || !['article','rss'].includes(article.analysisDepth)) return null;
   const factors = {};
   for (const [key, aliases] of Object.entries(FACTOR_ALIASES)) {
-    const raw = aliases.map(alias => item.factors?.[alias]).find(value => value !== undefined && value !== null && value !== '' && Number.isFinite(Number(value)));
+    const raw = aliases.map(alias => item.factors?.[alias]).find(value => isRange(value,0,100));
     if (raw === undefined) return null;
     factors[key] = clamp(raw);
   }
-  if (!Number.isFinite(Number(item.direction)) || !Number.isFinite(Number(item.confidence))) return null;
+  if (!isRange(item.direction,-100,100) || !isRange(item.confidence,1,100)) return null;
   const localizedTitle = safeText(item.localizedTitle, 300);
   const summary = safeText(item.summary);
   const mechanism = safeText(item.mechanism);
