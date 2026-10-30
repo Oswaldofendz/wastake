@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {preservesFinancialNumbers} from '../src/services/financialLanguageService.js';
 import {createStoryAnalysisCache} from '../src/services/fundamentalsAnalysisService.js';
 import assert from 'node:assert/strict';
 import {impactTopic,normalizeImpactItems,selectImpactAlerts,createMarketImpactService} from '../src/services/marketImpactService.js';
@@ -84,4 +85,11 @@ test('a new headline arriving during analysis preserves exact-story context with
  instant+=61000;rows=[b,a];await service(target,'es',false);await new Promise(r=>setImmediate(r));
  finish({news:[{...a,analysisProvider:'test-provider',summary:'Only A was reviewed',sourceStale:true}],analyzedCount:1,aiStatus:'ready'});await new Promise(r=>setImmediate(r));
  const result=await service(target,'es',false);assert.equal(result.count,2);assert.equal(result.news.find(n=>n.title==='Report A').summary,'Only A was reviewed');assert.equal(result.news.find(n=>n.title==='Report B').analysisProvider,undefined);assert.equal(result.aiStatus,'partial');
+});
+
+test('faithful decimal localization does not discard valid news analysis while changed or ambiguous figures remain rejected',()=>{
+ assert.equal(preservesFinancialNumbers('Binance breach affects $6.3 billion','La brecha de Binance afecta a $6,3 mil millones'),true);
+ assert.equal(preservesFinancialNumbers('Apple gains 5.2%','Apple sube 5,2%'),true);
+ assert.equal(preservesFinancialNumbers('Binance breach affects $6.3 billion','La brecha de Binance afecta a $63 mil millones'),false);
+ assert.equal(preservesFinancialNumbers('Value 6,300','Valor 6.300'),false);
 });

@@ -49,7 +49,9 @@ export function preservesFinancialNames(original, translated) {
 }
 
 export function preservesFinancialNumbers(original, translated) {
-  const tokens = value => (String(value).match(/\d+(?:[.,]\d+)*/g) ?? []).sort().join('|');
+  // A decimal comma in Spanish/Portuguese does not change the stated amount.
+  // Keep ambiguous three-digit groups strict instead of guessing thousands.
+  const tokens = value => (String(value).match(/\d+(?:[.,]\d+)*/g) ?? []).map(token=>/^\d+[.,]\d{1,2}$/.test(token)?token.replace(',', '.'):token).sort().join('|');
   return tokens(original) === tokens(translated);
 }
 
