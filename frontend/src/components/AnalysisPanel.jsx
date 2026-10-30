@@ -27,39 +27,39 @@ const INDICATOR_INFO = {
     levels: [
       { color: 'text-green-400', label: 'Histograma > 0',         desc: 'El MACD está por encima de su señal: momentum alcista.' },
       { color: 'text-red-400',   label: 'Histograma < 0',         desc: 'El MACD está por debajo de su señal: momentum bajista.' },
-      { color: 'text-amber-400', label: 'Cruce de líneas',        desc: 'Golden cross (alcista) o Death cross (bajista): señales de cambio de tendencia.' },
+      { color: 'text-amber-400', label: 'Cruce de líneas',        desc: 'El cruce del MACD con su señal describe un cambio de impulso; puede generar señales falsas.' },
     ],
-    tip: 'El valor mostrado es el histograma (MACD − señal). Divergencias entre precio y MACD pueden anticipar reversiones importantes.',
+    tip: 'El valor mostrado es el histograma (MACD − señal). Una divergencia requiere comparar varios giros y no confirma una reversión.',
   },
   'EMA 20 / 50': {
     fullName: 'Exponential Moving Average',
     description:
       'Media móvil que pondera más los precios recientes. Se usan dos períodos (20 y 50) para detectar cruces de tendencia.',
     levels: [
-      { color: 'text-green-400', label: 'EMA20 > EMA50 (Golden Cross)', desc: 'Tendencia alcista confirmada. Los precios recientes superan la media de largo plazo.' },
-      { color: 'text-red-400',   label: 'EMA20 < EMA50 (Death Cross)',  desc: 'Tendencia bajista confirmada. Los precios recientes caen bajo la media de largo plazo.' },
+      { color: 'text-green-400', label: 'EMA20 > EMA50', desc: 'La media rápida está sobre la lenta: alineación alcista histórica; no demuestra que acabe de producirse un cruce.' },
+      { color: 'text-red-400',   label: 'EMA20 < EMA50', desc: 'La media rápida está bajo la lenta: alineación bajista histórica; no confirma por sí sola el próximo movimiento.' },
     ],
-    tip: 'La EMA reacciona más rápido que la SMA (Simple Moving Average). Los cruces son más fiables en marcos temporales altos (D, W).',
+    tip: 'La EMA da más peso a observaciones recientes. Medias de 20/50 periodos y cruces de 50/200 son configuraciones distintas; su utilidad depende del activo y del horizonte.',
   },
   'Bollinger (20)': {
     fullName: 'Bandas de Bollinger',
     description:
       'Canal de volatilidad formado por una SMA-20 como banda central, más y menos 2 desviaciones estándar. Las bandas se expanden en alta volatilidad y se contraen en baja.',
     levels: [
-      { color: 'text-red-400',   label: 'Precio en banda superior', desc: 'Activo sobrecomprado en términos estadísticos (95% del tiempo el precio está dentro de las bandas).' },
-      { color: 'text-green-400', label: 'Precio en banda inferior', desc: 'Activo sobrevendido. Posible rebote hacia la banda media.' },
+      { color: 'text-red-400',   label: 'Precio en banda superior', desc: 'Precio alto respecto a su media reciente; puede continuar junto a la banda y no implica vender.' },
+      { color: 'text-green-400', label: 'Precio en banda inferior', desc: 'Precio bajo respecto a su media reciente; no demuestra infravaloración ni garantiza un rebote.' },
       { color: 'text-amber-400', label: 'Squeeze (bandas estrechas)', desc: 'Baja volatilidad. Suele anteceder a un movimiento fuerte (breakout).' },
     ],
-    tip: 'Desarrolladas por John Bollinger (1980s). No indican dirección del breakout, solo que un movimiento es probable.',
+    tip: 'Dos desviaciones estándar no garantizan que el 95% de los precios quede dentro de las bandas. El estrechamiento describe baja dispersión; no predice dirección ni asegura una ruptura.',
   },
   'ATR (14)': {
     fullName: 'Average True Range',
     description:
       'Mide la volatilidad promedio de las últimas 14 velas calculando el rango verdadero (máximo − mínimo, ajustado por gaps).',
     levels: [
-      { color: 'text-red-400',   label: 'ATR alto (> 5% del precio)', desc: 'Alta volatilidad. Mayor riesgo y mayores oportunidades de ganancia. Stops más amplios.' },
-      { color: 'text-amber-400', label: 'ATR medio (2–5%)',           desc: 'Volatilidad moderada. Condiciones normales de mercado.' },
-      { color: 'text-green-400', label: 'ATR bajo (< 2%)',            desc: 'Baja volatilidad. Mercado tranquilo. Posible acumulación antes de movimiento.' },
+      { color: 'text-red-400',   label: 'ATR > 5% del precio', desc: 'Rango reciente elevado según la escala orientativa de WaStake; no implica mayor rentabilidad esperada.' },
+      { color: 'text-amber-400', label: 'ATR > 2% y ≤ 5%', desc: 'Rango intermedio en esta escala; el nivel habitual varía por activo y duración de vela.' },
+      { color: 'text-green-400', label: 'ATR ≤ 2%', desc: 'Rango reciente reducido en esta escala; no demuestra acumulación ni ausencia de riesgo.' },
     ],
     tip: 'ATR no indica dirección, solo magnitud. Muy útil para dimensionar posiciones y colocar stop-loss adaptativos.',
   },
@@ -75,7 +75,7 @@ const INDICATOR_INFO = {
   },
   'Volumen / media 20': {
     fullName: 'Volumen relativo',
-    description: 'Compara el volumen de la última vela con su media de 20 velas. Ayuda a contextualizar el movimiento, pero no aporta dirección por sí solo.',
+    description: 'Compara el volumen de la última vela con la media de las 20 velas anteriores, sin incluir la actual. Ayuda a contextualizar el movimiento, pero no aporta dirección por sí solo.',
     levels: [
       { color: 'text-green-400', label: 'Por encima de la media', desc: 'Participación relativa elevada en la última vela.' },
       { color: 'text-slate-400', label: 'Cerca de la media', desc: 'Volumen parecido al promedio reciente.' },

@@ -51,6 +51,8 @@ TradingView combina 26 indicadores en grupos de medias y osciladores y publica l
 
 Fidelity explica que Bollinger requiere confirmación y contexto. Se debe evitar vender por tocar la banda superior o comprar por tocar la inferior como regla universal. [Guía oficial de Bollinger](https://www.fidelity.com/learning-center/trading-investing/technical-analysis/technical-indicator-guide/bollinger-bands).
 
+Se corrigieron también las explicaciones de los indicadores: se eliminó la afirmación de cobertura garantizada del 95% en Bollinger, se distinguió una alineación de medias de un cruce reciente y de las configuraciones 50/200, y se aclaró que las categorías ATR 2%/5% son orientativas. Menor ATR no demuestra acumulación y mayor ATR no promete oportunidades rentables.
+
 ## 3. Índice técnico propio: fórmula y límites
 
 Los grupos tienen pesos tendencia 35%, momentum 35%, estructura 20% y fuerza direccional 10%. Dentro de cada grupo se promedian únicamente las observaciones disponibles.
