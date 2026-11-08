@@ -5,8 +5,6 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getAssetGroup } from '../data/assetSectors.js';
 import { AssetSearch } from '../components/AssetSearch.jsx';
-import { MarketLeaders } from '../components/MarketLeaders.jsx';
-import {OpportunityPanel} from '../components/OpportunityPanel.jsx';
 import { formatQuote } from '../utils/panoramaAnalysis.js';
 import { currentSelection } from '../utils/marketConventions.js';
 
@@ -370,8 +368,7 @@ export function Screener({marketData}) {
         </p>
       )}
       </section>
-      {!inspectedAsset&&<OpportunityPanel embedded/>}
-      {!inspectedAsset&&<MarketLeaders compact marketData={marketData} onSelect={setInspectedAsset}/>}
+      {!inspectedAsset&&<section className="rounded-2xl border border-teal-800/50 bg-teal-950/10 p-6"><p className="text-xs font-semibold text-teal-300">🔍 PANORAMA</p><h2 className="mt-2 text-xl font-semibold">{t('home_panorama_empty')}</h2><p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">{t('home_panorama_help')}</p></section>}
       {inspectedAsset && <section ref={inspectionRef} className="mb-4 scroll-mt-24 rounded-xl border border-sky-700/50 p-3">
         <div className="mb-3 flex items-center justify-between gap-2"><h2 translate="no" className="flex min-w-0 flex-1 items-center gap-2 font-semibold"><AssetAvatar asset={inspectedAsset}/><span className="min-w-0 break-words">{inspectedAsset.name} · {inspectedAsset.symbol}</span></h2><button type="button" onClick={()=>{setInspectedAsset(null);document.getElementById('screener-filters-title')?.scrollIntoView({behavior:'smooth',block:'center'});}} className="min-h-10 px-3" aria-label={t('catalogue_return')}>← {t('catalogue_return')}</button></div>
         <UnifiedAssetView key={inspectedAsset.type+':'+inspectedAsset.id} asset={currentSelection(inspectedAsset,allAssets)} tab={activeTab} onTabChange={setActiveTab}/>

@@ -10,17 +10,15 @@ const LANGS = [
 
 const NAV_GROUPS = [
   { id: 'explore', titleKey: 'nav_group_explore', items: [
-    { id: 'dashboard', labelKey: 'dashboard', icon: '📊' },
-    { id: 'markets', labelKey: 'nav_markets', icon: '🌍' },
+    { id: 'dashboard', labelKey: 'home_nav', icon: '◈' },
     { id: 'panorama', labelKey: 'nav_panorama', icon: '🔍' },
   ] },
   { id: 'analyze', titleKey: 'nav_group_analyze', items: [
+    { id: 'fundamentals', aliases:['markets'], labelKey: 'home_news_nav', icon: '🗞️' },
     { id: 'chart-ai', labelKey: 'chart_ai', icon: '✦' },
-    { id: 'fundamentals', labelKey: 'nav_fundamentals', icon: '🧭' },
   ] },
   { id: 'track', titleKey: 'nav_group_track', items: [
-    { id: 'portfolio', labelKey: 'portfolio', icon: '💼' },
-    { id: 'alerts', labelKey: 'alerts', icon: '🔔' },
+    { id: 'portfolio', aliases:['alerts'], labelKey: 'home_track_nav', icon: '💼' },
   ] },
 ];
 
@@ -85,7 +83,7 @@ export function Navbar({
               src="/logo-completo.png"
               alt="WaStake"
               style={{
-                height: '88px',
+                height: '68px',
                 width: 'auto',
                 mixBlendMode: darkMode ? 'lighten' : 'multiply',
                 filter: darkMode ? 'brightness(1.5) contrast(1.1)' : 'invert(1)',
@@ -103,7 +101,7 @@ export function Navbar({
                     onClick={() => navigate(item.id)}
                     className={[
                       'px-2.5 py-1.5 text-sm rounded-lg transition-colors font-medium whitespace-nowrap',
-                      currentPage === item.id
+                      (currentPage === item.id || item.aliases?.includes(currentPage))
                         ? 'relative nav-active nav-active-text'
                         : 'text-slate-300 hover:text-white hover:bg-white/5',
                     ].join(' ')}
@@ -209,7 +207,7 @@ export function Navbar({
                         onClick={() => navigate(item.id)}
                         className={[
                           'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-colors min-h-[48px]',
-                          currentPage === item.id
+                          (currentPage === item.id || item.aliases?.includes(currentPage))
                             ? 'bg-slate-800 border border-white/10 text-white'
                             : 'text-slate-300 hover:bg-slate-800 hover:text-white',
                         ].join(' ')}

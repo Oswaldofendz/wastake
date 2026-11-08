@@ -4,12 +4,8 @@ import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Navbar }    from './components/Navbar.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
 import {ReleaseNotice} from './components/ReleaseNotice.jsx';
-import { Portfolio } from './pages/Portfolio.jsx';
-import { Alerts }    from './pages/Alerts.jsx';
-import { Markets }   from './pages/Markets.jsx';
-import { Panorama }  from './pages/Panorama.jsx';
 import {canonicalPage} from './utils/navigation.js';
-import { Fundamentals } from './pages/Fundamentals.jsx';
+import {initialPage} from './utils/homeDiscovery.js';
 import { usePrices } from './hooks/usePrices.js';
 import { useAuth }   from './hooks/useAuth.js';
 import { useAlerts } from './hooks/useAlerts.js';
@@ -17,6 +13,10 @@ import { useBrowserNotifications } from './hooks/useBrowserNotifications.js';
 import { usePWAInstall }           from './hooks/usePWAInstall.js';
 const SimpleExperience=lazy(()=>import('./pages/SimpleExperience.jsx').then(m=>({default:m.SimpleExperience})));
 const AgentCharts=lazy(()=>import('./pages/AgentCharts.jsx'));
+const Portfolio=lazy(()=>import('./pages/Portfolio.jsx').then(m=>({default:m.Portfolio})));
+const Alerts=lazy(()=>import('./pages/Alerts.jsx').then(m=>({default:m.Alerts})));
+const NewsMacro=lazy(()=>import('./pages/NewsMacro.jsx').then(m=>({default:m.NewsMacro})));
+const Panorama=lazy(()=>import('./pages/Panorama.jsx').then(m=>({default:m.Panorama})));
 
 // ── Hook: favicon dinámico con variación de BTC ───────────────────────────────
 function useDynamicFavicon(allAssets) {
@@ -84,13 +84,19 @@ export default function App() {
   useDynamicFavicon(allAssets);
   useBrowserNotifications(triggered);
 
-  const [currentPage, setPage] = useState(() => canonicalPage(window.location.hash));
-  const setCurrentPage=page=>setPage(canonicalPage(page));
+  const [currentPage, setPage] = useState(() => canonicalPage(initialPage(window.location.hash,window.location.search)));
+  const setCurrentPage=page=>{
+    if(page==='dashboard'){
+      const url=new URL(window.location.href);for(const key of ['inspect','kind','from','tab','macro'])url.searchParams.delete(key);
+      url.hash='dashboard';window.history.replaceState(null,'',url);window.dispatchEvent(new Event('wastake-asset-selection'));
+    }
+    setPage(canonicalPage(page));
+  };
 
   useEffect(() => {
     const sync = () => {
       const route = window.location.hash.slice(1);
-      setPage(canonicalPage(route));
+      setPage(canonicalPage(initialPage(route,window.location.search)));
     };
     window.addEventListener('hashchange', sync);
     return () => window.removeEventListener('hashchange', sync);
@@ -138,7 +144,7 @@ export default function App() {
         isStale={isStale}
       />
 
-      {simple?<div className="experience-bar"><span>🌱 <strong>{t('easy_badge')}</strong> <small>Beta</small></span><span className="experience-description">{t('easy_mode_help')}</span><button type="button" onClick={()=>chooseExperience('advanced')}>{t('easy_advanced')} ↗</button></div>:currentPage==='dashboard'?<div className="experience-invite"><span>{t('easy_invite')}</span><button type="button" onClick={()=>chooseExperience('simple')}>🌱 {t('easy_switch')} <small>Beta</small> →</button></div>:null}
+      {simple?<div className="experience-bar"><span>🌱 <strong>{t('easy_badge')}</strong> <small>Beta</small></span><span className="experience-description">{t('easy_mode_help')}</span><button type="button" onClick={()=>chooseExperience('advanced')}>{t('easy_advanced')} ↗</button></div>:null}
 
       {/* ── Banner de instalación PWA ── */}
       {canInstall && (
@@ -156,16 +162,19 @@ export default function App() {
       )}
 
       <div className="flex-1 flex flex-col min-h-0">
+        <Suspense fallback={<p role="status" className="p-6 text-slate-400">{t('loading')}</p>}>
+        {simple&&['markets','fundamentals'].includes(currentPage)&&<nav className="hub-navigation" aria-label={t('home_news_nav')}><a href="#fundamentals" aria-current={currentPage==='fundamentals'?'page':undefined}>{t('home_news_tab')}</a><a href="#markets" aria-current={currentPage==='markets'?'page':undefined}>{t('home_events_tab')}</a></nav>}
+        {simple&&['portfolio','alerts'].includes(currentPage)&&<nav className="hub-navigation" aria-label={t('home_track_nav')}><a href="#portfolio" aria-current={currentPage==='portfolio'?'page':undefined}>{t('home_portfolio_tab')}</a><a href="#alerts" aria-current={currentPage==='alerts'?'page':undefined}>{t('alerts')}</a></nav>}
         {simple&&currentPage!=='chart-ai'?<Suspense fallback={<p role="status" className="p-6 text-slate-400">{t('loading')}</p>}><SimpleExperience page={currentPage} marketData={marketData} onNavigate={setCurrentPage} user={user} authLoading={authLoading} signIn={signIn} signUp={signUp} signOut={signOut}/></Suspense>:currentPage === 'dashboard' ? (
-          <Dashboard marketData={marketData}/>
+          <Dashboard marketData={marketData} onSimple={()=>chooseExperience('simple')}/>
         ) : currentPage === 'chart-ai' ? (
           <Suspense fallback={<p role="status" className="p-6 text-slate-400">…</p>}><AgentCharts marketData={marketData} guided={simple}/></Suspense>
         ) : currentPage === 'panorama' ? (
           <Panorama marketData={marketData}/>
-        ) : currentPage === 'markets' ? (
-          <Markets allAssets={allAssets} />
-        ) : currentPage === 'alerts' ? (
-          !authLoading && (
+        ) : ['markets','fundamentals'].includes(currentPage) ? (
+          <NewsMacro page={currentPage} allAssets={allAssets}/>
+        ) : (
+          <div className="section-hub"><nav className="hub-navigation" aria-label={t('home_track_nav')}><a href="#portfolio" aria-current={currentPage==='portfolio'?'page':undefined}>💼 {t('home_portfolio_tab')}</a><a href="#alerts" aria-current={currentPage==='alerts'?'page':undefined}>🔔 {t('alerts')}</a></nav><p className="hub-help">{t('home_tracking_help')}</p>{authLoading?<p role="status" className="p-6">{t('loading')}</p>:currentPage==='alerts'?(
             <Alerts
               user={user}
               signIn={signIn}
@@ -174,11 +183,7 @@ export default function App() {
               allAssets={allAssets}
               onNavigate={setCurrentPage}
             />
-          )
-        ) : currentPage === 'fundamentals' ? (
-          <Fundamentals />
-        ) : (
-          !authLoading && (
+          ):(
             <Portfolio
               user={user}
               signIn={signIn}
@@ -187,8 +192,9 @@ export default function App() {
               allAssets={allAssets}
               onNavigate={setCurrentPage}
             />
-          )
+          )}</div>
         )}
+        </Suspense>
       </div>
     </div>
   );

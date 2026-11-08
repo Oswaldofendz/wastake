@@ -3,9 +3,10 @@ import {useTranslation} from 'react-i18next';
 import {fetchMarketImpactAlerts} from '../services/api.js';
 import {useNewsTitles} from '../hooks/useNewsTitles.js';
 import {visibleMarketAlerts,tickerMarketAlerts,tickerDuration} from '../utils/marketImpact.js';
+import {homeBreakingAlerts} from '../utils/homeDiscovery.js';
 
 const STORAGE='wastake-impact-dismissed-v1';
-export function MarketImpactAlert(){
+export function MarketImpactAlert({hideWhenEmpty=false,onAlertsChange}){
   const {t,i18n}=useTranslation(),[data,setData]=useState(null),[error,setError]=useState(false),[loading,setLoading]=useState(false),[attempt,setAttempt]=useState(0),[clock,setClock]=useState(Date.now),[detailsOpen,setDetailsOpen]=useState(false),[paused,setPaused]=useState(false);
   const [speed,setSpeed]=useState('fast'),[duration,setDuration]=useState(20);const sequenceRef=useRef(null);
   const [dismissed,setDismissed]=useState(()=>{try{const list=JSON.parse(sessionStorage.getItem(STORAGE)||'[]');return Array.isArray(list)?list.filter(x=>typeof x==='string').slice(-50):[];}catch{return [];}});
@@ -23,8 +24,11 @@ export function MarketImpactAlert(){
     return()=>{alive=false;controller.abort();clearInterval(timer);document.removeEventListener('visibilitychange',visible);};
   },[attempt]);
   const hide=id=>{const next=[...dismissed,id].slice(-50);setDismissed(next);try{sessionStorage.setItem(STORAGE,JSON.stringify(next));}catch{/* Session state is sufficient without storage. */}};
-  const alerts=tickerMarketAlerts(visibleMarketAlerts(data,dismissed,clock)),all=visibleMarketAlerts(data,[],clock),partial=error||data?.status==='partial'||data?.status==='unavailable';
+  const available=visibleMarketAlerts(data,dismissed,clock);
+  const alerts=tickerMarketAlerts(hideWhenEmpty?homeBreakingAlerts(available,clock):available),all=visibleMarketAlerts(data,[],clock),partial=error||data?.status==='partial'||data?.status==='unavailable';
   const localizedTitle=useNewsTitles(alerts,i18n.language,12);
+  const alertSignature=alerts.map(a=>a.url).join('|');
+  useEffect(()=>{onAlertsChange?.(alerts);},[alertSignature,onAlertsChange]);
   useEffect(()=>{const node=sequenceRef.current;if(!node)return;const measure=()=>setDuration(tickerDuration(node.scrollWidth,speed==='fast'?82:45));measure();const observer=new ResizeObserver(measure);observer.observe(node);return()=>observer.disconnect();},[alerts.map(a=>a.id).join('|'),speed,i18n.language]);
   const detailsLink=()=>{const params=new URLSearchParams(window.location.search);params.set('news','global');return `${window.location.pathname}?${params}#fundamentals`;};
   const date=value=>Number.isFinite(Date.parse(value))?new Date(value).toLocaleString(i18n.language,{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZoneName:'short'}):'—';
@@ -40,6 +44,7 @@ export function MarketImpactAlert(){
     </div>
     <footer className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-slate-700/40 px-4 py-2 text-[10px] leading-5 text-slate-400"><p>{t('impact_cadence')}{data?.checkedAt?` · ${t('impact_checked')}: ${date(data.checkedAt)}`:''}</p>{partial&&<p role="status" className="text-amber-200">{t('impact_partial')}</p>}{dismissed.length>0&&all.some(a=>dismissed.includes(a.id))&&<button type="button" onClick={()=>{setDismissed([]);try{sessionStorage.removeItem(STORAGE);}catch{}}} className="min-h-8 text-sky-200 underline">{t('impact_restore')}</button>}<details><summary className="cursor-pointer">{t('impact_coverage')}</summary><p className="max-w-3xl">{t('world_method_text')}</p>{data?.sources?.map(s=><p key={s.name}><span translate="no">{s.name}</span> · {t(s.status==='ok'?'impact_available':'impact_unavailable')}{s.checkedAt?` · ${date(s.checkedAt)}`:''}</p>)}</details></footer>
   </section>;
+  if(hideWhenEmpty&&!alerts.length&&!detailsOpen)return null;
   return <><section className={`impact-ticker ${alerts.length?'has-news':''}`} aria-label={t('impact_title')}>
     <a className="impact-ticker-label" href={detailsLink()} title={t('world_full')}><span aria-hidden="true">{alerts.length?'🚨':'🛰️'}</span> {t('impact_ticker_title')}</a>
     <div className="impact-ticker-window"><div style={{animationDuration:`${duration}s`}} className={`impact-ticker-track ${paused||!alerts.length?'is-paused':''}`}>

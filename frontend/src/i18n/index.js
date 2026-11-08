@@ -5,6 +5,7 @@ import {integrityCopy} from './integrityCopy.js';
 import {easyCopy} from './easyCopy.js';
 import {cycleCopy} from './cycleCopy.js';
 import i18n from 'i18next';
+import {homeCopy} from './homeCopy.js';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { qualityCopy } from './qualityCopy.js';
@@ -764,6 +765,8 @@ for(const [lang,copy] of Object.entries(worldNewsCopy))Object.assign(resources[l
 for(const [lang,copy] of Object.entries(quantitativeCopy))Object.assign(resources[lang].translation,copy);
 
 for(const [lang,copy] of Object.entries(unifiedPanoramaCopy))Object.assign(resources[lang].translation,copy);
+
+for(const [lang,copy] of Object.entries(homeCopy))Object.assign(resources[lang].translation,copy);
 
 i18n
   .use(LanguageDetector)

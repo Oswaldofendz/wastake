@@ -4,6 +4,7 @@ import {useTranslation} from 'react-i18next';
 import {fetchGlobalNews} from '../services/api.js';
 import {useNewsTitles} from '../hooks/useNewsTitles.js';
 import {NewsPulse} from './NewsPulse.jsx';
+import {marketStoryEligible} from '../utils/homeDiscovery.js';
 const categories=['all','security','geopolitics','corporate','macro','market_moves'];
 const excerptArticle=a=>({...a,title:a.snippet?.slice(0,240)??'',localizedTitle:null});
 const icons={security:'🛡️',geopolitics:'🌐',corporate:'🏢',macro:'🏦',market_moves:'📊'};
@@ -21,7 +22,7 @@ export function GlobalNews(){
   const visible=()=>{if(document.visibilityState==='visible'){clearTimeout(timer);void read();}};
   void read();document.addEventListener('visibilitychange',visible);return()=>{alive=false;clearTimeout(timer);document.removeEventListener('visibilitychange',visible);};
  },[lang,attempt]);
- const articles=useMemo(()=>{const now=Date.now();return(data?.news??[]).filter(a=>Date.parse(a.pubDate)<=now&&now-Date.parse(a.pubDate)<86400000).sort((a,b)=>sort==='priority'?(b.analysisProvider?b.relevance:b.priority??0)-(a.analysisProvider?a.relevance:a.priority??0)||Date.parse(b.pubDate)-Date.parse(a.pubDate):Date.parse(b.pubDate)-Date.parse(a.pubDate));},[data,sort]);
+ const articles=useMemo(()=>{const now=Date.now();return(data?.news??[]).filter(a=>marketStoryEligible(a)&&Date.parse(a.pubDate)<=now&&now-Date.parse(a.pubDate)<86400000).sort((a,b)=>sort==='priority'?(b.analysisProvider?b.relevance:b.priority??0)-(a.analysisProvider?a.relevance:a.priority??0)||Date.parse(b.pubDate)-Date.parse(a.pubDate):Date.parse(b.pubDate)-Date.parse(a.pubDate));},[data,sort]);
  const visible=articles.filter(a=>category==='all'||a.category===category||a.marketCategory===category);
  const titleFor=useNewsTitles(visible,lang,Math.min(shown,32)),when=value=>Number.isFinite(Date.parse(value))?new Date(value).toLocaleString(i18n.language,{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
  const excerptFor=useNewsTitles(visible.filter(a=>!a.analysisProvider&&a.snippet).map(excerptArticle),lang,Math.min(shown,16));

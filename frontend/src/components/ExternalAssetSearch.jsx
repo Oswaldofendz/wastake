@@ -29,7 +29,7 @@ export function AssetSearch({ onSelect, query, onQueryChange, catalogueAssets=AL
     const q=value.trim().toLowerCase();
     setActive(-1);setPartial(false);setQuoteError(false);
 
-    const local=catalogueAssets.filter(a=>!q||[a.name,a.symbol,a.id].some(s=>s?.toLowerCase().includes(q))).slice(0,12);
+    const local=(catalogueAssets.length?catalogueAssets:ALL_ASSETS).filter(a=>!q||[a.name,a.symbol,a.id].some(s=>s?.toLowerCase().includes(q))).slice(0,12);
     setResults(local);
     if(!q){setLoading(false);return;}
     setLoading(true);

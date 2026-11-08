@@ -164,7 +164,8 @@ export function AuthModal({ onSignIn, onSignUp, onBackToAnalysis }) {
           <button
             type="button"
             onClick={onBackToAnalysis}
-            className="fixed left-4 top-4 z-10 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-600 bg-slate-900/95 px-4 text-sm font-semibold text-white shadow-lg transition-colors hover:border-slate-400 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300"
+            className="fixed left-4 top-4 z-10 inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 text-sm font-semibold shadow-lg transition-colors focus:ring-2 focus:ring-slate-300"
+            style={{background:'var(--bg-card)',color:'var(--text-primary)',borderColor:'var(--border-normal)'}}
           >
             {t('auth_back_to_analysis')}
           </button>
@@ -212,7 +213,7 @@ export function AuthModal({ onSignIn, onSignUp, onBackToAnalysis }) {
                 onClick={() => switchMode(m)}
                 className="flex-1 py-3.5 text-sm font-semibold transition-colors relative"
                 style={{
-                  color: mode === m ? 'var(--accent-silver)' : 'var(--text-muted)',
+                  color: mode === m ? 'var(--text-primary)' : 'var(--text-muted)',
                   background: 'transparent',
                   border: 'none',
                 }}

@@ -13,13 +13,14 @@ const TABS = [
   { id: 'heatmap', key: 'markets_tab_heatmap' },
 ];
 
-export function Markets({ allAssets }) {
+export function Markets({ allAssets,embedded=false,view='overview' }) {
   const { t } = useTranslation();
-  const [tab, setTab] = useState('overview');
+  const [selectedTab, setTab] = useState('overview');
+  const tab=embedded?view:selectedTab;
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
-      <div className="px-4 pt-4 pb-0 border-b border-slate-700/50">
+      {!embedded&&<div className="px-4 pt-4 pb-0 border-b border-slate-700/50">
         {/* Page title */}
         <div className="mb-3">
           <h1 className="text-xl font-bold text-white">{t('nav_markets')}</h1>
@@ -43,7 +44,7 @@ export function Markets({ allAssets }) {
             </button>
           ))}
         </nav>
-      </div>
+      </div>}
 
       <div className="flex-1 p-4 space-y-4">
         {/* ── Events & calendar ────────────────────────────────── */}
@@ -54,6 +55,14 @@ export function Markets({ allAssets }) {
             <MacroRatesTable />
             <SourceReferences />
 
+
+          </>
+        )}
+
+        {/* ── Heatmap ──────────────────────────────────────────── */}
+        {tab === 'heatmap' && (
+          <>
+          <MarketHeatmap assets={allAssets} />
             <details className="rounded-xl border border-white/[8%] bg-[var(--bg-card)]">
               <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-200">
                 {t('correlation_context_title')}
@@ -66,11 +75,6 @@ export function Markets({ allAssets }) {
 
             <WhaleAlerts />
           </>
-        )}
-
-        {/* ── Heatmap ──────────────────────────────────────────── */}
-        {tab === 'heatmap' && (
-          <MarketHeatmap assets={allAssets} />
         )}
 
       </div>

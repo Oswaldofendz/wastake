@@ -1,294 +1,95 @@
-import {useAssetRoute} from '../hooks/useAssetRoute.js';
-import { useState, useEffect, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { PriceCard } from '../components/PriceCard.jsx';
-import { CandleChart } from '../components/PriceChart.jsx';
-import { AssetSearch } from '../components/AssetSearch.jsx';
-import { Disclaimer } from '../components/Disclaimer.jsx';
-import { AnalysisPanel } from '../components/AnalysisPanel.jsx';
-import { NewsPanel } from '../components/NewsPanel.jsx';
-import { MarketLeaders } from '../components/MarketLeaders.jsx';
+import {useCallback,useEffect,useMemo,useState} from 'react';
+import {useTranslation} from 'react-i18next';
+import {AssetSearch} from '../components/AssetSearch.jsx';
+import {AssetLogo} from '../components/AssetLogo.jsx';
+import {MarketLeaders} from '../components/MarketLeaders.jsx';
 import {MarketImpactAlert} from '../components/MarketImpactAlert.jsx';
-import {useSelectedQuote} from '../hooks/useSelectedQuote.js';
-import { currentSelection } from '../utils/marketConventions.js';
-import { formatQuote } from '../utils/panoramaAnalysis.js';
+import {useAssetRoute} from '../hooks/useAssetRoute.js';
+import {useNewsTitles} from '../hooks/useNewsTitles.js';
+import {useHomeQuotes} from '../hooks/useHomeQuotes.js';
+import {fetchCalendar,fetchGlobalNews} from '../services/api.js';
+import {cachedPublicNews} from '../utils/publicNewsCache.js';
+import {homeAssets,homeStories,nextCalendarEvents,safeSource} from '../utils/homeDiscovery.js';
+import {calendarTitle} from '../utils/calendar.js';
+import {formatQuote} from '../utils/panoramaAnalysis.js';
+import '../home.css';
 
-// Visible zoom only; every technical view uses the same source history.
-const TIMEFRAMES=['1S','1M','3M','6M','1A'].map(label=>({label}));
+const filters=['all','stock','crypto','funds','other'];
+const filterKey={all:'home_all',stock:'home_stocks',crypto:'home_crypto',funds:'home_funds',other:'home_other'};
+const typeKey={stock:'screener_type_stock',crypto:'screener_type_crypto',etf:'screener_type_etf',bond:'screener_type_bond',forex:'screener_type_forex',commodity:'screener_type_commodity',index:'screener_type_index'};
+const stamp=value=>value!=null&&Number.isFinite(Date.parse(value))?new Date(value):null;
 
-export function Dashboard({marketData}) {
-  const { t,i18n } = useTranslation();
-  const { allAssets, loading, error, isStale, refresh } = marketData;
-  const [selectedAsset, setSelectedAsset] = useAssetRoute(null,allAssets);
-  const [extraAssets, setExtraAssets]     = useState([]);
-  const [sidebarOpen, setSidebarOpen]     = useState(false);
-  const [expandedCats, setExpandedCats]   = useState({});
-  const [activeTf, setActiveTf]           = useState(TIMEFRAMES.find(t=>t.label==='3M'));
-  const [candleInterval,setCandleInterval]=useState('1d');
-
-  // IDs deben coincidir exactamente con las claves de TRADITIONAL_ASSETS en el backend
-  const CATALOG_CATEGORIES = [
-    { id: 'crypto',      label: 'Crypto',         icon: '₿',  color: 'text-orange-400', ids: ['bitcoin','ethereum','solana','ripple','binancecoin','cardano','dogecoin','polkadot','avalanche-2','chainlink','shiba-inu','litecoin','cosmos','uniswap','near'] },
-    { id: 'stocks',      label: 'Acciones',        icon: '🏢', color: 'text-sky-400',    ids: ['AAPL','MSFT','NVDA','TSLA','AMZN','GOOGL','META','NFLX','JPM','V','AMD','INTC','ORCL','CRM','ADBE','PYPL','UBER','SHOP','DIS','BA','GS','MS','WMT','KO','PEP','MCD','NKE','PFE','JNJ','XOM'] },
-    { id: 'etfs',        label: 'ETFs',            icon: '📊', color: 'text-green-400',  ids: ['SPY','QQQ','DIA','IWM','URTH','EEM','VTI','ARKK','XLK','XLF','XLE'] },
-    { id: 'forex',       label: 'Forex',           icon: '💱', color: 'text-purple-400', ids: ['EURUSD=X','GBPUSD=X','USDJPY=X','USDMXN=X','USDBRL=X'] },
-    { id: 'commodities', label: 'Materias Primas', icon: '🥇', color: 'text-yellow-400', ids: ['GC=F','SI=F'] },
-    { id: 'indices',     label: 'Índices',         icon: '📈', color: 'text-blue-400',   ids: ['^GSPC','^NDX','^DJI','^FTSE','^N225','^GDAXI'] },
-    { id: 'bonds',       label: 'Bonos',           icon: '🏛️', color: 'text-cyan-400',   ids: ['TLT','IEF','SHY','HYG','LQD'] },
-  ];
-
-  // JS-based breakpoint — bypasses any Tailwind purge issues
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
-  useEffect(() => {
-    const fn = () => setIsMobile(window.innerWidth < 1024);
-    window.addEventListener('resize', fn);
-    return () => window.removeEventListener('resize', fn);
-  }, []);
-
-  const chartAsset = useSelectedQuote(currentSelection(selectedAsset,allAssets));
-
-  const displayAssets = useMemo(()=>[
-    ...allAssets,
-    ...extraAssets.filter(e => !allAssets.find(a => a.id === e.id&&a.type===e.type)),
-  ],[allAssets,extraAssets]);
-
-  function handleSearch(asset) {
-    if (!displayAssets.find(a => a.id === asset.id)) {
-      setExtraAssets(prev => [asset, ...prev]);
-    }
-    setSelectedAsset(asset);
-    if (isMobile) setSidebarOpen(false);
-  }
-
-  return (
-    <div className="mx-auto flex h-full w-full max-w-[1680px] flex-col">
-      <MarketImpactAlert/>
-      <Disclaimer />
-      <MarketLeaders marketData={marketData} onSelect={handleSearch}/>
-
-      {/* Layout: column on mobile, row on desktop */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: isMobile ? 'column' : 'row',
-          flex: 1,
-          minHeight: 0,
-          marginTop: '12px',
-        }}
-      >
-        {/* ── Asset list ── */}
-        <>
-          {/* Mobile hamburger toggle */}
-          {isMobile && (
-            <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(100,116,139,0.3)' }}>
-              <button
-                onClick={() => setSidebarOpen(o => !o)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700/50 text-sm text-slate-300 w-full hover:bg-slate-700/60 transition-colors"
-              >
-                <span className="text-base leading-none">{sidebarOpen ? '✕' : '☰'}</span>
-                <span className="flex-1 text-left font-medium">
-                  {chartAsset ? chartAsset.symbol : t('loading')}
-                </span>
-                {chartAsset && (
-                  <span className={`text-sm font-mono font-bold ${(chartAsset.change24h ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {Number.isFinite(chartAsset.change24h)?`${chartAsset.change24h>=0?'+':''}${chartAsset.change24h.toLocaleString(i18n.language,{minimumFractionDigits:2,maximumFractionDigits:2})}%`:'—'}
-                  </span>
-                )}
-                <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 text-slate-500 transition-transform ${sidebarOpen ? 'rotate-180' : ''}`}>
-                  <path d="M8 10.5L2.5 5h11L8 10.5Z" />
-                </svg>
-              </button>
-            </div>
-          )}
-
-          <aside
-            style={{
-              width: isMobile ? '100%' : '288px',
-              flexShrink: 0,
-              display: isMobile && !sidebarOpen ? 'none' : 'flex',
-              flexDirection: 'column',
-              borderRight: isMobile ? 'none' : '1px solid rgba(100,116,139,0.3)',
-              borderBottom: isMobile ? '1px solid rgba(100,116,139,0.3)' : 'none',
-              padding: '0 12px 12px',
-              maxHeight: isMobile ? '320px' : 'none',
-              overflowY: 'auto',
-            }}
-          >
-            <div style={{ marginBottom: '12px', paddingTop: '12px' }}>
-              <AssetSearch onSelect={handleSearch} catalogueAssets={displayAssets} />
-            </div>
-
-            {loading && !displayAssets.length ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px' }}>
-                <div className="text-center">
-                  <div className="w-6 h-6 border-2 border-slate-600 border-t-brand-400 rounded-full animate-spin mx-auto mb-2" />
-                  <p className="text-sm text-slate-500">{t('loading')}</p>
-                </div>
-              </div>
-            ) : error ? (
-              <div className="px-2 py-4 text-center" role="alert">
-                <p className="text-sm text-amber-300">{t('dashboard_data_unavailable')}</p>
-                <button type="button" onClick={refresh} className="mt-3 text-xs font-semibold text-brand-300 underline underline-offset-2">
-                  {t('retry')}
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-1">
-                {CATALOG_CATEGORIES.map(cat => {
-                  const kinds={stocks:"stock",etfs:"etf",bonds:"bond",commodities:"commodity",indices:"index",forex:"forex",crypto:"crypto"};
-                  const catAssets=displayAssets.filter(a=>a.type===kinds[cat.id]);
-                  if (!catAssets.length) return null;
-                  const isOpen = !!expandedCats[cat.id];
-                  return (
-                    <div key={cat.id} className="rounded-lg overflow-hidden border border-slate-700/30">
-                      <button
-                        onClick={() => setExpandedCats(p => ({ ...p, [cat.id]: !p[cat.id] }))}
-                        className="w-full flex items-center gap-2 px-3 py-2 bg-slate-800/60 hover:bg-slate-700/40 transition-colors"
-                      >
-                        <span className="text-sm leading-none">{cat.icon}</span>
-                        <span className={`text-xs font-semibold uppercase tracking-wide ${cat.color}`}>{t('screener_type_'+kinds[cat.id])}</span>
-                        <span className="text-xs text-slate-600 ml-1">({catAssets.length})</span>
-                        <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 text-slate-500 ml-auto transition-transform ${isOpen ? 'rotate-180' : ''}`}>
-                          <path d="M8 10.5L2.5 5h11L8 10.5Z" />
-                        </svg>
-                      </button>
-                      {isOpen && (
-                        <ul className="flex flex-col gap-1 p-1 bg-slate-900/20">
-                          {catAssets.map(asset => (
-                            <li key={asset.id}>
-                              <PriceCard
-                                asset={asset}
-                                isSelected={chartAsset?.id === asset.id}
-                                onClick={(a) => { setSelectedAsset(a); if (isMobile) setSidebarOpen(false); }}
-                              />
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </aside>
-        </>
-
-        {/* ── Chart + analysis ── */}
-        <main
-          style={{
-            flex: 1,
-            minWidth: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            padding: isMobile ? '8px' : '16px',
-            overflowY: 'auto',
-          }}
-        >
-          {isStale && chartAsset && (
-            <p className="mb-3 rounded-lg border border-amber-700/40 bg-amber-950/20 px-3 py-2 text-xs text-amber-300" role="status">
-              {t('market_data_stale')}
-            </p>
-          )}
-          {chartAsset ? (
-            <>
-              {/* Stats */}
-              <h1 translate="no" className="mb-3 text-lg font-semibold">{chartAsset.name} <span className="text-sm text-slate-400">· {chartAsset.symbol}</span></h1>
-              <div className="grid grid-cols-3 gap-2 mb-3">
-                <StatCard label={`${t('price')} · ${chartAsset.currency || (chartAsset.type==='crypto'?'USD':'—')}`} value={formatQuote(chartAsset.price,chartAsset.currency||(chartAsset.type==='crypto'?'USD':null),i18n.language,chartAsset.type==='forex'?5:null)} mono />
-                <StatCard
-                  label={t('change_24h')}
-                  value={chartAsset.change24h != null && !isNaN(chartAsset.change24h) ? `${chartAsset.change24h >= 0 ? '+' : ''}${chartAsset.change24h.toLocaleString(i18n.language,{minimumFractionDigits:2,maximumFractionDigits:2})}%` : '—'}
-                  positive={Number.isFinite(chartAsset.change24h)?chartAsset.change24h>=0:undefined}
-                />
-                <StatCard label={t(chartAsset.type==='crypto'?'audit_crypto_volume':'audit_traded_volume')} value={chartAsset.type === 'crypto' ? fmtCompact(chartAsset.volume24h) : chartAsset.volume24h > 0 ? chartAsset.volume24h.toLocaleString(undefined,{notation:'compact',maximumFractionDigits:2}) : '—'} />
-              </div>
-              <p className="mb-3 text-xs leading-5 text-slate-400"><span translate="no">{chartAsset.source}</span>{chartAsset.quoteAsOf?` · ${new Date(chartAsset.quoteAsOf).toLocaleString(i18n.language)}`:` · ${t('audit_quote_undated')}`}</p>
-
-              {/* Timeframe selector + Chart container */}
-              <div
-                className="bg-slate-900 rounded-xl border border-slate-700/50 mb-3 overflow-hidden"
-                style={{
-                  width: '100%',
-                  flex: 'none',
-                  minHeight: '400px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                }}
-              >
-                <div className="chart-time-strip" role="group" aria-label={t('cycle_times')}>
-                  <span className="text-xs text-slate-400">{t('cycle_times')}</span>
-                  {[['15m','15 min'],['4h','4 h'],['1d','1D']].map(([value,label])=><button key={value} type="button" aria-pressed={candleInterval===value} title={t('cycle_candle',{label})} onClick={()=>setCandleInterval(value)} className={candleInterval===value?'selected-candle':''}>{label}</button>)}
-                  <span aria-hidden="true" className="chart-time-divider"/>
-                  {TIMEFRAMES.map(tf=><button key={tf.label} type="button" aria-pressed={activeTf.label===tf.label} title={t('cycle_range',{label:tf.label})} onClick={()=>setActiveTf(tf)} className={activeTf.label===tf.label?'selected-range':''}>{tf.label}</button>)}
-                </div>
-                <p className="px-3 pt-2 text-[11px] leading-5 text-slate-400">{t('chart_time_controls_note')}</p>
-
-                {/* Chart */}
-                <div style={{ flex: 1, minHeight: 0, padding: isMobile ? '8px' : '12px' }}>
-                  <CandleChart key={`chart:${chartAsset.type}:${chartAsset.id}`} asset={chartAsset} timeframe={activeTf.label} interval={candleInterval}/>
-                </div>
-              </div>
-
-              <AnalysisPanel key={`analysis:${chartAsset.type}:${chartAsset.id}`} asset={chartAsset} />
-              <NewsPanel key={`news:${chartAsset.type}:${chartAsset.id}`} asset={chartAsset} />
-            </>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '64px' }}
-              className="text-slate-400 text-base">
-              {loading ? (
-                <div className="text-center" role="status" aria-live="polite">
-                  <div className="w-6 h-6 border-2 border-slate-600 border-t-brand-400 rounded-full animate-spin mx-auto mb-3" />
-                  <p>{t('loading')}</p>
-                </div>
-              ) : error ? (
-                <div className="max-w-md text-center" role="alert">
-                  <p>{t('dashboard_data_unavailable')}</p>
-                  <button
-                    type="button"
-                    onClick={refresh}
-                    className="mt-4 rounded-lg border border-slate-600 px-4 py-2 text-sm text-white hover:bg-slate-800"
-                  >
-                    {t('retry')}
-                  </button>
-                </div>
-              ) : (
-                <p role="status">{t('dashboard_no_assets')}</p>
-              )}
-            </div>
-          )}
-        </main>
-      </div>
-    </div>
-  );
+function HomeContext({excluded}) {
+  const {t,i18n}=useTranslation(),lang=i18n.language.split('-')[0];
+  const [news,setNews]=useState(()=>cachedPublicNews({id:'global'},'market',lang)),[calendar,setCalendar]=useState(null),[newsError,setNewsError]=useState(false),[calendarError,setCalendarError]=useState(false),[newsLoading,setNewsLoading]=useState(true),[calendarLoading,setCalendarLoading]=useState(true);
+  useEffect(()=>{
+    let active=true,running=false;
+    setNews(cachedPublicNews({id:'global'},'market',lang));setNewsError(false);setNewsLoading(true);
+    const read=async()=>{
+      if(running||document.visibilityState==='hidden')return;running=true;
+      try{const result=await fetchGlobalNews(lang,'snapshot');if(active){setNews(previous=>result.sourceStatus==='unavailable'&&!result.news?.length?previous:result);setNewsError(result.sourceStatus==='unavailable');}}
+      catch{if(active)setNewsError(true);}finally{running=false;if(active)setNewsLoading(false);}
+    };
+    void read();const timer=setInterval(read,60000),visible=()=>{if(document.visibilityState==='visible')void read();};document.addEventListener('visibilitychange',visible);
+    return()=>{active=false;clearInterval(timer);document.removeEventListener('visibilitychange',visible);};
+  },[lang]);
+  useEffect(()=>{
+    let active=true,running=false;
+    const read=async()=>{if(running||document.visibilityState==='hidden')return;running=true;try{const result=await fetchCalendar();if(active){setCalendar(result);setCalendarError(false);}}catch{if(active)setCalendarError(true);}finally{running=false;if(active)setCalendarLoading(false);}};
+    void read();const timer=setInterval(read,300000),visible=()=>{if(document.visibilityState==='visible')void read();};document.addEventListener('visibilitychange',visible);
+    return()=>{active=false;clearInterval(timer);document.removeEventListener('visibilitychange',visible);};
+  },[]);
+  const articles=homeStories(news?.news??[],Date.now(),excluded),titleFor=useNewsTitles(articles,lang,2),events=nextCalendarEvents(Array.isArray(calendar)?calendar:calendar?.events??[]);
+  const date=value=>stamp(value)?.toLocaleString(i18n.language,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})??'—';
+  const fallback=calendar?.source==='fallback';
+  const calendarParams=new URLSearchParams(window.location.search);calendarParams.delete('macro');
+  const calendarLink=window.location.pathname+(calendarParams.size?'?'+calendarParams:'')+'#markets';
+  return <section className="home-context" aria-labelledby="home-context-title">
+    <div className="home-section-title"><div><p className="home-eyebrow">02 · {t('home_context')}</p><h2 id="home-context-title">{t('home_news')}</h2><p>{t('home_context_help')}</p></div><a className="home-text-link" href="#fundamentals">{t('home_news_all')} ↗</a></div>
+    <div className="home-context-grid"><div className="home-news-list">
+      {newsError&&<p className="home-notice" role="status">{t('home_news_error')}</p>}
+      {!articles.length&&!newsError&&<p className="home-empty" role="status">{t(newsLoading?'loading':'home_news_empty')}</p>}
+      {articles.map(article=><article className="home-story" key={article.link}>
+        <p className="home-story-meta"><span className="home-chip">{t('world_'+(article.marketCategory??article.category))}</span><span translate="no">{article.source}</span><time dateTime={article.pubDate}>{date(article.pubDate)}</time></p>
+        <h3><a href={safeSource(article.link)} target="_blank" rel="noopener noreferrer">{titleFor(article)} ↗</a></h3>
+        {lang!=='en'&&titleFor(article)===article.title&&<p className="home-caption">{t('home_news_original')}</p>}
+        {article.analysisProvider&&article.summary?<p className="home-story-summary">{article.summary}</p>:<p className="home-caption">{t('home_news_preliminary')}</p>}
+      </article>)}
+    </div><aside className="home-agenda" aria-label={t('home_agenda')}><span className="home-agenda-icon" aria-hidden="true">◷</span><h3>{t('home_agenda')}</h3>
+      {calendarError&&<p role="status" className="home-notice">{t('home_agenda_error')}</p>}
+      {fallback&&<p className="home-caption">{t('home_calendar_reference')}</p>}
+      {!events.length&&!calendarError&&<p role="status" className="home-caption">{t(calendarLoading?'loading':'home_agenda_empty')}</p>}
+      {events.map(event=><article key={`${event.titleKey??event.title}:${event.scheduledAt??event.date}`}><time dateTime={event.scheduledAt??event.date}>{event.scheduledAt?date(event.scheduledAt):new Date(event.date+'T12:00:00').toLocaleDateString(i18n.language,{day:'numeric',month:'long'})}</time><h4>{calendarTitle(event,t,i18n.language)}</h4><p className="home-caption">{event.currency} · {!event.scheduledAt?t('home_event_date_only'):Intl.DateTimeFormat().resolvedOptions().timeZone}</p>{safeSource(event.sourceUrl)&&<a className="home-text-link" href={safeSource(event.sourceUrl)} target="_blank" rel="noopener noreferrer">{t('home_event_source')} ↗</a>}</article>)}
+      <a href={calendarLink} className="home-text-link">{t('home_calendar')} →</a>
+    </aside></div>
+  </section>;
 }
 
-function StatCard({ label, value, mono = false, positive }) {
-  const isColored = positive !== undefined;
-  return (
-    <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/40">
-      <p className="text-xs text-slate-400 mb-1">{label}</p>
-      <p className={[
-        'text-base font-semibold',
-        isColored ? (positive ? 'text-green-400' : 'text-red-400') : 'text-white',
-        mono ? 'font-mono' : '',
-      ].join(' ')}>
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function fmtPrice(n, currency=null) {
-  if (n == null || isNaN(n)) return '—';
-  if(currency!=='USD') return `${n.toLocaleString(undefined,{maximumFractionDigits:4})}${currency?` ${currency}`:''}`;
-  if (n >= 1000) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-  if (n >= 1)    return `$${n.toFixed(2)}`;
-  return `$${n.toFixed(4)}`;
-}
-
-function fmtCompact(n) {
-  if (n == null || isNaN(n) || n <= 0) return '—';
-  if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
-    if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
-  return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+export function Dashboard({marketData,onSimple}) {
+  const {t,i18n}=useTranslation(),[type,setType]=useState('all'),[,chooseAsset]=useAssetRoute(null,marketData.allAssets),[excluded,setExcluded]=useState([]);
+  const onAlerts=useCallback(alerts=>setExcluded(alerts.map(a=>a.url)),[]);
+  const openAsset=asset=>{chooseAsset(asset);window.location.hash='panorama';};
+  const selectedRows=useMemo(()=>homeAssets(marketData.allAssets,type),[marketData.allAssets,type]);
+  const rows=useHomeQuotes(selectedRows,marketData.lastUpdated?.getTime());
+  const date=value=>stamp(value)?.toLocaleString(i18n.language,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})??t('home_date_missing');
+  return <main className="home-page">
+    <MarketImpactAlert hideWhenEmpty onAlertsChange={onAlerts}/>
+    <header className="home-hero"><div className="home-hero-copy"><p className="home-eyebrow">WASTAKE · {t('home_eyebrow')}</p><h1>{t('home_title')}</h1><p>{t('home_intro')}</p></div><button type="button" className="home-easy" onClick={onSimple}>🌱 {t('easy_switch')} <span>Beta ↗</span></button>
+      <div className="home-search"><AssetSearch catalogueAssets={marketData.allAssets} onSelect={openAsset}/><p>{t('home_search_help')}</p></div>
+    </header>
+    <div className="home-status"><span className="home-status-dot" aria-hidden="true"/><span>{marketData.lastUpdated?t('home_updated',{date:date(marketData.lastUpdated)}):t(marketData.loading?'loading':'home_no_quotes')}</span>{(marketData.error||marketData.isStale)&&<span className="home-notice" role="status">{t('home_partial')}</span>}<button type="button" onClick={marketData.refresh} disabled={marketData.loading} aria-label={t('uni_refresh')}>↻</button></div>
+    <MarketLeaders home marketData={marketData} onSelect={openAsset}/>
+    <section className="home-market" aria-labelledby="home-market-title">
+      <div className="home-section-title"><div><p className="home-eyebrow">01 · {t('home_discover')}</p><h2 id="home-market-title">{t('home_table')}</h2><p>{t('home_table_help')}</p></div><a className="home-text-link" href="#panorama">{t('home_open_panorama')} ↗</a></div>
+      <div className="home-filters" role="group" aria-label={t('home_types')}>{filters.map(key=><button key={key} type="button" aria-pressed={type===key} onClick={()=>setType(key)}>{t(filterKey[key])}</button>)}</div>
+      {!rows.length?<p className="home-empty" role="status">{t(marketData.loading?'loading':'home_no_quotes')}</p>:<table className="home-table"><caption className="sr-only">{t('home_table_help')}</caption><thead><tr><th scope="col">{t('home_asset')}</th><th scope="col" className="home-class-col">{t('home_class')}</th><th scope="col">{t('price')}</th><th scope="col">{t('home_move')}</th><th scope="col" className="home-source-col">{t('home_source')}</th></tr></thead><tbody>{rows.map(asset=>{
+        const hasDate=stamp(asset.quoteAsOf)&&stamp(asset.quoteAsOf).getTime()<=Date.now(),up=Number.isFinite(asset.change24h)?asset.change24h>=0:null;
+        return <tr key={`${asset.type}:${asset.id}`}><th scope="row"><button className="home-asset-button" type="button" onClick={()=>openAsset(asset)} aria-label={t('home_open_asset',{name:asset.name})}><AssetLogo asset={asset} size={32}/><span><strong translate="no">{asset.name}</strong><small translate="no">{asset.symbol}</small></span></button></th><td className="home-class-col"><span className="home-type">{t(typeKey[asset.type]??'home_other')}</span></td><td className="home-number"><span title={!hasDate?t('home_price_unverified'):undefined}>{hasDate?formatQuote(asset.price,asset.currency,i18n.language):'—'}</span><small className="home-mobile-date">{date(asset.quoteAsOf)}</small></td><td className="home-number"><span className={hasDate&&up!==null?up?'home-up':'home-down':''}>{hasDate&&up!==null?asset.change24h.toLocaleString(i18n.language,{minimumFractionDigits:2,maximumFractionDigits:2,signDisplay:'exceptZero'})+'%':'—'}</span><small>{t(asset.type==='crypto'?'home_change_crypto':'home_change_session')}</small></td><td className="home-source-col"><span translate="no">{asset.source??'—'}</span><small>{date(asset.quoteAsOf)}</small></td></tr>;
+      })}</tbody></table>}
+      <p className="home-caption home-table-note">{t('highlights_moves')}</p>
+    </section>
+    <HomeContext excluded={excluded}/>
+    <section className="home-next"><div><p className="home-eyebrow">WASTAKE · PANORAMA</p><h2>{t('home_next')}</h2><p>{t('home_next_help')}</p></div><a className="home-primary" href="#panorama">{t('home_open_panorama')} →</a></section>
+    <footer className="home-footer"><details><summary>{t('home_method')}</summary><p>{t('home_method_text')}</p><p>{t('home_company_note')}</p><p>{t('audit_compact_legend')}</p></details><p>{t('home_risk')}</p></footer>
+  </main>;
 }
