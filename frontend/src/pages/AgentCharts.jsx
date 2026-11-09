@@ -3,6 +3,7 @@ import {CHART_INTERVALS,intervalInfo} from '../utils/chartIntervals.js';
 import {useEffect,useRef,useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {AssetSearch} from '../components/AssetSearch.jsx';
+import {AlbertoIcon} from '../components/AlbertoIcon.jsx';
 import {AgentCanvas} from '../components/AgentCanvas.jsx';
 import {DrawingToolbar} from '../components/ChartDrawings.jsx';
 import {fetchChartSnapshot,askChartAgent,searchAssets} from '../services/api.js';
@@ -14,7 +15,6 @@ import {initialWorkspace,applyChartActions} from '../utils/chartWorkspace.js';
 
 const starter={id:'bitcoin',name:'Bitcoin',symbol:'BTC',type:'crypto'};
 function readWatchlist(){try{return JSON.parse(localStorage.getItem('wastake_chart_watchlist_v1')||'[]').filter(a=>a&&typeof a.id==='string'&&typeof a.symbol==='string'&&['stock','crypto','etf','bond','forex','index','commodity'].includes(a.type)).slice(0,20);}catch{return [];}}
-function AlbertoIcon({busy}){return <svg viewBox="0 0 96 80" className={`alberto-bull h-16 w-20 shrink-0 ${busy?'is-thinking':''}`} aria-hidden="true"><ellipse cx="48" cy="72" rx="29" ry="4" fill="#071c22"/><g className="bull-head"><path d="M24 32C7 33 6 13 11 7c-1 13 11 13 19 14m42 11c17 1 18-19 13-25 1 13-11 13-19 14" fill="#ffdda2" stroke="#ca9d60" strokeWidth="2"/><path d="M26 29 13 25l4 15 13 3m40-14 13-4-4 15-13 3" fill="#377d7b"/><path d="M25 26q23-20 46 0l-3 30q-20 23-40 0Z" fill="#1e575a" stroke="#63c9bb" strokeWidth="2"/><path d="m35 16 7-7 4 8 8-9 5 12" fill="#66d4bb"/><path d="m32 36 10 3m12 0 10-3" stroke="#c0fbe6" strokeWidth="3" strokeLinecap="round"/><g className="bull-eyes" fill="#fff6c9"><ellipse cx="37" cy="42" rx="3" ry="4"/><ellipse cx="59" cy="42" rx="3" ry="4"/></g><ellipse cx="48" cy="59" rx="19" ry="11" fill="#58aa9b"/><ellipse cx="39" cy="58" rx="3" ry="2" fill="#14383f"/><ellipse cx="57" cy="58" rx="3" ry="2" fill="#14383f"/><path d="M41 65q7 4 14 0" fill="none" stroke="#14383f" strokeWidth="2" strokeLinecap="round"/></g></svg>;}
 
 export default function AgentCharts({marketData,guided=false}){
  const {t,i18n}=useTranslation(),lang=(i18n.resolvedLanguage||i18n.language).split('-')[0];
@@ -136,7 +136,7 @@ export default function AgentCharts({marketData,guided=false}){
        <div className="studio-status"><span className="text-teal-300">{t(refreshFailed?'studio_refresh_failed':'studio_refresh_policy')}{snapshot?.retrievedAt&&` · ${new Date(snapshot.retrievedAt).toLocaleTimeString(i18n.language)}`}</span><span translate="no">{asset.symbol} · {snapshot?.source??'—'} · {snapshot?.currency??'—'}</span><span>{ready?`${date(snapshot.asOf)} UTC · ${snapshot.closedCount} ${t('studio_closed_bars')}`:t('loading')}</span>{ready&&<span>RSI {fmt(snapshot.facts.rsi)} · {t('studio_score')} {fmt(snapshot.facts.score)}/10</span>}</div>
      </section>
      <aside className="studio-rail" data-open={chatOpen} aria-label="Alberto">
-       <div className="flex shrink-0 items-center gap-2 border-b border-slate-800 px-3 py-2"><AlbertoIcon busy={busy}/><div className="flex-1"><h1 className="text-sm font-semibold text-teal-100">Alberto</h1><p className="text-[10px] text-slate-400">{t('studio_tagline')}</p></div><button type="button" onClick={()=>{controller.current?.abort();messageSequence.current++;setMessages([]);setBusy(false);setError(false);}} aria-label={t('studio_new')} title={t('studio_new')} className="min-h-9 min-w-8 text-slate-400">＋</button><button type="button" onClick={()=>setChatOpen(false)} aria-label={t('draw_close')} className="min-h-9 min-w-8 text-slate-400">×</button></div>
+       <div className="flex shrink-0 items-center gap-2 border-b border-slate-800 px-3 py-2"><AlbertoIcon busy={busy} className="h-16 w-20 shrink-0"/><div className="flex-1"><h1 className="text-sm font-semibold text-teal-100">Alberto</h1><p className="text-[10px] text-slate-400">{t('studio_tagline')}</p></div><button type="button" onClick={()=>{controller.current?.abort();messageSequence.current++;setMessages([]);setBusy(false);setError(false);}} aria-label={t('studio_new')} title={t('studio_new')} className="min-h-9 min-w-8 text-slate-400">＋</button><button type="button" onClick={()=>setChatOpen(false)} aria-label={t('draw_close')} className="min-h-9 min-w-8 text-slate-400">×</button></div>
        <div className="flex shrink-0 border-b border-slate-800 px-2">{[['chat',t('studio_chat')],['objects',`${t('studio_objects')} · ${workspace.drawings.length}`],['watch',t('studio_watchlist')]].map(([id,label])=><button type="button" key={id} aria-pressed={railTab===id} onClick={()=>setRailTab(id)} className={`min-h-10 flex-1 border-b px-1 text-[11px] ${railTab===id?'border-teal-400 text-teal-200':'border-transparent text-slate-500'}`}>{label}</button>)}</div>
        {railTab==='chat'?<>
          <div ref={log} role="log" aria-live="polite" aria-label="Alberto · chat" className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
