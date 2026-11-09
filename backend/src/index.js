@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit';
 import { priceRouter }    from './routes/prices.js';
 import { assetsRouter }   from './routes/assets.js';
 import { analysisRouter } from './routes/analysis.js';
+import {homeAssistantRouter} from './routes/homeAssistant.js';
 import {chartAgentRouter} from './routes/chartAgent.js';
 import { newsRouter }     from './routes/news.js';
 import { fundamentalsRouter } from './routes/fundamentals.js';
@@ -68,6 +69,7 @@ if (TIKTOK_VERIFY_FILE && TIKTOK_VERIFY_CONTENT) {
 app.use('/api/prices',       apiLimiter, priceRouter);
 app.use('/api/assets',       apiLimiter, assetsRouter);
 app.use('/api/analysis',     apiLimiter, analysisRouter);
+app.use('/api/home-assistant', apiLimiter, homeAssistantRouter);
 app.use('/api/chart-agent',  apiLimiter, chartAgentRouter);
 app.use('/api/news',         apiLimiter, newsRouter);
 app.use('/api/fundamentals', apiLimiter, fundamentalsRouter);

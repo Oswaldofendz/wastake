@@ -4,7 +4,7 @@ import {AssetSearch} from '../components/AssetSearch.jsx';
 import {AssetLogo} from '../components/AssetLogo.jsx';
 import {MarketLeaders} from '../components/MarketLeaders.jsx';
 import {HomePulse} from '../components/HomePulse.jsx';
-import {BullRun} from '../components/BullRun.jsx';
+import {HomeAssistant} from '../components/HomeAssistant.jsx';
 import {MarketImpactAlert} from '../components/MarketImpactAlert.jsx';
 import {useAssetRoute} from '../hooks/useAssetRoute.js';
 import {useNewsTitles} from '../hooks/useNewsTitles.js';
@@ -51,7 +51,7 @@ function HomeContext({excluded,calendarLink}) {
   const date=value=>stamp(value)?.toLocaleString(i18n.language,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})??'—';
   const fallback=calendar?.source==='fallback';
   return <section className="home-context" aria-labelledby="home-context-title">
-    <div className="home-section-title"><div><p className="home-eyebrow">02 · {t('home_context')}</p><h2 id="home-context-title">{t('home_news')}</h2><p>{t('home_context_help')}</p></div><a className="home-text-link" href="#fundamentals">{t('home_news_all')} ↗</a></div>
+    <div className="home-section-title"><div><p className="home-eyebrow">02 · {t('home_context')}</p><h2 id="home-context-title"><span aria-hidden="true">📰</span>{t('home_news')}</h2><p>{t('home_context_help')}</p></div><a className="home-text-link" href="#fundamentals">{t('home_news_all')} ↗</a></div>
     <div className="home-context-grid"><div className="home-news-list">
       {newsError&&<p className="home-notice" role="status">{t('home_news_error')}</p>}
       {!articles.length&&!newsError&&<p className="home-empty" role="status">{t(newsLoading?'loading':'home_news_empty')}</p>}
@@ -61,7 +61,7 @@ function HomeContext({excluded,calendarLink}) {
         {lang!=='en'&&titleFor(article)===article.title&&<p className="home-caption">{t('home_news_original')}</p>}
         {article.analysisProvider&&article.summary?<p className="home-story-summary">{article.summary}</p>:<p className="home-caption">{t('home_news_preliminary')}</p>}
       </article>)}
-    </div><aside className="home-agenda" aria-label={t('home_agenda')}><span className="home-agenda-icon" aria-hidden="true">◷</span><h3>{t('home_agenda')}</h3>
+    </div><aside className="home-agenda" aria-label={t('home_agenda')}><span className="home-agenda-icon" aria-hidden="true">📅</span><h3>{t('home_agenda')}</h3>
       {calendarError&&<p role="status" className="home-notice">{t('home_agenda_error')}</p>}
       {fallback&&<p className="home-caption">{t('home_calendar_reference')}</p>}
       {!events.length&&!calendarError&&<p role="status" className="home-caption">{t(calendarLoading?'loading':'home_agenda_empty')}</p>}
@@ -88,10 +88,11 @@ export function Dashboard({marketData,onSimple}) {
   return <main className="home-page">
     <MarketImpactAlert hideWhenEmpty onAlertsChange={onAlerts}/>
     <HomePulse assets={marketData.allAssets} filters={filters} filterKey={filterKey} type={type} onFilter={filterMarket} onSelect={openAsset} onSimple={onSimple} calendarLink={calendarLink}/>
+    <MarketLeaders home marketData={marketData} onSelect={openAsset}/>
     <div className="home-search"><AssetSearch catalogueAssets={marketData.allAssets} onSelect={openAsset}/></div>
     <div className="home-status"><span className="home-status-dot" aria-hidden="true"/><span>{marketData.lastUpdated?t('home_updated',{date:date(marketData.lastUpdated)}):t(marketData.loading?'loading':'home_no_quotes')}</span>{(marketData.error||marketData.isStale)&&<span className="home-notice" role="status">{t('home_partial')}</span>}<button type="button" onClick={marketData.refresh} disabled={marketData.loading} aria-label={t('home_quotes_refresh')}>↻</button></div>
     <section id="home-market-assets" className="home-market" aria-labelledby="home-market-title" tabIndex={-1}>
-      <div className="home-section-title"><div><p className="home-eyebrow">01 · {t('home_discover')}</p><h2 id="home-market-title">{t('home_table')}</h2><p>{t('home_table_help')}</p></div><a className="home-text-link" href="#panorama">{t('home_open_panorama')} ↗</a></div>
+      <div className="home-section-title"><div><p className="home-eyebrow">01 · {t('home_discover')}</p><h2 id="home-market-title"><span aria-hidden="true">🧭</span>{t('home_table')}</h2><p>{t('home_table_help')}</p></div><a className="home-text-link" href="#panorama">{t('home_open_panorama')} ↗</a></div>
     {type!=='all'&&<button className="home-reset-filter" type="button" onClick={()=>setType('all')}>{t(filterKey[type])} · {t('home_show_all')} ↗</button>}
         {!rows.length?<p className="home-empty" role="status">{t(marketData.loading?'loading':'home_no_quotes')}</p>:<table className="home-table"><caption className="sr-only">{t('home_table_help')}</caption><thead><tr><th scope="col">{t('home_asset')}</th><th scope="col" className="home-class-col">{t('home_class')}</th><th scope="col">{t('price')}</th><th scope="col">{t('home_move')}</th><th scope="col" className="home-source-col">{t('home_source')}</th></tr></thead><tbody>{rows.map(asset=>{
         const hasDate=stamp(asset.quoteAsOf)&&stamp(asset.quoteAsOf).getTime()<=Date.now(),up=Number.isFinite(asset.change24h)?asset.change24h>=0:null;
@@ -99,10 +100,9 @@ export function Dashboard({marketData,onSimple}) {
       })}</tbody></table>}
       <p className="home-caption home-table-note">{t('highlights_moves')}</p>
     </section>
-    <MarketLeaders home marketData={marketData} onSelect={openAsset}/>
     <HomeContext excluded={excluded} calendarLink={calendarLink}/>
-    <BullRun/>
-    <section className="home-next"><div><p className="home-eyebrow">WASTAKE · PANORAMA</p><h2>{t('home_next')}</h2><p>{t('home_next_help')}</p></div><a className="home-primary" href="#panorama">{t('home_open_panorama')} →</a></section>
+    <HomeAssistant/>
+    <section className="home-next"><div><p className="home-eyebrow">WASTAKE · PANORAMA</p><h2><span aria-hidden="true">🔎</span>{t('home_next')}</h2><p>{t('home_next_help')}</p></div><a className="home-primary" href="#panorama">{t('home_open_panorama')} →</a></section>
     <footer className="home-footer"><details><summary>{t('home_method')}</summary><p>{t('home_method_text')}</p><p>{t('home_company_note')}</p><p>{t('audit_compact_legend')}</p></details><p>{t('home_risk')}</p></footer>
   </main>;
 }

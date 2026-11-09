@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {homeChart,homeCryptoSnapshot,homeSentiment} from '../../frontend/src/utils/homePulse.js';
-import {advanceBull,jumpBull,newRun,runnerX} from '../../frontend/src/utils/bullRun.js';
 
 const now = Date.UTC(2026,10,9,12);
 const day = Math.floor(now/86400000)*86400;
@@ -22,27 +21,6 @@ test('sentiment preserves valid zero and rejects missing, impossible and future 
   assert.deepEqual(homeSentiment({value:'0',timestamp:day},now),{score:0,at:day*1000});
   for (const value of [null,'',-1,101,50.5]) assert.equal(homeSentiment({value,timestamp:day},now),null);
   assert.equal(homeSentiment({value:50,timestamp:day+86400},now),null);
-});
-
-test('bull jumps at most twice until landing and can duck a beam',() => {
-  let run = newRun();
-  run = advanceBull(jumpBull(run),.02);
-  run = jumpBull(run);
-  assert.equal(jumpBull(run),run);
-  for (let i=0;i<70;i++) run = advanceBull(run,.015);
-  assert.equal(run.jumps,0);
-  const hazard = {...newRun(),items:[{x:runnerX+2,id:0,kind:'beam'}]};
-  assert.equal(advanceBull(hazard,.01).result,'over');
-  assert.equal(advanceBull({...hazard,duck:true},.01).result,null);
-});
-
-test('bull can collect coins and catch the bird, and only levels mode ends at 900 m',() => {
-  const coin = {x:runnerX+2,id:0,kind:'coin'};
-  const bird = {x:runnerX+2,id:0,kind:'bird'};
-  assert.equal(advanceBull({...newRun(),items:[coin]},.01).coins,1);
-  assert.equal(advanceBull({...newRun(),height:64,items:[bird]},.01).catches,1);
-  assert.equal(advanceBull({...newRun(),meters:899.9},.02).result,'won');
-  assert.equal(advanceBull({...newRun('endless'),meters:899.9},.02).result,null);
 });
 
 test('catalogue fallback uses fresh USD data, counts coverage, and computes BTC share only within the sample',() => {

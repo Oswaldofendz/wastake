@@ -260,10 +260,12 @@ html.light .market-impact .text-sky-200 { color: #075985; }
 .impact-ticker-sequence>a,.impact-ticker-sequence>span{display:flex;align-items:center;gap:14px;white-space:nowrap;font-size:12px;min-height:42px}
 .impact-ticker-sequence time,.ticker-source{font-size:10px;color:#b9bfcc}
 .impact-ticker-sequence strong{font-weight:650;color:#fff}.impact-ticker button{flex:none;min-width:36px;min-height:40px;color:#cbd5e1;border-radius:5px}
-.impact-ticker button:hover{background:#ffffff15}.impact-ticker:focus-within .impact-ticker-track,.impact-ticker:hover .impact-ticker-track,.impact-ticker-track.is-paused{animation-play-state:paused}
+.impact-ticker button:hover{background:#ffffff15}.impact-ticker-track.is-paused{animation-play-state:paused}
 .ticker-status{font-size:11px;color:var(--text-secondary)}.ticker-warning{color:#fbbf24}
 @keyframes market-news-crawl{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-@media(prefers-reduced-motion:reduce){.impact-ticker-track{animation:none}.impact-ticker-window{overflow-x:auto}.impact-ticker-sequence[aria-hidden=true]{display:none}}
+.impact-ticker.is-static .impact-ticker-track,.impact-ticker-window:has(a:focus-visible) .impact-ticker-track{animation:none}
+.impact-ticker.is-static .impact-ticker-window,.impact-ticker-window:has(a:focus-visible){overflow-x:auto}
+.impact-ticker.is-static .impact-ticker-sequence[aria-hidden=true],.impact-ticker-window:has(a:focus-visible) .impact-ticker-sequence[aria-hidden=true]{display:none}
 html.light .impact-ticker.has-news{background:#fff1f2}html.light .impact-ticker-label{color:#9f1239}html.light .impact-ticker-sequence strong{color:#172033}html.light .impact-ticker-sequence time,html.light .ticker-source,html.light .impact-ticker button{color:#475569}
 @media(max-width:599px){.impact-ticker{gap:5px;padding-left:8px}.impact-ticker-label{font-size:10px}.ticker-source{display:none}}
 

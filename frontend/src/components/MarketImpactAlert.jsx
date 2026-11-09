@@ -7,8 +7,16 @@ import {homeBreakingAlerts} from '../utils/homeDiscovery.js';
 
 const STORAGE='wastake-impact-dismissed-v1';
 export function MarketImpactAlert({hideWhenEmpty=false,onAlertsChange}){
-  const {t,i18n}=useTranslation(),[data,setData]=useState(null),[error,setError]=useState(false),[loading,setLoading]=useState(false),[attempt,setAttempt]=useState(0),[clock,setClock]=useState(Date.now),[detailsOpen,setDetailsOpen]=useState(false),[paused,setPaused]=useState(false);
+  const {t,i18n}=useTranslation(),[data,setData]=useState(null),[error,setError]=useState(false),[loading,setLoading]=useState(false),[attempt,setAttempt]=useState(0),[clock,setClock]=useState(Date.now),[detailsOpen,setDetailsOpen]=useState(false),[pauseOverride,setPauseOverride]=useState(null);
   const [speed,setSpeed]=useState('fast'),[duration,setDuration]=useState(20);const sequenceRef=useRef(null);
+  const [reducedMotion,setReducedMotion]=useState(()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const paused=pauseOverride??reducedMotion;
+  useEffect(()=>{
+    const preference=window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update=event=>setReducedMotion(event.matches);
+    preference.addEventListener('change',update);
+    return ()=>preference.removeEventListener('change',update);
+  },[]);
   const [dismissed,setDismissed]=useState(()=>{try{const list=JSON.parse(sessionStorage.getItem(STORAGE)||'[]');return Array.isArray(list)?list.filter(x=>typeof x==='string').slice(-50):[];}catch{return [];}});
   useEffect(()=>{
     let alive=true,running=false;const controller=new AbortController();
@@ -45,7 +53,7 @@ export function MarketImpactAlert({hideWhenEmpty=false,onAlertsChange}){
     <footer className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-slate-700/40 px-4 py-2 text-[10px] leading-5 text-slate-400"><p>{t('impact_cadence')}{data?.checkedAt?` · ${t('impact_checked')}: ${date(data.checkedAt)}`:''}</p>{partial&&<p role="status" className="text-amber-200">{t('impact_partial')}</p>}{dismissed.length>0&&all.some(a=>dismissed.includes(a.id))&&<button type="button" onClick={()=>{setDismissed([]);try{sessionStorage.removeItem(STORAGE);}catch{}}} className="min-h-8 text-sky-200 underline">{t('impact_restore')}</button>}<details><summary className="cursor-pointer">{t('impact_coverage')}</summary><p className="max-w-3xl">{t('world_method_text')}</p>{data?.sources?.map(s=><p key={s.name}><span translate="no">{s.name}</span> · {t(s.status==='ok'?'impact_available':'impact_unavailable')}{s.checkedAt?` · ${date(s.checkedAt)}`:''}</p>)}</details></footer>
   </section>;
   if(hideWhenEmpty&&!alerts.length&&!detailsOpen)return null;
-  return <><section className={`impact-ticker ${alerts.length?'has-news':''}`} aria-label={t('impact_title')}>
+  return <><section className={`impact-ticker ${reducedMotion&&paused?'is-static':''} ${alerts.length?'has-news':''}`} aria-label={t('impact_title')}>
     <a className="impact-ticker-label" href={detailsLink()} title={t('world_full')}><span aria-hidden="true">{alerts.length?'🚨':'🛰️'}</span> {t('impact_ticker_title')}</a>
     <div className="impact-ticker-window"><div style={{animationDuration:`${duration}s`}} className={`impact-ticker-track ${paused||!alerts.length?'is-paused':''}`}>
       <div ref={sequenceRef} className="impact-ticker-sequence">{alerts.length?alerts.map(item=><a key={item.id} href={detailsLink()}><strong>{title(item)}</strong><span className="ticker-source" translate="no">{item.source}</span><time dateTime={item.publishedAt}>{date(item.publishedAt)}</time><span aria-hidden="true">◆</span></a>):<span className="ticker-status">{t(!data?(error?'impact_unknown':'impact_loading'):all.length?'impact_hidden':partial?'impact_unknown':'impact_empty')}</span>}</div>
@@ -53,7 +61,7 @@ export function MarketImpactAlert({hideWhenEmpty=false,onAlertsChange}){
     </div></div>
     {partial&&<span title={t('impact_partial')} className="ticker-warning" role="status">⚠</span>}
     {alerts.length>0&&<button type="button" onClick={()=>setSpeed(value=>value==='fast'?'normal':'fast')} aria-label={t('world_speed')} aria-pressed={speed==='fast'} title={t('world_speed')}>{speed==='fast'?'2×':'1×'}</button>}
-    {alerts.length>0&&<button type="button" onClick={()=>setPaused(p=>!p)} aria-label={t(paused?'impact_resume':'impact_pause')} title={t(paused?'impact_resume':'impact_pause')}>{paused?'▶':'Ⅱ'}</button>}
+    {alerts.length>0&&<button type="button" onClick={()=>setPauseOverride(!paused)} aria-label={t(paused?'impact_resume':'impact_pause')} title={t(paused?'impact_resume':'impact_pause')}>{paused?'▶':'Ⅱ'}</button>}
     <button type="button" onClick={()=>setDetailsOpen(x=>!x)} aria-expanded={detailsOpen} aria-label={t('impact_details')} title={t('impact_details')}>{detailsOpen?'×':'ⓘ'}</button>
   </section><p className="sr-only" aria-live="polite">{alerts.map(title).join('. ')}</p>{detailsOpen&&expanded}</>;
 }

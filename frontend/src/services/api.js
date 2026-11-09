@@ -5,11 +5,13 @@ export const fetchMarketImpactAlerts=signal=>get('/api/market/impact-alerts',650
 const BASE = import.meta.env.VITE_API_URL ?? '';
 export const fetchSourceReference=id=>get(id?`/api/market/exchange-reference/${encodeURIComponent(id)}`:'/api/market/reference-rates',25_000);
 export const fetchChartSnapshot=(asset,type,interval,venue='auto')=>get(`/api/chart-agent/${encodeURIComponent(asset.id)}?${new URLSearchParams({type,interval,venue})}`,45_000);
-export async function askChartAgent(body,signal){
+export const askChartAgent = (body,signal) => postQuestion('/api/chart-agent/ask',body,signal);
+export const askHomeAssistant = (body,signal) => postQuestion('/api/home-assistant/ask',body,signal);
+async function postQuestion(path,body,signal){
   const controller=new AbortController(),cancel=()=>controller.abort();
   if(signal?.aborted)controller.abort();else signal?.addEventListener('abort',cancel,{once:true});
   const timeout=setTimeout(cancel,50_000);
-  try{const r=await fetch(`${BASE}/api/chart-agent/ask`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:controller.signal});if(!r.ok)throw new Error('Chart request unavailable');return await r.json();}
+  try{const r=await fetch(`${BASE}${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:controller.signal});if(!r.ok)throw new Error('Question unavailable');return await r.json();}
   finally{clearTimeout(timeout);signal?.removeEventListener('abort',cancel);}
 }
 

@@ -99,7 +99,7 @@ export function HomePulse({assets,filters,filterKey,type,onFilter,onSelect,onSim
   const change = global?.marketCapChange24h;
   return <>
     <section className="home-featured" aria-labelledby="home-featured-title">
-      <div className="home-featured-head"><div><h1 id="home-featured-title">{t('home_featured')}</h1><p>{t('home_mini_help')}</p></div><button type="button" className="home-easy" onClick={onSimple}>🌱 {t('easy_switch')} <span>Beta ↗</span></button></div>
+      <div className="home-featured-head"><div><h1 id="home-featured-title"><span aria-hidden="true">📈</span>{t('home_featured')}</h1><p>{t('home_mini_help')}</p></div><button type="button" className="home-easy" onClick={onSimple}>🌱 {t('easy_switch')} <span>Beta ↗</span></button></div>
       <div className="home-mini-grid">{featured.map(asset => <MiniChart key={asset.id} asset={assets.find(row=>row.id===asset.id && row.type===asset.type) ?? asset} chart={data[asset.id]} onSelect={onSelect}/>)}</div>
     </section>
     <section className="home-pulse" aria-label={t('home_pulse')}>
@@ -111,10 +111,10 @@ export function HomePulse({assets,filters,filterKey,type,onFilter,onSelect,onSim
         <div className="home-pulse-sentiment"><div><span className="home-pulse-label">{t('home_pulse_sentiment')}</span><strong>{sentiment ? sentiment.score+' / 100' : '—'}</strong><small><span translate="no">Alternative.me</span>{sentiment&&' · '+new Intl.DateTimeFormat(lang,{day:'numeric',month:'short',timeZone:'UTC'}).format(sentiment.at)}</small></div>{sentiment&&<SentimentArc score={sentiment.score}/>}</div>
       </div>
       <nav className="home-quick" aria-label={t('home_quick')}>
-        <a href="#chart-ai"><span aria-hidden="true">✦</span> {t('home_quick_charts')}</a>
-        <a href="#fundamentals"><span aria-hidden="true">◉</span> {t('home_news_all')}</a>
-        <a href={calendarLink}><span aria-hidden="true">◷</span> {t('home_calendar')}</a>
-        <a href="#alerts"><span aria-hidden="true">♢</span> {t('home_quick_alerts')}</a>
+        <a href="#chart-ai"><span aria-hidden="true">🤖</span> {t('home_quick_charts')}</a>
+        <a href="#fundamentals"><span aria-hidden="true">🗞️</span> {t('home_news_all')}</a>
+        <a href={calendarLink}><span aria-hidden="true">📅</span> {t('home_calendar')}</a>
+        <a href="#alerts"><span aria-hidden="true">🔔</span> {t('home_quick_alerts')}</a>
       </nav>
     </section>
   </>;
