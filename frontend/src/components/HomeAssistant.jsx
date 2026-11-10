@@ -1,35 +1,21 @@
 import {useEffect,useRef,useState} from 'react';
 import {useTranslation} from 'react-i18next';
-import {askHomeAssistant,fetchAnalysis,fetchAssetQuote,searchAssets} from '../services/api.js';
-import {ALL_ASSETS,getAnalysisType} from '../data/assetCatalog.js';
-import {helpTopic} from '../utils/albertoHelp.js';
-import {exactMarketMatches,marketQuestion,marketReply,verifiedClose,verifiedQuote} from '../utils/albertoMarket.js';
+import {askHomeAssistant,searchAssets} from '../services/api.js';
+import {ALL_ASSETS} from '../data/assetCatalog.js';
+import {exactMarketMatches,marketQuestion,mentionedMarkets} from '../utils/albertoMarket.js';
 import {assetSearchParams} from '../utils/assetRoute.js';
+import {formatQuote} from '../utils/panoramaAnalysis.js';
 import {AlbertoIcon} from './AlbertoIcon.jsx';
 
 const suggestions=['bitcoin','asset','futures'];
-const topics = {
-  asset:'#panorama',
-  alerts:'#alerts',
-  charts:'#chart-ai',futures:'#futures',news:'#fundamentals',rsi:'#chart-ai',trend:'#chart-ai',volume:'#chart-ai',atr:'#chart-ai',levels:'#futures',portfolio:'#portfolio'
-};
-
-async function readMarket(question, signal, lang, t) {
-  const matches=question.matches.length?question.matches:exactMarketMatches(question.target,(await searchAssets(question.target,{signal})).results);
-  if (!matches.length) return {text:t('alberto_market_not_found')};
-  if (matches.length>1) return {text:t('alberto_market_ambiguous',{choices:matches.slice(0,4).map(a=>`${a.name} (${a.symbol})`).join(' · ')})};
-  const asset=matches[0],type=getAnalysisType(asset);
-  const quote=()=>fetchAssetQuote({...asset,analysisType:type},{signal}).catch(()=>null);
-  const analysis=()=>fetchAnalysis(asset.id,type,undefined,{signal}).then(result=>result.analysis).catch(()=>null);
-  let daily=null,latest=null;
-  if (question.price) {
-    latest=await quote();
-    if (!verifiedQuote(latest) && !signal.aborted) daily=await analysis();
-  } else {
-    daily=await analysis();
-    if (!verifiedClose(daily?.meta) && !signal.aborted) latest=await quote();
-  }
-  return {asset,text:marketReply(asset,daily,latest,lang,t,{priceOnly:question.price})};
+async function resolveMarkets(question, mentioned, previous, signal) {
+  if (question?.matches.length===1) return question.matches;
+  if (question?.matches.length>1) return [];
+  if (mentioned.length) return mentioned;
+  if (!question) return previous;
+  const result=await searchAssets(question.target,{signal}).catch(()=>null);
+  const matches=exactMarketMatches(question.target,result?.results);
+  return matches.length===1?matches:[];
 }
 
 export function HomeAssistant({assets=[],onSelect}) {
@@ -39,6 +25,7 @@ export function HomeAssistant({assets=[],onSelect}) {
   const [input,setInput] = useState('');
   const [busy,setBusy] = useState(false);
   const dialog = useRef(null), launcher = useRef(null), log = useRef(null), request = useRef(null);
+  const lastMarkets = useRef([]);
   const lang = (i18n.resolvedLanguage || i18n.language).split('-')[0];
 
   useEffect(() => {
@@ -51,41 +38,32 @@ export function HomeAssistant({assets=[],onSelect}) {
   },[messages,busy,open]);
   useEffect(() => () => request.current?.abort(),[]);
 
-  const send = async (raw, topic) => {
+  const send = async raw => {
     const text = raw.trim();
     if (!text || text.length > 600 || request.current) return;
     setInput('');
     setMessages(previous => [...previous,{role:'user',text}]);
-    const question=topic==='bitcoin'?marketQuestion('Bitcoin',[...assets,...ALL_ASSETS])
-      : topic?null:marketQuestion(text,[...assets,...ALL_ASSETS]);
-    const localTopic=topic==='bitcoin'?null:topic??helpTopic(text);
-    const answerLocally=key=>setMessages(previous => [...previous,{
-      role:'assistant',text:t('alberto_answer_'+key),topic:topics[key]?key:null
-    }]);
-    if (localTopic && !question?.matches.length && (topic || text.split(/\s+/).length<=12)) {
-      answerLocally(localTopic);
-      return;
-    }
     const controller = new AbortController();
     request.current = controller;
     setBusy(true);
     try {
-      if (question) {
-        const reading=await readMarket(question,controller.signal,lang,t);
-        if (controller.signal.aborted) return;
-        setMessages(previous => [...previous,{role:'assistant',...reading}]);
-        return;
-      }
-      const {reply} = await askHomeAssistant({message:text,lang,history:messages.filter(item=>!item.error&&!item.asset).slice(-4).map(({role,text})=>({role,text}))},controller.signal);
+      const catalogue=[...assets,...ALL_ASSETS];
+      const question=marketQuestion(text.replace(/^₿\s*/,''),catalogue);
+      const markets=await resolveMarkets(question,mentionedMarkets(text,catalogue),lastMarkets.current,controller.signal);
+      if (controller.signal.aborted) return;
+      const history=messages.filter(item=>!item.error).slice(-8).map(({role,text})=>({role,text}));
+      const {reply,provider,sources=[]} = await askHomeAssistant({
+        message:text,lang,history,assets:markets.map(({id,type})=>({id,type})),wantQuote:question?.price===true
+      },controller.signal);
       if (!controller.signal.aborted && typeof reply === 'string' && reply.trim()) {
-        setMessages(previous => [...previous,{role:'assistant',text:reply}]);
+        lastMarkets.current=markets;
+        setMessages(previous => [...previous,{role:'assistant',text:reply,provider,markets,sources}]);
       } else if (!controller.signal.aborted) {
         throw new Error('Empty assistant reply');
       }
-    } catch {
-      if (!controller.signal.aborted && localTopic && !question) answerLocally(localTopic);
-      else if (!controller.signal.aborted) {
-        setMessages(previous => [...previous,{role:'assistant',text:t('alberto_unavailable'),error:true}]);
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        setMessages(previous => [...previous,{role:'assistant',text:t(error.status===429?'alberto_rate_limit':'alberto_unavailable'),error:true}]);
         setInput(text);
       }
     } finally {
@@ -116,20 +94,30 @@ export function HomeAssistant({assets=[],onSelect}) {
       </header>
       <div ref={log} className="alberto-log" role="log" aria-label={t('alberto_conversation')}>
         <p className="alberto-message">{t('alberto_intro')}</p>
-        {messages.map(({role,text,topic,asset},index) => <div key={index} className={`alberto-message is-${role}`}>
+        {messages.map(({role,text,provider,markets=[],sources=[]},index) => <div key={index} className={`alberto-message is-${role}`}>
+          {provider&&<small className="alberto-source">{t('alberto_generated',{provider:provider==='groq'?'Groq':'Gemini'})}</small>}
           <p>{text}</p>
-          {asset&&<a href={`?${assetSearchParams(window.location.search,asset)}#panorama`} onClick={event=>{
-            if (event.metaKey||event.ctrlKey||event.shiftKey||event.altKey) return;
-            event.preventDefault();
-            dialog.current.close();
-            onSelect(asset);
-          }}>{t('alberto_market_open',{symbol:asset.symbol})} ↗</a>}
-          {topic&&<a href={topics[topic]} onClick={()=>dialog.current.close()}>{t('alberto_link_'+({rsi:'charts',trend:'charts',volume:'charts',atr:'charts',levels:'futures'}[topic]??topic))} ↗</a>}
+          {sources.map(source=>{
+            const asset=markets.find(a=>a.id===source.id&&a.type===source.type);
+            if (!asset) return null;
+            const date=new Date(source.asOf).toLocaleString(lang,{
+              dateStyle:'medium',...(source.kind==='quote'?{timeStyle:'short'}:{}),timeZone:'UTC'
+            });
+            return <div className="alberto-source" key={`${source.type}:${source.id}`}>
+              <small>{asset.symbol} · {t(source.kind==='quote'?'alberto_quote_label':'alberto_close_label')} {formatQuote(source.price,source.currency,lang)} · {source.source} · {date} UTC</small>
+              <a href={`?${assetSearchParams(window.location.search,asset)}#panorama`} onClick={event=>{
+                if (event.metaKey||event.ctrlKey||event.shiftKey||event.altKey) return;
+                event.preventDefault();
+                dialog.current.close();
+                onSelect(asset);
+              }}>{t('alberto_market_open',{symbol:asset.symbol})} ↗</a>
+            </div>;
+          })}
         </div>)}
         {busy&&<p role="status" className="alberto-wait">{t('alberto_thinking')}</p>}
       </div>
       <div className="alberto-suggestions">
-        {suggestions.map(topic=><button key={topic} type="button" disabled={busy} onClick={()=>send(t('alberto_question_'+topic),topic)}>{t('alberto_question_'+topic)}</button>)}
+        {suggestions.map(topic=><button key={topic} type="button" disabled={busy} onClick={()=>send(t('alberto_question_'+topic))}>{t('alberto_question_'+topic)}</button>)}
       </div>
       <form className="alberto-form" onSubmit={event=>{event.preventDefault();void send(input);}}>
         <label htmlFor="alberto-question" className="sr-only">{t('alberto_question')}</label>

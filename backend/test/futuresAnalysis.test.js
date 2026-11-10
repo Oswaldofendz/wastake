@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {analyzeFutures,parseFuturesCandles,futuresInstruments} from '../../frontend/src/utils/futuresAnalysis.js';
 import {displayPriceUnit} from '../../frontend/src/utils/panoramaAnalysis.js';
 import {reviewHomeAssistantReply} from '../src/services/homeAssistantAnswer.js';
-import {helpTopic} from '../../frontend/src/utils/albertoHelp.js';
 
 const hour=3600, start=1760000400;
 const bars=Array.from({length:75},(_,i)=>{
@@ -40,19 +39,15 @@ test('futures treats missing data, gaps and stale signals conservatively',()=>{
   assert.equal(analyzeFutures(bars,instrument,'1h',now+4*hour*1000).stale,true);
 });
 
-test('Alberto recognizes natural-language questions and preserves index versus ETF units',()=>{
-  assert.equal(helpTopic('¿Qué es una media móvil?'),'trend');
-  assert.equal(helpTopic('O que significa volatilidade?'),'atr');
-  assert.equal(helpTopic('How does funding work?'),'futures');
-  assert.equal(helpTopic('¿Qué diferencia hay entre una orden de mercado y una orden limitada?'),'orders');
-  assert.equal(helpTopic('¿Puedes mostrarme otro ejemplo?'),null);
+test('market prices preserve index versus ETF units',()=>{
   assert.equal(displayPriceUnit({type:'index'},'USD'),'pts');
   assert.equal(displayPriceUnit({type:'etf'},'USD'),'USD');
 });
 
 test('Alberto blocks invented execution features and keeps generic education',()=>{
   const falseClaim='En WaStake, una **orden de mercado** se ejecuta de inmediato. Ambas se gestionan desde la sección de Trading.';
-  assert.match(reviewHomeAssistantReply(falseClaim,'es'),/órdenes se gestionan en el bróker/);
-  assert.equal(reviewHomeAssistantReply('Un **RSI** mide impulso.','es'),'Un RSI mide impulso.');
-  assert.equal(reviewHomeAssistantReply('A limit order sets a price limit.','en'),'A limit order sets a price limit.');
+  assert.equal(reviewHomeAssistantReply(falseClaim),'');
+  assert.equal(reviewHomeAssistantReply('Un **RSI** mide impulso.'),'Un RSI mide impulso.');
+  const answer='Puedes ver el gráfico en WaStake y enviar una orden limitada en tu bróker.';
+  assert.equal(reviewHomeAssistantReply(answer),answer);
 });

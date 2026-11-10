@@ -119,6 +119,8 @@ html.light .home-page{--alberto-accent:#982c47;--alberto-panel:#fff7f8;--alberto
 .alberto-message{flex:none;align-self:flex-start;max-width:94%;padding:7px 10px;border:1px solid var(--alberto-border);border-radius:10px;font-size:13px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
 .alberto-message.is-user{align-self:flex-end;background:var(--alberto-wash);border-color:color-mix(in srgb,var(--alberto-accent) 45%,var(--alberto-border))}
 .alberto-message a{display:inline-flex;align-items:center;min-height:32px;color:var(--alberto-accent);font-size:12px;text-decoration:underline}
+.alberto-source{display:block;color:var(--home-muted);font-size:11px;line-height:1.45}
+div.alberto-source{display:grid;margin-top:8px;border-top:1px solid var(--alberto-border);padding-top:6px}
 .alberto-suggestions{display:flex;flex-wrap:wrap;gap:4px;padding:4px 12px 7px}
 .alberto-suggestions button{min-height:32px;padding:4px 7px;border:1px solid var(--alberto-border);border-radius:18px;font-size:11px;color:var(--home-text)}
 .alberto-suggestions button:hover{background:var(--alberto-wash)}

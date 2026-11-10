@@ -56,13 +56,13 @@ function isGeminiDailyQuota(err) {
 
 // ─── Provider calls ──────────────────────────────────────────────────────────
 
-async function callGroq(prompt, { jsonMode, maxTokens, temperature, model, signal }) {
+async function callGroq(prompt, { jsonMode, maxTokens, temperature, model, signal, system }) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error('No GROQ_API_KEY');
 
   const body = {
     model: model || GROQ_DEFAULT_MODEL,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [...(system ? [{role:'system',content:system}] : []), {role:'user',content:prompt}],
     max_tokens: maxTokens,
     temperature,
   };
@@ -138,7 +138,7 @@ function markKeyExhausted(name) {
   geminiKeyCooldowns.set(name, tomorrowUtc05());
 }
 
-async function callGeminiSingleKey(prompt, key, { jsonMode, maxTokens, temperature, signal }) {
+async function callGeminiSingleKey(prompt, key, { jsonMode, maxTokens, temperature, signal, system }) {
   signal?.throwIfAborted();
   const body = {
     contents: [{ parts: [{ text: prompt }] }],
@@ -147,6 +147,7 @@ async function callGeminiSingleKey(prompt, key, { jsonMode, maxTokens, temperatu
       temperature,
     },
   };
+  if (system) body.systemInstruction = {parts:[{text:system}]};
   if (jsonMode) body.generationConfig.response_mime_type = 'application/json';
 
   const res = await axios.post(
@@ -216,9 +217,10 @@ export async function callLLM(prompt, opts = {}) {
     tag         = '[llm]',
     model       = null,
     signal      = undefined,
+    system      = undefined,
   } = opts;
   signal?.throwIfAborted();
-  const callOpts = { jsonMode, maxTokens, temperature, model, signal };
+  const callOpts = { jsonMode, maxTokens, temperature, model, signal, system };
 
   const groqOnCooldown = groqQuotaExhausted && Date.now() < groqQuotaResetAt;
 

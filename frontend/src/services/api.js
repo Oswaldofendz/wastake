@@ -11,7 +11,11 @@ async function postQuestion(path,body,signal){
   const controller=new AbortController(),cancel=()=>controller.abort();
   if(signal?.aborted)controller.abort();else signal?.addEventListener('abort',cancel,{once:true});
   const timeout=setTimeout(cancel,50_000);
-  try{const r=await fetch(`${BASE}${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:controller.signal});if(!r.ok)throw new Error('Question unavailable');return await r.json();}
+  try{
+    const r=await fetch(`${BASE}${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:controller.signal});
+    if(!r.ok)throw Object.assign(new Error('Question unavailable'),{status:r.status});
+    return await r.json();
+  }
   finally{clearTimeout(timeout);signal?.removeEventListener('abort',cancel);}
 }
 

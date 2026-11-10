@@ -1,5 +1,3 @@
-import {displayPriceUnit,formatQuote} from './panoramaAnalysis.js';
-
 const normalize = value => (value ?? '').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().trim().replace(/\s+/g,' ');
 const priceQuestion = /^(?:a cuanto (?:esta|cotiza)|cuanto (?:vale|cuesta)|(?:cual es )?el precio de|precio de|what(?: is|'s) the price of|price of|how much is|a quanto (?:esta|cotiza)|quanto (?:vale|custa)|qual (?:e )?o preco de|preco de)\s+/;
 const readingQuestion = /^(?:como (?:esta a (?:correr|andar)|ves|esta|va|anda|se ve|ve|estas a ver)|que (?:opinas|piensas) (?:de|sobre)|que (?:tal|te parece)|(?:dame|hazme) un analisis (?:de|sobre)|(?:me puedes |puedes )?analizar|analiza|analisa|(?:can you )?(?:analyse|analyze)|how(?: is|'s)|how do you see|what do you think (?:of|about)|what(?: is|'s) your take on|o que (?:achas|acha|pensas|pensa) (?:de|do|da|sobre))\s+/;
@@ -32,47 +30,18 @@ export function exactMarketMatches(target, assets = []) {
   return [...matches.values()];
 }
 
-export function verifiedQuote(quote, now = Date.now()) {
-  const at = Date.parse(quote?.quoteAsOf);
-  return Number.isFinite(quote?.price) && quote.price > 0 && !!quote.source && Number.isFinite(at) && at <= now;
-}
-
-export function verifiedClose(meta, now = Date.now()) {
-  const today = Math.floor(now/86_400_000)*86_400;
-  return Number.isFinite(meta?.lastPrice) && meta.lastPrice > 0 && !!meta.source
-    && Number.isFinite(meta.to) && meta.to > 0 && meta.to < today;
-}
-
-export function marketReply(asset, analysis, quote, lang, t, {priceOnly = false,now = Date.now()} = {}) {
-  const {meta,indicators,summary} = analysis ?? {};
-  const identity = asset.symbol && asset.symbol !== asset.name ? `${asset.name} (${asset.symbol})` : asset.name || asset.id;
-  const number = (n, options) => n.toLocaleString(lang,options);
-  const format = (n, currency) => formatQuote(n,displayPriceUnit(asset,currency),lang);
-  const lines = [];
-  if (verifiedQuote(quote,now)) {
-    const date = new Date(quote.quoteAsOf).toLocaleString(lang,{dateStyle:'medium',timeStyle:'short'});
-    lines.push(t('alberto_market_quote',{identity,price:format(quote.price,quote.currency),date,source:quote.source}));
-    if (priceOnly) return lines[0];
+export function mentionedMarkets(text, catalogue) {
+  const words = new Set(text.match(/[A-Za-z0-9]+(?:[=._-][A-Za-z0-9]+)*/g) ?? []);
+  const phrase = ` ${normalize(text).replace(/[^a-z0-9]+/g,' ')} `;
+  const candidates = new Map();
+  for (const asset of catalogue) {
+    const name = normalize(asset.name).replace(/[^a-z0-9]+/g,' ').trim();
+    const symbol = asset.symbol;
+    const byName = name.length>=5 && name!==normalize(symbol) && phrase.includes(` ${name} `);
+    const bySymbol = symbol?.length>=3 && words.has(symbol.toUpperCase());
+    if (byName || bySymbol) candidates.set(`${asset.type}:${asset.id}`,{asset,byName});
   }
-  if (!verifiedClose(meta,now)) {
-    return [...lines,t('alberto_market_no_reading',{identity})].join('\n\n');
-  }
-
-  const date = new Date(meta.to*1000).toLocaleDateString(lang,{dateStyle:'medium',timeZone:'UTC'});
-  lines.push(t('alberto_market_close',{identity,price:format(meta.lastPrice,meta.currency),date,source:meta.source}));
-  if (summary?.coverage === 100 && Number.isFinite(summary.score10)) {
-    lines.push(`${t('technical_score_'+summary.bias)} · ${number(summary.score10,{maximumFractionDigits:1})}/10`);
-  }
-  const ema20 = indicators?.ema20?.current, ema50 = indicators?.ema50?.current;
-  if (Number.isFinite(ema20) && Number.isFinite(ema50)) {
-    const position = meta.lastPrice > Math.max(ema20,ema50) ? 'above'
-      : meta.lastPrice < Math.min(ema20,ema50) ? 'below' : 'between';
-    lines.push(t('alberto_market_'+position));
-  }
-  const rsi = indicators?.rsi?.current;
-  if (Number.isFinite(rsi)) {
-    const level = rsi >= 70 ? 'high' : rsi <= 30 ? 'low' : 'mid';
-    lines.push(t('alberto_market_rsi_'+level,{value:number(rsi,{maximumFractionDigits:1})}));
-  }
-  return lines.join('\n');
+  const matches = [...candidates.values()];
+  return matches.filter(({asset,byName})=>byName || matches.filter(row=>row.asset.symbol===asset.symbol).length===1)
+    .map(({asset})=>asset).slice(0,2);
 }
