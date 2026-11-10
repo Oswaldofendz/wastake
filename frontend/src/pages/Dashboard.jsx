@@ -87,7 +87,7 @@ export function Dashboard({marketData,onSimple}) {
   const date=value=>stamp(value)?.toLocaleString(i18n.language,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})??t('home_date_missing');
   return <main className="home-page">
     <MarketImpactAlert hideWhenEmpty onAlertsChange={onAlerts}/>
-    <HomePulse assets={marketData.allAssets} filters={filters} filterKey={filterKey} type={type} onFilter={filterMarket} onSelect={openAsset} onSimple={onSimple} calendarLink={calendarLink} assistant={<HomeAssistant/>}/>
+    <HomePulse assets={marketData.allAssets} filters={filters} filterKey={filterKey} type={type} onFilter={filterMarket} onSelect={openAsset} onSimple={onSimple} calendarLink={calendarLink} assistant={<HomeAssistant assets={marketData.allAssets} onSelect={openAsset}/>}/>
     <MarketLeaders home marketData={marketData} onSelect={openAsset}/>
     <div className="home-search"><AssetSearch catalogueAssets={marketData.allAssets} onSelect={openAsset}/></div>
     <div className="home-status"><span className="home-status-dot" aria-hidden="true"/><span>{marketData.lastUpdated?t('home_updated',{date:date(marketData.lastUpdated)}):t(marketData.loading?'loading':'home_no_quotes')}</span>{(marketData.error||marketData.isStale)&&<span className="home-notice" role="status">{t('home_partial')}</span>}<button type="button" onClick={marketData.refresh} disabled={marketData.loading} aria-label={t('home_quotes_refresh')}>↻</button></div>

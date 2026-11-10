@@ -61,7 +61,7 @@ export const fetchOHLCV = (id, type = 'crypto', params = {}, options = {}) => {
 export const fetchAssets = () => get('/api/assets');
 
 // Búsqueda de activos
-export const searchAssets = (q) => get(`/api/assets/search?q=${encodeURIComponent(q)}`);
+export const searchAssets = (q, {signal} = {}) => get(`/api/assets/search?q=${encodeURIComponent(q)}`,20_000,signal);
 export const fetchAssetQuote = (asset, options = {}) => get(`/api/assets/quote/${encodeURIComponent(asset.id)}?type=${asset.analysisType ?? (asset.type === 'crypto' ? 'crypto' : 'stock')}`, 20_000, options.signal);
 export const fetchRankings = () => get('/api/assets/rankings', 35_000);
 

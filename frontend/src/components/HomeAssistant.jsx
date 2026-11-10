@@ -1,17 +1,38 @@
 import {useEffect,useRef,useState} from 'react';
 import {useTranslation} from 'react-i18next';
-import {askHomeAssistant} from '../services/api.js';
+import {askHomeAssistant,fetchAnalysis,fetchAssetQuote,searchAssets} from '../services/api.js';
+import {ALL_ASSETS,getAnalysisType} from '../data/assetCatalog.js';
 import {helpTopic} from '../utils/albertoHelp.js';
+import {exactMarketMatches,marketQuestion,marketReply,verifiedClose,verifiedQuote} from '../utils/albertoMarket.js';
+import {assetSearchParams} from '../utils/assetRoute.js';
 import {AlbertoIcon} from './AlbertoIcon.jsx';
 
-const suggestions=['asset','futures','alerts'];
+const suggestions=['bitcoin','asset','futures'];
 const topics = {
   asset:'#panorama',
   alerts:'#alerts',
   charts:'#chart-ai',futures:'#futures',news:'#fundamentals',rsi:'#chart-ai',trend:'#chart-ai',volume:'#chart-ai',atr:'#chart-ai',levels:'#futures',portfolio:'#portfolio'
 };
 
-export function HomeAssistant() {
+async function readMarket(question, signal, lang, t) {
+  const matches=question.matches.length?question.matches:exactMarketMatches(question.target,(await searchAssets(question.target,{signal})).results);
+  if (!matches.length) return {text:t('alberto_market_not_found')};
+  if (matches.length>1) return {text:t('alberto_market_ambiguous',{choices:matches.slice(0,4).map(a=>`${a.name} (${a.symbol})`).join(' · ')})};
+  const asset=matches[0],type=getAnalysisType(asset);
+  const quote=()=>fetchAssetQuote({...asset,analysisType:type},{signal}).catch(()=>null);
+  const analysis=()=>fetchAnalysis(asset.id,type,undefined,{signal}).then(result=>result.analysis).catch(()=>null);
+  let daily=null,latest=null;
+  if (question.price) {
+    latest=await quote();
+    if (!verifiedQuote(latest) && !signal.aborted) daily=await analysis();
+  } else {
+    daily=await analysis();
+    if (!verifiedClose(daily?.meta) && !signal.aborted) latest=await quote();
+  }
+  return {asset,text:marketReply(asset,daily,latest,lang,t,{priceOnly:question.price})};
+}
+
+export function HomeAssistant({assets=[],onSelect}) {
   const {t,i18n} = useTranslation();
   const [open,setOpen] = useState(false);
   const [messages,setMessages] = useState([]);
@@ -35,11 +56,13 @@ export function HomeAssistant() {
     if (!text || text.length > 600 || request.current) return;
     setInput('');
     setMessages(previous => [...previous,{role:'user',text}]);
-    const localTopic=topic??helpTopic(text);
+    const question=topic==='bitcoin'?marketQuestion('Bitcoin',[...assets,...ALL_ASSETS])
+      : topic?null:marketQuestion(text,[...assets,...ALL_ASSETS]);
+    const localTopic=topic==='bitcoin'?null:topic??helpTopic(text);
     const answerLocally=key=>setMessages(previous => [...previous,{
       role:'assistant',text:t('alberto_answer_'+key),topic:topics[key]?key:null
     }]);
-    if (topic || (localTopic && text.split(/\s+/).length<=12)) {
+    if (localTopic && !question?.matches.length && (topic || text.split(/\s+/).length<=12)) {
       answerLocally(localTopic);
       return;
     }
@@ -47,14 +70,20 @@ export function HomeAssistant() {
     request.current = controller;
     setBusy(true);
     try {
-      const {reply} = await askHomeAssistant({message:text,lang,history:messages.filter(item=>!item.error).slice(-4).map(({role,text})=>({role,text}))},controller.signal);
+      if (question) {
+        const reading=await readMarket(question,controller.signal,lang,t);
+        if (controller.signal.aborted) return;
+        setMessages(previous => [...previous,{role:'assistant',...reading}]);
+        return;
+      }
+      const {reply} = await askHomeAssistant({message:text,lang,history:messages.filter(item=>!item.error&&!item.asset).slice(-4).map(({role,text})=>({role,text}))},controller.signal);
       if (!controller.signal.aborted && typeof reply === 'string' && reply.trim()) {
         setMessages(previous => [...previous,{role:'assistant',text:reply}]);
       } else if (!controller.signal.aborted) {
         throw new Error('Empty assistant reply');
       }
     } catch {
-      if (!controller.signal.aborted && localTopic) answerLocally(localTopic);
+      if (!controller.signal.aborted && localTopic && !question) answerLocally(localTopic);
       else if (!controller.signal.aborted) {
         setMessages(previous => [...previous,{role:'assistant',text:t('alberto_unavailable'),error:true}]);
         setInput(text);
@@ -87,8 +116,14 @@ export function HomeAssistant() {
       </header>
       <div ref={log} className="alberto-log" role="log" aria-label={t('alberto_conversation')}>
         <p className="alberto-message">{t('alberto_intro')}</p>
-        {messages.map(({role,text,topic},index) => <div key={index} className={`alberto-message is-${role}`}>
+        {messages.map(({role,text,topic,asset},index) => <div key={index} className={`alberto-message is-${role}`}>
           <p>{text}</p>
+          {asset&&<a href={`?${assetSearchParams(window.location.search,asset)}#panorama`} onClick={event=>{
+            if (event.metaKey||event.ctrlKey||event.shiftKey||event.altKey) return;
+            event.preventDefault();
+            dialog.current.close();
+            onSelect(asset);
+          }}>{t('alberto_market_open',{symbol:asset.symbol})} ↗</a>}
           {topic&&<a href={topics[topic]} onClick={()=>dialog.current.close()}>{t('alberto_link_'+({rsi:'charts',trend:'charts',volume:'charts',atr:'charts',levels:'futures'}[topic]??topic))} ↗</a>}
         </div>)}
         {busy&&<p role="status" className="alberto-wait">{t('alberto_thinking')}</p>}
