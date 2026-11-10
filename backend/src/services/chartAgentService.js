@@ -64,7 +64,7 @@ export function snapshotFromCandles(raw,{id,type,interval='1d',source=null,curre
  const fingerprint=crypto.createHash('sha256').update(JSON.stringify({id,type,interval,source,closed})).digest('hex').slice(0,20);
  const levels=significantLevels(closed,null,now,seconds);
  facts.support=levels.find(l=>l.kind==='support')?.price??null;facts.resistance=levels.find(l=>l.kind==='resistance')?.price??null;
- return {id,type,interval,intervalSeconds:seconds,source,currency,candles,facts,levels,fvgZones:gaps,liquidityZones:liquidity,coverage:analysis?.summary?.coverage??0,closedCount:closed.length,from:first.time,asOf:last.time,snapshotId:fingerprint,retrievedAt:new Date(now).toISOString()};
+ return {id,type,interval,intervalSeconds:seconds,source,currency,candles,facts,levels,fvgZones:gaps,liquidityZones:liquidity,coverage:analysis?.summary?.coverage??0,bias:analysis?.summary?.bias??null,closedCount:closed.length,from:first.time,asOf:last.time,snapshotId:fingerprint,retrievedAt:new Date(now).toISOString()};
 }
 
 export async function getChartSnapshot(id,type,interval,venue='auto'){

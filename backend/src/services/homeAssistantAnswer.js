@@ -34,7 +34,7 @@ async function marketFacts(asset, wantQuote) {
   const {close,rsi,ema20,ema50,macd,atrPercent,volumeRatio,score,support,resistance} = data.facts;
   return {id,type,source:data.source,asOf:new Date(data.asOf*1000).toISOString().slice(0,10),
     currency:currency(data.currency),kind:'close',price:close,rsi,ema20,ema50,macd,atrPercent,volumeRatio,
-    technicalIndex:data.coverage===100?score:null,support,resistance};
+    technicalIndex:data.coverage===100?score:null,technicalBias:data.coverage===100?data.bias:null,support,resistance};
 }
 
 export async function assistantMarketFacts(assets, wantQuote) {

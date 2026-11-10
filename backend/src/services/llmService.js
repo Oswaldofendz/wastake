@@ -56,7 +56,7 @@ function isGeminiDailyQuota(err) {
 
 // ─── Provider calls ──────────────────────────────────────────────────────────
 
-async function callGroq(prompt, { jsonMode, maxTokens, temperature, model, signal, system }) {
+async function callGroq(prompt, { jsonMode, maxTokens, temperature, model, signal, system, requireComplete }) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error('No GROQ_API_KEY');
 
@@ -91,7 +91,9 @@ async function callGroq(prompt, { jsonMode, maxTokens, temperature, model, signa
           },
         }
       );
-      const text = res.data?.choices?.[0]?.message?.content;
+      const choice = res.data?.choices?.[0];
+      if (requireComplete && choice?.finish_reason === 'length') throw new Error('Incomplete Groq response');
+      const text = choice?.message?.content;
       if (!text) throw new Error('Empty Groq response');
       return text;
     } catch (err) {
@@ -138,7 +140,7 @@ function markKeyExhausted(name) {
   geminiKeyCooldowns.set(name, tomorrowUtc05());
 }
 
-async function callGeminiSingleKey(prompt, key, { jsonMode, maxTokens, temperature, signal, system }) {
+async function callGeminiSingleKey(prompt, key, { jsonMode, maxTokens, temperature, signal, system, requireComplete }) {
   signal?.throwIfAborted();
   const body = {
     contents: [{ parts: [{ text: prompt }] }],
@@ -156,7 +158,10 @@ async function callGeminiSingleKey(prompt, key, { jsonMode, maxTokens, temperatu
     { timeout: 20000, signal }
   );
 
-  const text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const candidate = res.data?.candidates?.[0];
+  if (requireComplete && candidate?.finishReason === 'MAX_TOKENS') throw new Error('Incomplete Gemini response');
+  const parts = candidate?.content?.parts;
+  const text = requireComplete ? parts?.filter(part=>!part.thought).map(part=>part.text).join('') : parts?.[0]?.text;
   if (!text) throw new Error('Empty Gemini response');
   return text;
 }
@@ -218,9 +223,10 @@ export async function callLLM(prompt, opts = {}) {
     model       = null,
     signal      = undefined,
     system      = undefined,
+    requireComplete = false,
   } = opts;
   signal?.throwIfAborted();
-  const callOpts = { jsonMode, maxTokens, temperature, model, signal, system };
+  const callOpts = { jsonMode, maxTokens, temperature, model, signal, system, requireComplete };
 
   const groqOnCooldown = groqQuotaExhausted && Date.now() < groqQuotaResetAt;
 

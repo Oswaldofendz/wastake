@@ -24,7 +24,7 @@ export function HomeAssistant({assets=[],onSelect}) {
   const [messages,setMessages] = useState([]);
   const [input,setInput] = useState('');
   const [busy,setBusy] = useState(false);
-  const dialog = useRef(null), launcher = useRef(null), log = useRef(null), request = useRef(null);
+  const dialog = useRef(null), launcher = useRef(null), log = useRef(null), latestReply = useRef(null), request = useRef(null);
   const lastMarkets = useRef([]);
   const lang = (i18n.resolvedLanguage || i18n.language).split('-')[0];
 
@@ -34,7 +34,12 @@ export function HomeAssistant({assets=[],onSelect}) {
     }
   },[open]);
   useEffect(() => {
-    if (open && log.current) log.current.scrollTop = log.current.scrollHeight;
+    if (!open || !log.current) return;
+    if (busy || !latestReply.current) {
+      log.current.scrollTop = log.current.scrollHeight;
+      return;
+    }
+    log.current.scrollTop += latestReply.current.getBoundingClientRect().top - log.current.getBoundingClientRect().top - 8;
   },[messages,busy,open]);
   useEffect(() => () => request.current?.abort(),[]);
 
@@ -94,7 +99,8 @@ export function HomeAssistant({assets=[],onSelect}) {
       </header>
       <div ref={log} className="alberto-log" role="log" aria-label={t('alberto_conversation')}>
         <p className="alberto-message">{t('alberto_intro')}</p>
-        {messages.map(({role,text,provider,markets=[],sources=[]},index) => <div key={index} className={`alberto-message is-${role}`}>
+        {messages.map(({role,text,provider,markets=[],sources=[]},index) => <div key={index}
+          ref={role==='assistant'&&index===messages.length-1?latestReply:null} className={`alberto-message is-${role}`}>
           {provider&&<small className="alberto-source">{t('alberto_generated',{provider:provider==='groq'?'Groq':'Gemini'})}</small>}
           <p>{text}</p>
           {sources.map(source=>{

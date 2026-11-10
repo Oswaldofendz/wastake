@@ -12,6 +12,9 @@ test('Alberto sends the reported question and equivalents to the right instrumen
   }
   assert.equal(ask('¿A cuánto cotiza AAPL?')?.matches[0]?.id,'AAPL');
   assert.equal(ask('¿A cuánto cotiza AAPL?')?.price,true);
+  assert.equal(ask('como ves a envidia?')?.matches[0]?.id,'NVDA');
+  assert.equal(ask('entonces como valoras a apple')?.matches[0]?.id,'AAPL');
+  assert.equal(ask('¿Cómo ves eso?'),null);
   assert.equal(ask('How is the market?'),null);
   assert.equal(ask('¿Qué es una media móvil?'),null);
   assert.equal(ask('hi'),null);

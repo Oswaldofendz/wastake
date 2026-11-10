@@ -1,16 +1,19 @@
 const normalize = value => (value ?? '').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().trim().replace(/\s+/g,' ');
 const priceQuestion = /^(?:a cuanto (?:esta|cotiza)|cuanto (?:vale|cuesta)|(?:cual es )?el precio de|precio de|what(?: is|'s) the price of|price of|how much is|a quanto (?:esta|cotiza)|quanto (?:vale|custa)|qual (?:e )?o preco de|preco de)\s+/;
-const readingQuestion = /^(?:como (?:esta a (?:correr|andar)|ves|esta|va|anda|se ve|ve|estas a ver)|que (?:opinas|piensas) (?:de|sobre)|que (?:tal|te parece)|(?:dame|hazme) un analisis (?:de|sobre)|(?:me puedes |puedes )?analizar|analiza|analisa|(?:can you )?(?:analyse|analyze)|how(?: is|'s)|how do you see|what do you think (?:of|about)|what(?: is|'s) your take on|o que (?:achas|acha|pensas|pensa) (?:de|do|da|sobre))\s+/;
+const readingQuestion = /^(?:(?:y|entonces|ahora)\s+)?(?:como (?:esta a (?:correr|andar)|ves|valoras|evaluas|esta|va|anda|se ve|ve|estas a ver)|que (?:opinas|piensas) (?:de|sobre)|que (?:tal|te parece)|(?:dame|hazme) un analisis (?:de|sobre)|(?:me puedes |puedes )?analizar|analiza|analisa|(?:can you )?(?:analyse|analyze)|how(?: is|'s)|how do you see|what do you think (?:of|about)|what(?: is|'s) your take on|o que (?:achas|acha|pensas|pensa) (?:de|do|da|sobre))\s+/;
 
 export function marketQuestion(text, catalogue) {
   const raw = text.trim().replace(/^[¿¡]+|[?.!]+$/g,'').trim();
   const query = normalize(raw);
   const prefix = query.match(priceQuestion) ?? query.match(readingQuestion);
-  const target = (prefix ? query.slice(prefix[0].length) : query)
+  const subject = (prefix ? query.slice(prefix[0].length) : query)
     .replace(/^(?:a|el|la|o|the)\s+/,'')
     .replace(/\s+(?:ahora mismo|ahora|hoy|right now|now|today|agora|hoje)$/,'')
     .replace(/\s+doing$/,'')
     .replace(/^\$/,'');
+  // Resolve a common Spanish rendering of NVIDIA only in a market question.
+  const target = prefix && subject === 'envidia' ? 'nvda' : subject;
+  if (prefix && /^(?:lo|la|eso|esto|that|it|isso|isto)$/.test(target)) return null;
   if (!target || target.length > 80 || /^(?:mercados?|wastake|markets?)$/.test(target)) return null;
   if (!prefix && /^[a-z]{1,2}$/.test(target) && raw !== raw.toUpperCase()) return null;
   const matches = exactMarketMatches(target,catalogue);
