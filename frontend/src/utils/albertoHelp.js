@@ -2,6 +2,7 @@ const rules = [
   ['greeting',/^(hola|hello|hi|hey|ola|bom dia|buenas|buenos dias)( alberto)?$/],
   ['help',/que puedes hacer|what can you do|o que podes fazer|como me puedes ayudar|how can you help/],
   ['futures',/\b(futuros?|futures?|perpetu[oa]s?|perpetuals?|apalancamiento|leverage|alavancagem|funding)\b/],
+  ['orders',/\b(orden(?:es)? (?:de mercado|limitad[ao]s?)|(?:market|limit) orders?|ordens? (?:a mercado|limitadas?))\b/],
   ['rsi',/\brsi\b/],
   ['levels',/\b(soportes?|resistencias?|support|resistance|suportes?|zonas de entrada)\b/],
   ['trend',/\b(ema|ema20|ema50|media movil|medias moviles|moving averages?|media movel|medias moveis)\b/],
