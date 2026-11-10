@@ -13,7 +13,7 @@ import {fetchCalendar,fetchGlobalNews} from '../services/api.js';
 import {cachedPublicNews} from '../utils/publicNewsCache.js';
 import {homeAssets,homeStories,nextCalendarEvents,safeSource} from '../utils/homeDiscovery.js';
 import {calendarTitle} from '../utils/calendar.js';
-import {formatQuote} from '../utils/panoramaAnalysis.js';
+import {displayPriceUnit,formatQuote} from '../utils/panoramaAnalysis.js';
 import '../home.css';
 
 const filters=['all','stock','crypto','funds','other'];
@@ -87,7 +87,7 @@ export function Dashboard({marketData,onSimple}) {
   const date=value=>stamp(value)?.toLocaleString(i18n.language,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})??t('home_date_missing');
   return <main className="home-page">
     <MarketImpactAlert hideWhenEmpty onAlertsChange={onAlerts}/>
-    <HomePulse assets={marketData.allAssets} filters={filters} filterKey={filterKey} type={type} onFilter={filterMarket} onSelect={openAsset} onSimple={onSimple} calendarLink={calendarLink}/>
+    <HomePulse assets={marketData.allAssets} filters={filters} filterKey={filterKey} type={type} onFilter={filterMarket} onSelect={openAsset} onSimple={onSimple} calendarLink={calendarLink} assistant={<HomeAssistant/>}/>
     <MarketLeaders home marketData={marketData} onSelect={openAsset}/>
     <div className="home-search"><AssetSearch catalogueAssets={marketData.allAssets} onSelect={openAsset}/></div>
     <div className="home-status"><span className="home-status-dot" aria-hidden="true"/><span>{marketData.lastUpdated?t('home_updated',{date:date(marketData.lastUpdated)}):t(marketData.loading?'loading':'home_no_quotes')}</span>{(marketData.error||marketData.isStale)&&<span className="home-notice" role="status">{t('home_partial')}</span>}<button type="button" onClick={marketData.refresh} disabled={marketData.loading} aria-label={t('home_quotes_refresh')}>↻</button></div>
@@ -96,12 +96,11 @@ export function Dashboard({marketData,onSimple}) {
     {type!=='all'&&<button className="home-reset-filter" type="button" onClick={()=>setType('all')}>{t(filterKey[type])} · {t('home_show_all')} ↗</button>}
         {!rows.length?<p className="home-empty" role="status">{t(marketData.loading?'loading':'home_no_quotes')}</p>:<table className="home-table"><caption className="sr-only">{t('home_table_help')}</caption><thead><tr><th scope="col">{t('home_asset')}</th><th scope="col" className="home-class-col">{t('home_class')}</th><th scope="col">{t('price')}</th><th scope="col">{t('home_move')}</th><th scope="col" className="home-source-col">{t('home_source')}</th></tr></thead><tbody>{rows.map(asset=>{
         const hasDate=stamp(asset.quoteAsOf)&&stamp(asset.quoteAsOf).getTime()<=Date.now(),up=Number.isFinite(asset.change24h)?asset.change24h>=0:null;
-        return <tr key={`${asset.type}:${asset.id}`}><th scope="row"><button className="home-asset-button" type="button" onClick={()=>openAsset(asset)} aria-label={t('home_open_asset',{name:asset.name})}><AssetLogo asset={asset} size={32}/><span><strong translate="no">{asset.name}</strong><small translate="no">{asset.symbol}</small></span></button></th><td className="home-class-col"><span className="home-type">{t(typeKey[asset.type]??'home_other')}</span></td><td className="home-number"><span title={!hasDate?t('home_price_unverified'):undefined}>{hasDate?formatQuote(asset.price,asset.currency,i18n.language):'—'}</span><small className="home-mobile-date">{date(asset.quoteAsOf)}</small></td><td className="home-number"><span className={hasDate&&up!==null?up?'home-up':'home-down':''}>{hasDate&&up!==null?asset.change24h.toLocaleString(i18n.language,{minimumFractionDigits:2,maximumFractionDigits:2,signDisplay:'exceptZero'})+'%':'—'}</span><small>{t(asset.type==='crypto'?'home_change_crypto':'home_change_session')}</small></td><td className="home-source-col"><span translate="no">{asset.source??'—'}</span><small>{date(asset.quoteAsOf)}</small></td></tr>;
+        return <tr key={`${asset.type}:${asset.id}`}><th scope="row"><button className="home-asset-button" type="button" onClick={()=>openAsset(asset)} aria-label={t('home_open_asset',{name:asset.name})}><AssetLogo asset={asset} size={32}/><span><strong translate="no">{asset.name}</strong><small translate="no">{asset.symbol}</small></span></button></th><td className="home-class-col"><span className="home-type">{t(typeKey[asset.type]??'home_other')}</span></td><td className="home-number"><span title={!hasDate?t('home_price_unverified'):undefined}>{hasDate?formatQuote(asset.price,displayPriceUnit(asset,asset.currency),i18n.language):'—'}</span><small className="home-mobile-date">{date(asset.quoteAsOf)}</small></td><td className="home-number"><span className={hasDate&&up!==null?up?'home-up':'home-down':''}>{hasDate&&up!==null?asset.change24h.toLocaleString(i18n.language,{minimumFractionDigits:2,maximumFractionDigits:2,signDisplay:'exceptZero'})+'%':'—'}</span><small>{t(asset.type==='crypto'?'home_change_crypto':'home_change_session')}</small></td><td className="home-source-col"><span translate="no">{asset.source??'—'}</span><small>{date(asset.quoteAsOf)}</small></td></tr>;
       })}</tbody></table>}
       <p className="home-caption home-table-note">{t('highlights_moves')}</p>
     </section>
     <HomeContext excluded={excluded} calendarLink={calendarLink}/>
-    <HomeAssistant/>
     <section className="home-next"><div><p className="home-eyebrow">WASTAKE · PANORAMA</p><h2><span aria-hidden="true">🔎</span>{t('home_next')}</h2><p>{t('home_next_help')}</p></div><a className="home-primary" href="#panorama">{t('home_open_panorama')} →</a></section>
     <footer className="home-footer"><details><summary>{t('home_method')}</summary><p>{t('home_method_text')}</p><p>{t('home_company_note')}</p><p>{t('audit_compact_legend')}</p></details><p>{t('home_risk')}</p></footer>
   </main>;

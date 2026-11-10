@@ -2,7 +2,7 @@ import {useId,useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {usePanoramaData} from '../hooks/usePanoramaData.js';
 import {PANORAMA_TABS} from '../utils/navigation.js';
-import {formatQuote} from '../utils/panoramaAnalysis.js';
+import {displayPriceUnit,formatQuote} from '../utils/panoramaAnalysis.js';
 import {AnalysisPanel} from './AnalysisPanel.jsx';
 import {AnalysisNarrative} from './AnalysisNarrative.jsx';
 import {AssetValuationCard} from './AssetValuationCard.jsx';
@@ -31,6 +31,8 @@ export function UnifiedAssetView({asset,tab='summary',onTabChange}) {
   const hasQuote=Number.isFinite(quote?.price)&&quote.price>0;
   const price=hasQuote?quote.price:analysis?.meta?.lastPrice;
   const currency=hasQuote?quote.currency:analysis?.meta?.currency??asset.currency??(asset.type==='crypto'?'USD':null);
+  const isIndex=asset.type==='index';
+  const quoteUnit=displayPriceUnit(asset,currency);
   const stamp=hasQuote?quote.quoteAsOf:analysis?.meta?.to?analysis.meta.to*1000:null;
   const source=hasQuote?quote.source:analysis?.meta?.source;
   const date=value=>value!=null&&Number.isFinite(new Date(value).getTime())?new Date(value).toLocaleString(i18n.language):'—';
@@ -45,22 +47,22 @@ export function UnifiedAssetView({asset,tab='summary',onTabChange}) {
   const graphLink=window.location.pathname+window.location.search+'#chart-ai';
   return <div className="min-w-0">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-700/60 bg-[var(--bg-card)] p-4">
-      <div className="min-w-0"><p className="text-xs text-slate-400">{t(hasQuote?'pan_quote':'pan_close')}</p><p className="mt-1 break-words text-2xl font-bold tabular-nums">{formatQuote(price,currency,i18n.language)}</p>
+      <div className="min-w-0"><p className="text-xs text-slate-400">{t(isIndex?'uni_index_title':hasQuote?'pan_quote':'pan_close')}</p><p className="mt-1 break-words text-2xl font-bold tabular-nums">{formatQuote(price,quoteUnit,i18n.language)}</p>
         <p className="mt-1 text-[11px] text-slate-400">{source??'—'} · {date(stamp)}</p>
         {price==null&&<p role="status" className="mt-1 text-xs text-slate-400">{t(state.quote.loading?'loading':'uni_quote_missing')}</p>}
       </div><Semaphore summary={analysis?.summary}/>
       <button type="button" onClick={()=>setAttempt(n=>n+1)} disabled={state.analysis.loading} className="min-h-10 rounded-lg border border-slate-600 px-3 text-xs text-sky-200 disabled:opacity-50">↻ {t('uni_refresh')}</button>
     </div>
     <div role="tablist" aria-label={t('uni_sections')} className="mb-4 grid grid-cols-4 gap-1 rounded-xl border border-slate-700/60 bg-slate-900/40 p-1">
-      {PANORAMA_TABS.map((name,index)=><button key={name} type="button" role="tab" id={prefix+'-tab-'+name} aria-controls={prefix+'-panel-'+name} aria-selected={tab===name} tabIndex={tab===name?0:-1} onClick={()=>changeTab(name)} onKeyDown={event=>keyTab(event,index)} className={'min-h-11 min-w-0 rounded-lg px-1 text-xs font-semibold transition-colors sm:text-sm '+(tab===name?'bg-sky-900/80 text-sky-100':'text-slate-400 hover:bg-slate-800 hover:text-white')}>{t('uni_'+name)}</button>)}
+      {PANORAMA_TABS.map((name,index)=><button key={name} type="button" role="tab" id={prefix+'-tab-'+name} aria-controls={prefix+'-panel-'+name} aria-selected={tab===name} tabIndex={tab===name?0:-1} onClick={()=>changeTab(name)} onKeyDown={event=>keyTab(event,index)} className={'min-h-11 min-w-0 rounded-lg px-1 text-xs font-semibold transition-colors sm:text-sm '+(tab===name?'bg-sky-900/80 text-sky-100':'text-slate-400 hover:bg-slate-800 hover:text-white')}>{t(isIndex&&name==='valuation'?'uni_index_reference':'uni_'+name)}</button>)}
     </div>
     {PANORAMA_TABS.map(name=><section key={name} id={prefix+'-panel-'+name} role="tabpanel" aria-labelledby={prefix+'-tab-'+name} hidden={tab!==name} tabIndex={0} className="min-w-0 outline-none">
       {(visited.has(name)||tab===name)&&<>
-        <p className="mb-3 text-xs leading-6 text-slate-400">{t('uni_'+name+'_help')}</p>
+        {(!isIndex||name!=='valuation')&&<p className="mb-3 text-xs leading-6 text-slate-400">{t('uni_'+name+'_help')}</p>}
         {name==='summary'&&<>
           {new URLSearchParams(window.location.search).get('from')==='entry'&&<OpportunityPanel asset={asset}/>}
           <AnalysisPanel asset={asset} provided={provided} historyResult={state.history.data??{candles:[]}} historyLoading={state.history.loading}/>
-          <AnalysisNarrative key={attempt} asset={asset}/>
+          {isIndex?<p className="mt-4 text-sm text-slate-400">{t('uni_index_explain')}</p>:<AnalysisNarrative key={attempt} asset={asset}/>}
           <details className="mt-4 rounded-xl border border-slate-700 p-4" onToggle={event=>{if(event.currentTarget.open)setCompareReady(true);}}><summary className="min-h-9 cursor-pointer text-sm font-semibold text-sky-200">{t('uni_compare')}</summary>{compareReady&&<div className="mt-3"><MarketComparison asset={asset} candles={state.history.data?.candles??[]} revision={attempt}/></div>}</details>
         </>}
         {name==='chart'&&<>
@@ -68,7 +70,11 @@ export function UnifiedAssetView({asset,tab='summary',onTabChange}) {
             {['1D','1S','1M','3M','6M','1A'].map(range=><button key={range} type="button" aria-pressed={interval==='1d'&&timeframe===range} onClick={()=>{setInterval('1d');setTimeframe(range);}} className={'min-h-10 rounded-lg border px-3 text-xs '+(interval==='1d'&&timeframe===range?'border-sky-400 text-sky-200':'border-slate-700 text-slate-400')}>{range}</button>)}
           </div><CandleChart asset={asset} timeframe={timeframe} interval={interval}/><a href={graphLink} className="mt-4 inline-flex min-h-10 items-center text-sm text-sky-200 underline">✦ {t('uni_ai_chart')} ↗</a>
         </>}
-        {name==='valuation'&&<AssetValuationCard asset={asset} technical={technical}/>}
+        {name==='valuation'&&(isIndex?<article className="rounded-xl border border-slate-700 p-4">
+          <h3 className="font-semibold">{t('uni_index_reference')}</h3>
+          <p className="mt-2 text-sm text-slate-400">{t(asset.id==='^GSPC'?'uni_index_spx':'uni_index_other')}</p>
+          {asset.id==='^GSPC'&&<a className="mt-2 inline-flex min-h-10 items-center text-sm text-sky-200 underline" href="https://www.spglobal.com/spdji/en/indices/equity/sp-500/" target="_blank" rel="noreferrer">{t('uni_index_source')} ↗</a>}
+        </article>:<AssetValuationCard asset={asset} technical={technical}/>)}
         {name==='news'&&<ImportantNews asset={asset}/>}
       </>}
     </section>)}

@@ -5,6 +5,7 @@ import {integrityCopy} from './integrityCopy.js';
 import {easyCopy} from './easyCopy.js';
 import {cycleCopy} from './cycleCopy.js';
 import i18n from 'i18next';
+import {futuresCopy} from './futuresCopy.js';
 import {homeCopy} from './homeCopy.js';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
@@ -766,6 +767,7 @@ for(const [lang,copy] of Object.entries(quantitativeCopy))Object.assign(resource
 
 for(const [lang,copy] of Object.entries(unifiedPanoramaCopy))Object.assign(resources[lang].translation,copy);
 
+for(const [lang,copy] of Object.entries(futuresCopy))Object.assign(resources[lang].translation,copy);
 for(const [lang,copy] of Object.entries(homeCopy))Object.assign(resources[lang].translation,copy);
 
 i18n

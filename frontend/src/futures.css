@@ -1,0 +1,48 @@
+.futures-page{--fut-panel:#111d2a;--fut-line:#283b50;--fut-text:#edf5fa;--fut-muted:#a8bccd;--fut-accent:#83dacd;--fut-long:#5ed5b0;--fut-short:#ff9a9e;width:min(1120px,100%);margin:0 auto;padding:24px clamp(14px,4vw,34px);color:var(--fut-text);font-size:14px}
+html.light .futures-page{--fut-panel:#fff;--fut-line:#d4dfe9;--fut-text:#193246;--fut-muted:#4b6479;--fut-accent:#076e65;--fut-long:#087c60;--fut-short:#ad3452}
+.futures-page a{color:var(--fut-accent);text-decoration:underline}
+.futures-hero{background:linear-gradient(135deg,color-mix(in srgb,var(--fut-accent) 12%,var(--fut-panel)),var(--fut-panel));border:1px solid var(--fut-line);border-radius:16px;padding:clamp(17px,3vw,32px)}
+.futures-eyebrow{letter-spacing:.08em;font-size:11px;font-weight:750;text-transform:uppercase;color:var(--fut-accent)}
+.futures-hero h1{font-size:clamp(25px,4vw,40px);font-weight:780;letter-spacing:-.035em;line-height:1.15;margin-block:7px}
+.futures-hero p:last-child,.futures-panel p{color:var(--fut-muted);line-height:1.55}
+.futures-panel{margin-top:12px;background:var(--fut-panel);border:1px solid var(--fut-line);border-radius:13px;padding:clamp(12px,2.5vw,20px);min-width:0}
+.futures-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr) minmax(0,.6fr) auto;gap:8px;align-items:end}
+.futures-controls label{min-width:0;font-size:12px;color:var(--fut-muted)}
+.futures-controls :is(input,select,button){display:block;min-height:43px;width:100%;padding:5px 9px;margin-top:3px;border:1px solid var(--fut-line);border-radius:8px;background:var(--fut-panel);color:var(--fut-text);font-size:14px}
+.futures-controls input{font-size:16px}
+.futures-controls button{background:var(--fut-accent);color:#092e32;font-weight:750}
+html.light .futures-controls button{color:#fff}
+.futures-controls :disabled{opacity:.6}
+.futures-wide{grid-column:1/-1}
+.futures-study-heading{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 20px;align-items:center}
+.futures-study-heading h2{font-size:23px;font-weight:750}
+.futures-study-heading strong{font-size:22px;font-variant-numeric:tabular-nums}
+.futures-study-heading p:last-child,.futures-source{font-size:11px}
+.futures-notice{margin-top:8px;padding:7px 10px;border-inline-start:3px solid #d39f55;background:#c88e1910}
+.futures-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-block:11px}
+.futures-kpis>div,.futures-zone{min-width:0;padding:9px;border:1px solid var(--fut-line);border-radius:9px}
+.futures-kpis span,.futures-kpis small{display:block;color:var(--fut-muted);font-size:11px}
+.futures-kpis strong{display:block;font-size:17px;line-height:1.45;font-variant-numeric:tabular-nums}
+.futures-chart{margin-top:10px;border:1px solid var(--fut-line);border-radius:11px;padding:9px;overflow:hidden}
+.futures-chart figcaption{font-weight:700;font-size:12px}
+.futures-chart svg{display:block;width:100%;height:auto;max-height:270px}
+.futures-axis{fill:var(--fut-muted);font-size:12px;font-variant-numeric:tabular-nums}
+.futures-guide{stroke:var(--fut-line);stroke-width:1}
+.futures-close-line{stroke:var(--fut-accent);stroke-width:1.75}
+.futures-band-long,.futures-volume-up{fill:var(--fut-long);fill-opacity:.28}
+.futures-band-short,.futures-volume-down{fill:var(--fut-short);fill-opacity:.28}
+.futures-legend{display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--fut-muted);font-size:11px}
+.futures-long{color:var(--fut-long)}.futures-short{color:var(--fut-short)}
+.futures-scenario-head{margin-block:13px 7px}
+.futures-scenario-head h3{font-size:16px;font-weight:750}
+.futures-zones{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.futures-zone{border-top:2px solid currentColor}
+.futures-zone h4{font-size:13px;font-weight:750}
+.futures-zone p{font-size:12px;margin-top:4px}
+.futures-zone .futures-zone-price{font-size:18px;font-weight:750;color:var(--fut-text);font-variant-numeric:tabular-nums}
+.futures-zone-price small{font-size:11px}
+.futures-zone .futures-zone-state{font-weight:750;color:inherit}
+.futures-source,.futures-method p{margin-top:8px}
+.futures-method{font-size:12px}
+.futures-method summary{cursor:pointer;font-weight:750;min-height:27px}
+@media(max-width:680px){.futures-controls,.futures-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.futures-zones{grid-template-columns:1fr}}

@@ -38,6 +38,10 @@ export function commonCloseComparison(assetCandles = [], referenceCandles = [], 
   return {from,to,assetReturn,referenceReturn,difference:assetReturn-referenceReturn};
 }
 
+export function displayPriceUnit(asset,currency) {
+  return asset?.type==='index'?'pts':currency;
+}
+
 export function formatQuote(value, currency, language = 'es', precision = null) {
   if (!Number.isFinite(value)) return '—';
   const digits=Number.isInteger(precision)&&precision>=0&&precision<=20?precision:Math.abs(value)>0&&Math.abs(value)<1?Math.min(20,Math.max(6,-Math.floor(Math.log10(Math.abs(value)))+3)):2;

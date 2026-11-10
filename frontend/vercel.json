@@ -1,3 +1,12 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/api/futures-candles/:symbol(PF_XBTUSD|PF_ETHUSD|PF_SOLUSD|PF_XRPUSD)/:interval(1h|4h|1d)",
+      "destination": "https://futures.kraken.com/api/charts/v1/trade/:symbol/:interval?count=120"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }

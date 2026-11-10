@@ -31,9 +31,9 @@ function meanTrueRange(candles,end) {
   return sum/(end-start+1);
 }
 
-export function significantLevels(input, wing = null, now = Date.now(),intervalSeconds=86400) {
+export function significantLevels(input, wing = null, now = Date.now(),intervalSeconds=86400, minimumTouches=1) {
   if(wing===null){
-    const candidates=[...significantLevels(input,2,now,intervalSeconds),...significantLevels(input,5,now,intervalSeconds)];
+    const candidates=[...significantLevels(input,2,now,intervalSeconds,minimumTouches),...significantLevels(input,5,now,intervalSeconds,minimumTouches)];
     return ['support','resistance'].map(kind=>candidates.filter(l=>l.kind===kind).sort((a,b)=>a.distancePct-b.distancePct)[0]).filter(Boolean);
   }
   const all=(intervalSeconds===86400?cleanCandles(input):timedCandles(input)).filter(c=>c.time<=now/1000);
@@ -69,7 +69,7 @@ export function significantLevels(input, wing = null, now = Date.now(),intervalS
   }
   const valid=groups.flatMap(group=>{
     const events=group.events,latest=events.at(-1),touches=events.length;
-    if(touches<2&&!(latest.localAtr>0&&latest.amplitude>=latest.localAtr*1.5))return [];
+    if(touches<minimumTouches || touches<2&&!(latest.localAtr>0&&latest.amplitude>=latest.localAtr*1.5))return [];
     const prices=events.map(e=>e.price).sort((a,b)=>a-b),middle=Math.floor(prices.length/2);
     const price=prices.length%2?prices[middle]:(prices[middle-1]+prices[middle])/2;
     const distance=Math.abs(price-last);

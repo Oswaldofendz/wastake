@@ -16,6 +16,7 @@ const NAV_GROUPS = [
   { id: 'analyze', titleKey: 'nav_group_analyze', items: [
     { id: 'fundamentals', aliases:['markets'], labelKey: 'home_news_nav', icon: '🗞️' },
     { id: 'chart-ai', labelKey: 'chart_ai', icon: '✦' },
+    { id: 'futures', labelKey: 'fut_label', icon: '⚡' },
   ] },
   { id: 'track', titleKey: 'nav_group_track', items: [
     { id: 'portfolio', aliases:['alerts'], labelKey: 'home_track_nav', icon: '💼' },

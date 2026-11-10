@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getAssetGroup } from '../data/assetSectors.js';
 import { AssetSearch } from '../components/AssetSearch.jsx';
-import { formatQuote } from '../utils/panoramaAnalysis.js';
+import { displayPriceUnit,formatQuote } from '../utils/panoramaAnalysis.js';
 import { currentSelection } from '../utils/marketConventions.js';
 
 // ─── Helpers de formato ───────────────────────────────────────────────────────
@@ -98,7 +98,7 @@ function AssetRow({ asset, rank, t, showMarketCap, onSelect }) {
 
       {/* Precio */}
       <span className="catalogue-price w-20 sm:w-24 break-words text-right text-sm font-mono font-semibold text-white flex-shrink-0">
-        {formatQuote(asset.price,asset.currency,i18n.language,asset.type==='forex'?5:null)}
+        {formatQuote(asset.price,displayPriceUnit(asset,asset.currency),i18n.language,asset.type==='forex'?5:null)}
       </span>
 
       {/* Cambio 24h */}

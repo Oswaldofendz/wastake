@@ -1,3 +1,4 @@
+import {displayPriceUnit} from '../utils/panoramaAnalysis.js';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchOHLCV } from '../services/api.js';
@@ -29,7 +30,7 @@ export function AssetRangeContext({ asset, historyResult, historyLoading = false
   const fmt=n=>Number.isFinite(n)?n.toLocaleString(i18n.language,{maximumFractionDigits:4}):'—';
   return <div className="w-full text-left">
     <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">{t('asset_context')}</p>
-    <p translate="no" className="mt-1 text-xs text-slate-400">{asset.symbol} · {bars.length} {t('asset_bars')} · {data?.currency||asset.currency||'—'}</p>
+    <p translate="no" className="mt-1 text-xs text-slate-400">{asset.symbol} · {bars.length} {t('asset_bars')} · {displayPriceUnit(asset,data?.currency||asset.currency)||'—'}</p>
     {loading?<p className="my-6 text-xs text-slate-400">{t('loading')}</p>:bars.length<2?<p className="my-4 text-xs text-amber-300">{t('technical_score_missing_data')}</p>:<>
       <svg viewBox="0 0 280 68" className="mt-3 h-20 w-full" role="img" aria-label={`${t('asset_change')}: ${fmt(change)}%`}><polyline points={points} fill="none" stroke={change>=0?'#34d399':'#fb7185'} strokeWidth="2" vectorEffect="non-scaling-stroke"/></svg>
       <div className="relative my-2 h-2 rounded bg-slate-700"><span className="absolute -top-1 h-4 w-1 rounded bg-sky-300" style={{left:`calc(${pos}% - 2px)`}}/></div>

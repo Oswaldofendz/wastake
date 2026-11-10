@@ -1,4 +1,4 @@
-const pages = new Set(['dashboard','panorama','markets','portfolio','alerts','fundamentals','chart-ai']);
+const pages = new Set(['dashboard','panorama','markets','portfolio','alerts','fundamentals','chart-ai','futures']);
 export const PANORAMA_TABS = ['summary','chart','valuation','news'];
 export function canonicalPage(value='') {
   const page=String(value).replace(/^#/,'');

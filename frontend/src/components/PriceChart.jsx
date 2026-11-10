@@ -1,3 +1,4 @@
+import {displayPriceUnit} from '../utils/panoramaAnalysis.js';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { createChart, ColorType, LineStyle } from 'lightweight-charts';
 import { useTranslation } from 'react-i18next';
@@ -84,16 +85,16 @@ export function CandleChart({ asset, timeframe = '3M',interval='1d' }) {
       <DrawingToolbar tool={tool} setTool={setTool} drawings={drawings} onChange={changeDrawings} onUndo={()=>{setDrawings(drawingPast.at(-1));setDrawingPast(p=>p.slice(0,-1));}} canUndo={!!drawingPast.length}/>
       <div className="relative"><div ref={ref} style={{height:'clamp(340px, 36vw, 500px)',width:'100%'}} aria-label={`${asset.name} · ${timeframe}`} role="img"/><DrawingOverlay handle={handle} drawings={drawings} onChange={changeDrawings} tool={tool} setTool={setTool} selectedId={selectedDrawing} onSelect={setSelectedDrawing}/></div>
       <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-400" aria-live="polite">
-        <span translate="no">{asset.symbol} · {result?.currency || asset.currency || '—'} · {result?.source}</span>
+        <span translate="no">{asset.symbol} · {displayPriceUnit(asset,result?.currency || asset.currency) || '—'} · {result?.source}</span>
         {levelsOn && !levels.length && <span>{t('chart_no_levels')}</span>}
       </div>
       <p className="mt-2 text-xs leading-5 text-slate-400">{t(interval==='1d'?'chart_daily_context':'intraday_context',{interval,date:date(result.candles.at(-1).time)})}</p>
       <p className="mt-1 text-xs leading-5 text-slate-400">{t('chart_available_history',{count:result.candles.length,from:date(result.candles[0].time),to:date(result.candles.at(-1).time)})}</p>
       {interval!=='1d'&&<p role="status" className={`mt-1 text-xs leading-5 ${refreshFailed?'text-amber-300':'text-slate-400'}`}>{t(refreshFailed?'intraday_refresh_failed':'intraday_refresh')}{result.retrievedAt&&` · ${new Date(result.retrievedAt).toLocaleTimeString(i18n.language)}`}</p>}
-      <p className="mt-1 text-[11px] leading-5 text-slate-400">{t('chart_close',{price:`${fmt(result.candles.at(-1).close)} ${result.currency??''}`,date:date(result.candles.at(-1).time)})}</p>
+      <p className="mt-1 text-[11px] leading-5 text-slate-400">{t('chart_close',{price:`${fmt(result.candles.at(-1).close)} ${displayPriceUnit(asset,result.currency)??''}`,date:date(result.candles.at(-1).time)})}</p>
       {levelsOn&&<p className="mt-1 text-[11px] leading-5 text-slate-400">{t('chart_zone_hint')}</p>}
       {interval==='1d'&&<p className="mt-1 text-[11px] leading-5 text-slate-400">{t('audit_history_cache')}</p>}
-      {levelsOn&&<div className="mt-2 grid gap-2 sm:grid-cols-2">{levels.map(l=><div key={l.kind} className={`rounded-lg border p-2 text-xs ${l.kind==='support'?'border-emerald-800/50 text-emerald-300':'border-rose-800/50 text-rose-300'}`}><p className="font-semibold">{t(`chart_${l.kind}`)}: {fmt(l.low)}–{fmt(l.high)} {result?.currency??''}</p><p className="mt-1 text-[11px] text-slate-400">{t('chart_level_evidence',{count:l.touches,date:date(l.confirmedAt),distance:l.distancePct.toLocaleString(i18n.language,{maximumFractionDigits:2})})}</p>{result.candles.at(-1).close>=l.low&&result.candles.at(-1).close<=l.high&&<p className="mt-1 text-[11px] text-amber-300">{t('chart_testing')}</p>}</div>)}</div>}
+      {levelsOn&&<div className="mt-2 grid gap-2 sm:grid-cols-2">{levels.map(l=><div key={l.kind} className={`rounded-lg border p-2 text-xs ${l.kind==='support'?'border-emerald-800/50 text-emerald-300':'border-rose-800/50 text-rose-300'}`}><p className="font-semibold">{t(`chart_${l.kind}`)}: {fmt(l.low)}–{fmt(l.high)} {displayPriceUnit(asset,result?.currency)??''}</p><p className="mt-1 text-[11px] text-slate-400">{t('chart_level_evidence',{count:l.touches,date:date(l.confirmedAt),distance:l.distancePct.toLocaleString(i18n.language,{maximumFractionDigits:2})})}</p>{result.candles.at(-1).close>=l.low&&result.candles.at(-1).close<=l.high&&<p className="mt-1 text-[11px] text-amber-300">{t('chart_testing')}</p>}</div>)}</div>}
       <details className="mt-2 text-[11px] text-slate-400"><summary className="cursor-pointer">{t('chart_levels')} · {t('audit_method')}</summary><p className="mt-1 leading-5">{t(interval==='1d'?'chart_method':'intraday_method')}</p></details>
       <p className="mt-1 text-[10px] text-slate-500">TradingView Lightweight Charts™ · Copyright © 2023 TradingView, Inc. <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer" className="underline">TradingView</a></p>
     </>}

@@ -12,6 +12,7 @@ import { useAlerts } from './hooks/useAlerts.js';
 import { useBrowserNotifications } from './hooks/useBrowserNotifications.js';
 import { usePWAInstall }           from './hooks/usePWAInstall.js';
 const SimpleExperience=lazy(()=>import('./pages/SimpleExperience.jsx').then(m=>({default:m.SimpleExperience})));
+const Futures=lazy(()=>import('./pages/Futures.jsx'));
 const AgentCharts=lazy(()=>import('./pages/AgentCharts.jsx'));
 const Portfolio=lazy(()=>import('./pages/Portfolio.jsx').then(m=>({default:m.Portfolio})));
 const Alerts=lazy(()=>import('./pages/Alerts.jsx').then(m=>({default:m.Alerts})));
@@ -165,10 +166,12 @@ export default function App() {
         <Suspense fallback={<p role="status" className="p-6 text-slate-400">{t('loading')}</p>}>
         {simple&&['markets','fundamentals'].includes(currentPage)&&<nav className="hub-navigation" aria-label={t('home_news_nav')}><a href="#fundamentals" aria-current={currentPage==='fundamentals'?'page':undefined}>{t('home_news_tab')}</a><a href="#markets" aria-current={currentPage==='markets'?'page':undefined}>{t('home_events_tab')}</a></nav>}
         {simple&&['portfolio','alerts'].includes(currentPage)&&<nav className="hub-navigation" aria-label={t('home_track_nav')}><a href="#portfolio" aria-current={currentPage==='portfolio'?'page':undefined}>{t('home_portfolio_tab')}</a><a href="#alerts" aria-current={currentPage==='alerts'?'page':undefined}>{t('alerts')}</a></nav>}
-        {simple&&currentPage!=='chart-ai'?<Suspense fallback={<p role="status" className="p-6 text-slate-400">{t('loading')}</p>}><SimpleExperience page={currentPage} marketData={marketData} onNavigate={setCurrentPage} user={user} authLoading={authLoading} signIn={signIn} signUp={signUp} signOut={signOut}/></Suspense>:currentPage === 'dashboard' ? (
+        {simple&&!['chart-ai','futures'].includes(currentPage)?<Suspense fallback={<p role="status" className="p-6 text-slate-400">{t('loading')}</p>}><SimpleExperience page={currentPage} marketData={marketData} onNavigate={setCurrentPage} user={user} authLoading={authLoading} signIn={signIn} signUp={signUp} signOut={signOut}/></Suspense>:currentPage === 'dashboard' ? (
           <Dashboard marketData={marketData} onSimple={()=>chooseExperience('simple')}/>
         ) : currentPage === 'chart-ai' ? (
           <Suspense fallback={<p role="status" className="p-6 text-slate-400">…</p>}><AgentCharts marketData={marketData} guided={simple}/></Suspense>
+        ) : currentPage === 'futures' ? (
+          <Futures/>
         ) : currentPage === 'panorama' ? (
           <Panorama marketData={marketData}/>
         ) : ['markets','fundamentals'].includes(currentPage) ? (

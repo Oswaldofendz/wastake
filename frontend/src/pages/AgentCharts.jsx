@@ -8,7 +8,7 @@ import {AgentCanvas} from '../components/AgentCanvas.jsx';
 import {DrawingToolbar} from '../components/ChartDrawings.jsx';
 import {fetchChartSnapshot,askChartAgent,searchAssets} from '../services/api.js';
 import {getAnalysisType} from '../data/assetCatalog.js';
-import {formatQuote} from '../utils/panoramaAnalysis.js';
+import {displayPriceUnit,formatQuote} from '../utils/panoramaAnalysis.js';
 import {formatNumeric} from '../utils/numberFormat.js';
 import {mergeAutomaticAnalysis,chartContextMatches} from '../utils/automaticChart.js';
 import {initialWorkspace,applyChartActions} from '../utils/chartWorkspace.js';
@@ -35,7 +35,7 @@ export default function AgentCharts({marketData,guided=false}){
  const fmt=n=>formatNumeric(n,i18n.language);
  const date=(stamp,interval=workspace.interval)=>new Date(stamp*1000).toLocaleString(i18n.language,{timeZone:'UTC',dateStyle:'short',...(intervalInfo(interval)?.seconds>=86400?{}:{timeStyle:'short'})});
  const quoteKeys=['close','low','high','ema20','ema50','support','resistance','atr','vwap','fvgLow','fvgHigh','liquidityLow','liquidityHigh','donchian','keltner'];
- const fact=(data,key)=>quoteKeys.includes(key)?formatQuote(data.facts[key],data.currency,i18n.language):`${fmt(data.facts[key])}${['change','drawdown','atrPercent'].includes(key)&&Number.isFinite(data.facts[key])?'%':''}`;
+ const fact=(data,key)=>quoteKeys.includes(key)?formatQuote(data.facts[key],displayPriceUnit(asset,data.currency),i18n.language):`${fmt(data.facts[key])}${['change','drawdown','atrPercent'].includes(key)&&Number.isFinite(data.facts[key])?'%':''}`;
  useEffect(()=>{
    let active=true;controller.current?.abort();setBusy(false);setLoading(true);setDataError(false);setRefreshFailed(false);setSnapshot(null);setSelectedId(null);setTool('select');
    fetchChartSnapshot(asset,getAnalysisType(asset),workspace.interval,venue).then(data=>{
@@ -119,7 +119,7 @@ export default function AgentCharts({marketData,guided=false}){
    {guided&&<div className="easy-lesson easy-ai-intro"><strong>✦ {t('easy_ai_hint')}</strong><p>{t('easy_ai_hint_help')}</p></div>}
    <header className="studio-topbar"><label className="flex items-center gap-1 px-2 text-[11px] text-teal-200"><input type="checkbox" checked={automatic} onChange={e=>setAutomatic(e.target.checked)}/>{t('studio_autopilot')}</label>
      <button type="button" onClick={()=>{setPicker('asset');setPickerQuery('');}} className="flex min-h-10 min-w-0 items-center gap-2 rounded px-2 text-left hover:bg-slate-800" aria-label={t('search_assets')}><span className="text-teal-300">⌕</span><span translate="no" className="truncate text-sm font-semibold">{asset.symbol}</span><span className="text-xs text-slate-500">⌄</span></button>
-     {ready&&<span title={t('agent_fact_close')} className="font-mono text-xs text-slate-300">{formatQuote(snapshot.facts.close,snapshot.currency,i18n.language)}</span>}
+     {ready&&<span title={t('agent_fact_close')} className="font-mono text-xs text-slate-300">{formatQuote(snapshot.facts.close,displayPriceUnit(asset,snapshot.currency),i18n.language)}</span>}
      <select aria-label={t('candle_interval')} value={workspace.interval} onChange={e=>operate([{type:'interval',value:e.target.value}])} className="min-h-10 rounded border border-slate-700 bg-transparent px-2 text-xs">{CHART_INTERVALS.map(x=><option key={x.id} value={x.id}>{x.id==='1w'?t('cycle_week'):x.id==='1mo'?t('cycle_month'):x.id==='1d'?t('candle_daily'):x.label}</option>)}</select>
      <select aria-label={t('studio_venue')} value={venue} onChange={e=>{setVenue(e.target.value);setTimeline(p=>({current:{...initialWorkspace(),interval:p.current.interval},past:[]}));}} className="min-h-10 max-w-28 rounded border border-slate-700 bg-transparent px-1 text-xs"><option value="auto">{t('studio_auto')}</option>{getAnalysisType(asset)==='crypto'&&<><option>Kraken</option><option>Coinbase</option></>}</select>
      <button type="button" onClick={()=>{setPicker('compare');setPickerQuery('');}} className="min-h-10 rounded px-2 text-xs text-sky-200">⊕ {t('studio_compare')}</button>

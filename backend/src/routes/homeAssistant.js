@@ -8,7 +8,7 @@ const guide = [
   'Home has featured assets, market pulse, catalogue rankings and search.',
   'Panorama opens asset profiles with price, chart, historical technical analysis, asset-specific research and headlines. A technical index is not a buy or sell signal.',
   'News and macro contains Fundamentals, the economic calendar, heat map and correlations. News sentiment describes weighted coverage, not future market direction.',
-  'AI Charts is the place to draw and request explanations grounded in the selected chart and its data.',
+  'Futures covers listed Kraken perpetuals and CME continuous index references. It shows conditional historical scenarios, no guaranteed entries. AI Charts is the place to draw and request explanations grounded in the selected chart and its data.',
   'Tracking contains portfolio and alerts. Explain only the visible workflow. You cannot view the user account, edit positions, place trades, or open support tickets.'
 ].join('\n');
 

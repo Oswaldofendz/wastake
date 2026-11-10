@@ -4,7 +4,7 @@ import {ALL_ASSETS,getAnalysisType} from '../data/assetCatalog.js';
 import {fetchFearGreed,fetchGlobalMarket,fetchOHLCV} from '../services/api.js';
 import {compactNumber} from '../utils/compactNumber.js';
 import {homeChart,homeCryptoSnapshot,homeSentiment} from '../utils/homePulse.js';
-import {formatQuote} from '../utils/panoramaAnalysis.js';
+import {displayPriceUnit,formatQuote} from '../utils/panoramaAnalysis.js';
 import {AssetLogo} from './AssetLogo.jsx';
 
 const featured = ['bitcoin','ethereum','NVDA','AAPL','^GSPC'].map(id => ALL_ASSETS.find(asset => asset.id === id));
@@ -66,7 +66,7 @@ function MiniChart({asset,chart,onSelect}) {
   const date = chart && new Intl.DateTimeFormat(i18n.language,{day:'numeric',month:'short',timeZone:'UTC'}).format(chart.date);
   return <button className="home-mini-card" type="button" onClick={() => onSelect(asset)} aria-label={t('home_open_asset',{name:asset.name})} aria-describedby={'mini-'+asset.symbol}>
     <span className="home-mini-heading"><AssetLogo asset={asset} size={24}/><span translate="no"><strong>{asset.symbol}</strong><small>{asset.name}</small></span><span aria-hidden="true" className="home-mini-arrow">↗</span></span>
-    <span className="home-mini-price">{chart ? asset.type === 'index' ? chart.close.toLocaleString(i18n.language,{maximumFractionDigits:2}) : formatQuote(chart.close,chart.currency,i18n.language) : '—'}</span>
+    <span className="home-mini-price">{chart ? formatQuote(chart.close,displayPriceUnit(asset,chart.currency),i18n.language) : '—'}</span>
     {chart ? <>
       <svg className={tone(chart.change)} viewBox="0 0 160 48" preserveAspectRatio="none" aria-hidden="true">
         <path d={path+' L158,48 L2,48 Z'} fill="currentColor" opacity=".12"/>
@@ -86,7 +86,7 @@ function SentimentArc({score}) {
   </svg>;
 }
 
-export function HomePulse({assets,filters,filterKey,type,onFilter,onSelect,onSimple,calendarLink}) {
+export function HomePulse({assets,filters,filterKey,type,onFilter,onSelect,onSimple,calendarLink,assistant}) {
   const {t,i18n} = useTranslation();
   const data = usePulseData(), global = data.global, sentiment = data.sentiment, lang = i18n.language;
   const usd = value => Number.isFinite(value) && value > 0 ? '$'+compactNumber(value,lang) : '—';
@@ -99,18 +99,19 @@ export function HomePulse({assets,filters,filterKey,type,onFilter,onSelect,onSim
   const change = global?.marketCapChange24h;
   return <>
     <section className="home-featured" aria-labelledby="home-featured-title">
-      <div className="home-featured-head"><div><h1 id="home-featured-title"><span aria-hidden="true">📈</span>{t('home_featured')}</h1><p>{t('home_mini_help')}</p></div><button type="button" className="home-easy" onClick={onSimple}>🌱 {t('easy_switch')} <span>Beta ↗</span></button></div>
+      <div className="home-featured-head"><div><h1 id="home-featured-title"><span aria-hidden="true">📈</span>{t('home_featured')}</h1><p>{t('home_mini_help')}</p></div><div className="home-featured-actions"><button type="button" className="home-easy" onClick={onSimple}>🌱 {t('easy_switch')} <span>Beta ↗</span></button>{assistant}</div></div>
       <div className="home-mini-grid">{featured.map(asset => <MiniChart key={asset.id} asset={assets.find(row=>row.id===asset.id && row.type===asset.type) ?? asset} chart={data[asset.id]} onSelect={onSelect}/>)}</div>
     </section>
     <section className="home-pulse" aria-label={t('home_pulse')}>
       <div className="home-pulse-tabs" role="group" aria-label={t('home_types')}>{filters.map(key => <button type="button" key={key} aria-pressed={type===key} aria-controls="home-market-assets" onClick={() => onFilter(key)}>{t(filterKey[key])}</button>)}</div>
       <div className="home-pulse-grid">
-        <div><span className="home-pulse-label">{t('home_pulse_cap')}</span><strong>{usd(globalCap ? global.totalMarketCap : sample.cap)}</strong><small>{globalCap ? <><span translate="no">CoinGecko</span>{Number.isFinite(change)&&<> · <span className={tone(change)}>{pct(change,lang)} · 24 h</span></>}</> : sampleLabel(sample.capCount)}</small></div>
-        <div><span className="home-pulse-label">{t('home_pulse_volume')}</span><strong>{usd(globalVolume ? global.totalVolume : sample.volume)}</strong><small>{globalVolume ? <span translate="no">CoinGecko</span> : sampleLabel(sample.volumeCount)}</small></div>
+        <div><span className="home-pulse-label">{t(globalCap?'home_pulse_cap':'home_pulse_cap_sample')}</span><strong>{usd(globalCap ? global.totalMarketCap : sample.cap)}</strong><small>{globalCap ? <><span translate="no">CoinGecko</span>{Number.isFinite(change)&&<> · <span className={tone(change)}>{pct(change,lang)} · 24 h</span></>}</> : sampleLabel(sample.capCount)}</small></div>
+        <div><span className="home-pulse-label">{t(globalVolume?'home_pulse_volume':'home_pulse_volume_sample')}</span><strong>{usd(globalVolume ? global.totalVolume : sample.volume)}</strong><small>{globalVolume ? <span translate="no">CoinGecko</span> : sampleLabel(sample.volumeCount)}</small></div>
         <div><span className="home-pulse-label">{t(globalShare?'home_pulse_dominance':'home_pulse_btc_share')}</span><strong>{Number.isFinite(share)&&share>0&&share<=100?percent(share,lang):'—'}</strong><small>{globalShare ? <span translate="no">CoinGecko</span> : sampleLabel(sample.capCount)}</small></div>
         <div className="home-pulse-sentiment"><div><span className="home-pulse-label">{t('home_pulse_sentiment')}</span><strong>{sentiment ? sentiment.score+' / 100' : '—'}</strong><small><span translate="no">Alternative.me</span>{sentiment&&' · '+new Intl.DateTimeFormat(lang,{day:'numeric',month:'short',timeZone:'UTC'}).format(sentiment.at)}</small></div>{sentiment&&<SentimentArc score={sentiment.score}/>}</div>
       </div>
       <nav className="home-quick" aria-label={t('home_quick')}>
+        <a href="#futures"><span aria-hidden="true">⚡</span> {t('fut_label')}</a>
         <a href="#chart-ai"><span aria-hidden="true">🤖</span> {t('home_quick_charts')}</a>
         <a href="#fundamentals"><span aria-hidden="true">🗞️</span> {t('home_news_all')}</a>
         <a href={calendarLink}><span aria-hidden="true">📅</span> {t('home_calendar')}</a>
